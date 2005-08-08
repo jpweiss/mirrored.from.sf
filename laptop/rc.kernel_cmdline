@@ -1,0 +1,143 @@
+#!/bin/sh
+#
+# Copyright (C) 2005 by John P. Weiss
+#
+# This package is free software; you can redistribute it and/or modify
+# it under the terms of the Artistic License, included as the file
+# "LICENSE" in the source code archive.
+#
+# This package is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# You should have received a copy of the file "LICENSE", containing
+# the License John Weiss originally placed this program under.
+#
+# RCS $Id$
+############
+
+
+############
+#
+# Includes & Other Global Variables
+#
+############
+
+
+MUTE=''
+SYNC_MODE=''
+POWER_BUTTON_HALT_TIME=''
+old_pwersave=''
+
+
+############
+#
+# Functions
+#
+############
+
+
+parse_kernel_cmdline() {
+    set -- `cat /proc/cmdline`
+    while [ -n "$1" ]; do
+        case "$1" in
+            nosound|mute)
+                MUTE='y'
+                ;;
+            sync)
+                SYNC_MODE='y'
+                ;;
+            suspend)
+                touch /tmp/.suspend
+                chmod a+w /tmp/.suspend
+                chgrp users /tmp/.suspend
+                ;;
+            halt_time=*)
+                ht="$1"
+                POWER_BUTTON_HALT_TIME=${ht##halt_time\=}
+                ;;
+            -halt_time)
+                shift
+                POWER_BUTTON_HALT_TIME=$1
+                ;;
+            -z)
+                shift
+                echo "\# $1" >> /tmp/.init.env
+                ;;
+        esac
+        shift
+    done
+}
+
+
+write_init_env_file() {
+    # Save the current environment, including the runlevel
+    echo "RUNLEVEL=${RUNLEVEL:-3}" >> /tmp/.init.env
+    echo "export RUNLEVEL" >> /tmp/.init.env
+    echo "MUTE=${MUTE}" >> /tmp/.init.env
+    echo "export MUTE" >> /tmp/.init.env
+    if [ -n "${old_pwersave}" ]; then
+        echo "POWERSAVE='y'" >> /tmp/.init.env
+        echo "export POWERSAVE" >> /tmp/.init.env
+    fi
+    if [ -n "${POWER_BUTTON_HALT_TIME}" ]; then
+        echo "POWER_BUTTON_HALT_TIME=$POWER_BUTTON_HALT_TIME" \
+            >> /tmp/.init.env
+        echo "export POWER_BUTTON_HALT_TIME" >> /tmp/.init.env
+    fi
+    chmod a+r,a-w /tmp/.init.env
+}
+
+
+prep() {
+    . /tmp/.init.env
+    if [ -n "${POWERSAVE}" ]; then
+        old_pwersave="${POWERSAVE}"
+    fi
+    rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
+}
+
+
+############
+#
+# Main
+#
+############
+
+
+case "$0" in
+    *bash|*sh|/etc/rc.d/*|/etc/rc?.d/*)
+        # Was sourced; do nothing
+        :
+        ;;
+    *)
+        # Was run as a script.
+        prep
+        ;;
+esac
+
+
+parse_kernel_cmdline
+export MUTE
+export SYNC_MODE
+export POWER_BUTTON_HALT_TIME
+write_init_env_file
+
+
+# Powersave tasks to perform on boot or on any form of resume.
+if [ -n "${POWERSAVE}" ]; then
+    echo -n ondemand > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+fi
+
+
+# Another task to do on either boot or resume:  Sync-Mode
+if [ -n "${SYNC_MODE}" ]; then
+    # TODO:  May need to pry out any "--resume" option passed to this script
+    # if this script starts taking other args.
+    /usr/local/bin/sync-mode.sh start "$@" &
+fi
+
+
+#################
+#
+#  End

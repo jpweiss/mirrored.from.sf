@@ -1,0 +1,93 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+touch /var/lock/subsys/local
+
+#
+# [jpw; 12/03] Custom Laptop Config Cmds.
+#
+
+. /etc/init.d/functions
+
+
+# Load Custom Modules
+CUST_MODULES='eth0 eth1'
+for m in $CUST_MODULES; do
+    modprobe $m
+done
+
+# Sane Keybindings
+action $"| Customizing Keybindings" \
+  loadkeys backspace windowkeys linux-with-two-alt-keys.inc 2>/dev/null
+if [ -f /etc/LocalSys/kbd/custom-us.map.gz ]; then
+    loadkeys /etc/LocalSys/kbd/custom-us 2>/dev/null
+fi
+  
+# The extra function keys on an HP laptop
+##action $"| Enabling OneTouch Keys" /etc/rc.d/hpOneTouchKeys.sh 2>/dev/null
+
+# ThinkPad-specific setup.
+action $"| Setting Up ThinkPad" /etc/rc.d/thinkpadSetup.sh 2>/dev/null
+
+# Remove /etc/nologin on book
+rm -f /etc/nologin 2>&1 >/dev/null
+
+# Determine if we're in powersave mode
+POWERSAVE=''
+if [ "${RUNLEVEL:-3}" = "4" ]; then
+    POWERSAVE='y'
+fi
+export POWERSAVE
+
+
+# Keep this here!
+# This code will also nuke several files that we'd otherwise need to remove
+# later on in this script.
+if [ -z "${POWERSAVE}" ]; then
+    # Clean up all of the "/tmp/.[-azA-Z]*" files except a few
+    for dotfile in /tmp/.[-azA-Z]*; do
+        if [ ! -f $dotfile ]; then
+            continue
+        fi
+        case "$dotfile" in
+            .bash*|.rnd)
+                echo > /dev/null # NOOP
+                ;;
+            *)
+                rm -f $dotfile 2>/dev/null
+                ;;
+        esac
+    done
+else
+    # We're in Powersave mode, but we still need to nuke some old state
+    # files.
+    rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
+fi
+
+
+# This builds the /tmp/.init.env file.
+if [ -f /etc/rc.d/rc.kernel_cmdline ]; then
+    . /etc/rc.d/rc.kernel_cmdline
+fi
+
+
+if [ -n "${POWERSAVE}" ]; then
+    # Use as little disk as possible in powersave mode
+    action $"| Disabling swap space to save power : "  swapoff -a
+fi
+
+
+if [ -z "${MUTE}" -o  -z "${POWERSAVE}" ]; then
+    action $"| Enabling Console Speaker : " /sbin/modprobe pcspkr
+fi
+
+
+# Lastly, echo lots-o-newlines to scroll this info off screen so that it 
+# stays visible in scrollback.
+# Anything emitted by the special "success", "failure" and "action" functions
+# shows up in /var/log/messages. 
+#
+echo -e "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"

@@ -1,0 +1,284 @@
+#!/bin/bash
+#
+# Copyright (C) 2005 by John P. Weiss
+#
+# This package is free software; you can redistribute it and/or modify
+# it under the terms of the Artistic License, included as the file
+# "LICENSE" in the source code archive.
+#
+# This package is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# You should have received a copy of the file "LICENSE", containing
+# the License John Weiss originally placed this program under.
+#
+# RCS $Id$
+############
+
+
+############
+#
+# Configuration Variables
+#
+############
+
+
+# Instructions:
+# 
+# - Set variables whose value you want to customize
+# - If you want to use the default value of a variable, leave it unset or set
+#   it to "".
+
+
+# There were, at one time, two forms of the built-in kernel suspend feature,
+# SWSusp, and its forked cousin, PMDisk.  The former forces you to specify
+# which swap partition is the hibernation partition.  PMDisk, however, did
+# not.  It used the first empty, active partition that it could find.
+#"suspenders.sh" tried to remedy that.
+#
+# Those days, however, are gone.  SWSusp is all that remains in newer 2.6
+# kernels.
+#
+# If you happen to be using one of the earlier 2.6 kernels (up to 2.6.9), you
+# may still have PMDisk available.  On some hardware, PMDisk may be the only
+# form of software hibernation that works for you.  (HP Pavillion laptops are
+# on that list.)  Or perhaps you just like PMDisk better.
+#
+# Set this variable to any non-empty string to enable "suspenders.sh" PMDisk
+# support.  "suspenders.sh" will close all swap partitions, stopping only if
+# memory is full, then activate the hibernation partition (see below).  This
+# is in an attempt to encourage PMDisk to use the right partition.
+#
+# If, however, you want PMDisk to choose whichever partition is available,
+# then keep this setting disabled and make sure to set "SUSPEND_PARTITION"
+# (below) to any swap partition that is always active.
+#
+# Default: ""
+#
+PMDISK_SUPPORT=''
+
+# The partition to hibernate into.
+#
+# Under PMDISK_SUPPORT='y', this variable is the swap partition you'd like
+# to use as the hibernation disk.  "suspenders.sh" then tries several things
+# to make PMDisk choose this partition as its hibernation disk.
+#
+# For SWSusp, this setting is required.  It is the name of the swap partition
+# you specified at compile time or via the "resume=" kernel parameter.
+# 
+# In either case, "suspenders.sh" will enable this partition if it isn't
+# already active.
+# 
+# You MUST set this variable, or "suspenders.sh" will do nothing.
+# 
+# Default: *none* -  MUST be set!
+#
+SUSPEND_PARTITION="/dev/hda10"
+
+# List of modules that are ill-behaved under any form of suspend.
+# 
+# These modules will be removed (via rmmod) before mem/disk suspend, in the
+# order listed below.  Then, after the resume, each module that was
+# successfully removed will be reinstalled.  The reinstall order is the
+# reverse of the removal order, thereby properly accounting for module
+# dependencies.
+#
+# Note:  You only need to add your own module removal/reinstall code if you
+# require more complex control over the module settings or dependencies.
+# Otherwise, this built-in mechanism should suffice.
+# 
+# Default: None.  An empty list means do nothing.
+#
+ILL_BEHAVED_MODULES="uhci_hcd"
+##ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd ipw2200 firmware_class"
+
+# When initiating mem/disk suspend from within X, first switch to this virtual
+# console.  Upon resume, you will be switched back to the console running X.
+# When you hibernate from a virtual console, no switching takes place.  The
+# default should be fine for most people.
+#
+# Default: 8
+#
+SWITCH_TO_CONSOLE=""
+
+# This setting works in concert with "SWITCH_TO_CONSOLE":  Before switching
+# back to the console running X, pause for this number of seconds.  The pause
+# gives X time to start running again after resume and do any automatic
+# resets it needs.
+#
+# Default: 2
+#
+RETURN_TO_X_PAUSE=""
+
+# This setting works in concert with "SWITCH_TO_CONSOLE", but you will seldom
+# need to touch it.  This is the virtual console on which X runs on your
+# system.  For all stock Linux systems, this will be virtual console #7.  You
+# only need to change this if you have a custom setup and run X on a different
+# console.
+#
+# Default: 7
+#
+X_CONSOLE=""
+
+# The Log File.  (The default will be fine for most people.)
+#
+# The suspend script will print a copy of all of its screen messages (as well
+# as error messages not output to the scrren) to this file.
+#
+# Default: "/tmp/suspend2any.log"
+#
+LOGFILE=""
+
+# The Lock File.  (The default will be fine for most people.)
+# 
+# Prevents the suspend script from running multile instances at the same
+# time.  Without it, you will enter into a VERY annoying
+# suspend-resume-resuspend-reresume-reresuspend-... loop.
+#
+# Default: "/tmp/.suspenders.lock"
+#
+LOCKFILE=""
+
+
+############
+#
+# Global Variables:
+# Set to Taste
+#
+############
+
+
+# MY_VAR="foo"
+
+
+############
+#
+# Functions
+#
+############
+
+
+# Your pre-hibernation tasks.
+#
+# This is the entry-point for all your pre-hibernation tasks.  It is called
+# *after* switching from X to another virtual console, but before any other
+# suspend preparation tasks.
+#
+# Things you won't need to do here:
+# - Switch from X to another console;
+# - Disable "xscreensaver";
+# - "rmmod" any modules listed in the $ILL_BEHAVED_MODULES configuration
+#    variable;
+#
+# Feel free to add other functions and call them from here.
+#
+pre_suspend() {
+    # The first argument to this function indicates whether or not we switched
+    # consoles from X.  It will be '0' if we were, and '1' if not.
+    was_in_x=$1
+
+    # Close all networking devices (and sync)
+    /bin/sync
+    /sbin/ifdown eth0_home >/dev/null 2>&1
+    /sbin/ifdown eth1_home >/dev/null 2>&1
+
+    # Remove all networking modules that we're not going to bring back up on
+    # resume (and sync).
+    /bin/sync
+    ${MODPROBE:-modprobe} --remove --quiet ipw2200 e1000
+
+    # Sync
+    /bin/sync
+}
+
+
+enableThinkPadLCD() {
+    lcdIsOff=""
+
+    # Make sure the LCD is on.  Ran into trouble with blank screen in X after
+    # a resume. 
+    set -- `cat /proc/acpi/ibm/video`
+    while [ -n "$1" ]; do
+        case "$1" in
+            lcd:)
+                shift
+                case "$1" in
+                    enabled)
+                        lcdIsOff=""
+                        ;;
+                    disabled)
+                        lcdIsOff="y"
+                        ;;
+                esac
+                ;;
+        esac
+        shift
+    done
+
+    if [ -n "$lcdIsOff" ]; then
+        /etc/rc.d/thinkpadSetup.sh \
+            set_kernel /proc/acpi/ibm/video lcd_enable
+    fi
+}
+
+
+# Your post-hibernation tasks.
+#
+# This is the entry-point for all your resume tasks.  It is called after all
+# other resume tasks, *except* switching back to X.  If you were in X before
+# hibernation, then you'll be switched back to X after this function
+# completes.
+# 
+# Things you won't need to do here:
+# - Switch back to X from another virtual console;
+# - Re-enable "xscreensaver";
+# - "modprobe" any modules listed in the $ILL_BEHAVED_MODULES configuration
+#    variable;
+# - Reset the system clock.
+#
+# Feel free to add other functions and call them from here.
+#
+resume_tasks() {
+    # The first argument to this function indicates whether or not we switched
+    # consoles from X.  It will be '0' if we were, and '1' if not.
+    was_in_x=$1
+
+    #/etc/rc.d/omke-k.pl 1
+    enableThinkPadLCD
+    /sbin/setsysfont
+
+    # This builds the /tmp/.init.env file and performs certain other tasks.
+    if [ -x /etc/rc.d/rc.kernel_cmdline ]; then
+        rm -f /tmp/.init.env 2>/dev/null
+        /etc/rc.d/rc.kernel_cmdline --resume --keeplog
+    fi
+}
+
+
+############
+#
+# Main
+#
+############
+
+
+# DO NOT CHANGE ANYTHING BELOW
+# NO USER-SERVICABLE PARTS
+
+
+case "$1" in
+    start) 
+        shift
+        pre_suspend "$@"
+        ;;
+    stop)
+        shift
+        resume_tasks "$@"
+        ;;
+esac
+
+
+#################
+#
+#  End
