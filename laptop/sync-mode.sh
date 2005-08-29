@@ -39,6 +39,9 @@ IFC_STATE_WAIT=10
 
 WAIT_TO_DRAINQ="2m"
 
+# Set to empty string to disable profile switching on start/restart
+NET_PROFILE_NAME=vslannet
+
 LOG=/tmp/sync-mode.log
 
 
@@ -54,6 +57,7 @@ LOG=/tmp/sync-mode.log
 SERVICE=/sbin/service
 MAILQ=/usr/bin/mailq
 POSTQUEUE=/usr/sbin/postqueue
+SWITCH_NET_PROFILE_CMD=/usr/sbin/system-config-network-cmd
 SYSCFG_NETPATH=/etc/sysconfig/network-scripts
 
 
@@ -100,6 +104,13 @@ network_unavailable() {
 
     pingcheck_unavailable ${pingTimeout} ${pingCount} ${REMOTE_HOSTNAME}
     return $?
+}
+
+
+switch_net_profile() {
+    if [ -x ${SWITCH_NET_PROFILE_CMD} -a -n "$1" ]; then
+        $SWITCH_NET_PROFILE_CMD -p "$1"
+    fi
 }
 
 
@@ -245,6 +256,9 @@ start_tasks() {
         netoff
     fi
 
+    # Change network profile back to "home base"
+    switch_net_profile "${NET_PROFILE_NAME}"
+
     neton
     wait_for_connectivity
     service_start_or_restart sshd
@@ -310,6 +324,10 @@ while [ -n "$1" ]; do
             shift
             PING_TIMEOUT=$1
             ;;
+        -p|--profile)
+            NET_PROFILE_NAME="$1"
+            shift
+            ;;
         --keeplog)
             clearlog=''
             ;;
@@ -349,7 +367,10 @@ else
 	-i
 	--ifc
 	--ifname
-	    Name of the network interface to activate/deactivate.
+	    Name of the network interface to activate/deactivate.  This
+	    could be the name of the network interface device, or it could
+	    be a logical name of an interface device under a specific 
+	    network profile.  See the "--profile" option for more info.
 	-H
 	-n
 	--hostname
@@ -358,15 +379,19 @@ else
 	    the interface has come up.
 	-c
 	--ping_count
-	    How many times to ping the target network before deciding that it's
-	    not active.
+	    How many times to ping the target network before deciding that 
+	    it's not active.
 	-t
 	--ping_timeout
 	    How long (in seconds) to ping the target network before deciding 
 	    that it's not active.
+	-p
+	--profile
+	    The name of a network profile to switch to before activating the
+	    network interface.
 	--resume
-	    Used with "start":  Are we starting after a resume from
-	    sleep/hibernation?  If so, turn the target network interface off
+	    Used with "start":	Are we starting after a resume from
+	    sleep/hibernation?	If so, turn the target network interface off
 	    first.
 EOF
     ) | tee -a $LOG
