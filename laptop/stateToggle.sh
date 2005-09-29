@@ -133,6 +133,25 @@ wifi_state() {
 }
 
 
+get_actual_ifc_name() {
+    case "$1" in
+        eth*_*)
+            echo "${1%%_*}"
+            ;;
+        eth*-*)
+            echo "${1%%-*}"
+            ;;
+        eth*.*)
+            echo "${1%%.*}"
+            ;;
+        *)
+            echo "$1"
+            ;;
+
+    esac
+}
+
+
 state2start_stop() {
     if [ $1 -eq 0 ]; then
         echo stop
@@ -166,13 +185,16 @@ case "$0" in
                 lan_state|wifi_power_is_on|wifi_state)
                     opname="$1"
                     ;;
+                ut_*)
+                    opname="${1##ut_}"
+                    ;;
                 -h|--help|*)
                     echo "$usage"
                     exit 1
                     ;;
             esac
             shift
-            ifc="$1"
+            ifc=`get_actual_ifc_name "$1"`
             shift
             $opname "$ifc"
             state2start_stop $?
