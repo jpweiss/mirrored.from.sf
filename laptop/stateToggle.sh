@@ -101,13 +101,24 @@ lan_state() {
 
 wifi_power_is_on() {
     ifc="$1"
-    # Check if rf_kill==0
+
+    # Check if rf_kill exists
     ifc_rf_state="${SYS_NET_BASE}/$ifc/rf_kill"
+
     if [ ! -e $ifc_rf_state ]; then
         # Unlike the other /sys/... state files, "rf_kill" doesn't exist until
-        # the power on the antenna is explicitly shut off.
+        # the power on the antenna is explicitly shut off or turned on.
+        # Sooo... we need to use an alternative check
+        ifc_wireless_base="${SYS_NET_BASE}/$ifc/wireless"
+        for f in beacon level link status; do
+            check_sysfile "${ifc_wireless_base}/$f"
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+        done
         return 0
     fi
+
     # rf_state == 0 => power on    
     if [ "`cat $ifc_rf_state`" = "0" ]; then
         return 0
