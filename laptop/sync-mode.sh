@@ -275,6 +275,14 @@ stop_tasks() {
 }
 
 
+determine_state() {
+    mypath=$(dirname $0)
+    state_script='stateToggle.sh'
+
+    $mypath/$state_script lan_state $IFC_NAME
+}
+
+
 first_mesg() {
     what="$1"
     shift
@@ -307,7 +315,12 @@ start=''
 stop=''
 clearlog='y'
 while [ -n "$1" ]; do
-    case "$1" in
+    arg="$1"
+    shift
+    if [ "${arg##--}" = "toggle" ]; then
+        arg=`determine_state`
+    fi
+    case "$arg" in
         -i|--ifc|--ifname)
             shift
             IFC_NAME=$1
@@ -346,7 +359,6 @@ while [ -n "$1" ]; do
             break
             ;;
     esac
-    shift
 done
 
 
@@ -362,7 +374,7 @@ elif [ -n "$stop" ]; then
     stop_tasks >>$LOG 2>&1
 else
     (cat - <<-EOF
-	"usage: $0 [<Options>] [--resume] {[--keeplog] start | stop}"
+	"usage: $0 [<Options>] [--resume] {[--keeplog] start | stop | toggle}"
 	<Options>
 	-i
 	--ifc
