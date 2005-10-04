@@ -170,37 +170,49 @@ state2start_stop() {
 
 case "$0" in
     *bash)
-        # Was sourced.
+        file_was_sourced='y'
         ;;
     *)
-        # Was run as a script.
-        usage="usage: $0 <lan_state|wifi_power_is_on|wifi_state"
-        usage="${usage}> <ifc_name>"
-        if [ -z "$*" ]; then
-            echo "$usage"
-            exit 1
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
         fi
-        while [ -n "$1" ]; do
-            case "$1" in
-                lan_state|wifi_power_is_on|wifi_state)
-                    opname="$1"
-                    ;;
-                ut_*)
-                    opname="${1##ut_}"
-                    ;;
-                -h|--help|*)
-                    echo "$usage"
-                    exit 1
-                    ;;
-            esac
-            shift
-            ifc=`get_actual_ifc_name "$1"`
-            shift
-            $opname "$ifc"
-            state2start_stop $?
-        done
         ;;
 esac
+
+
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+else
+    # Was run as a script.  Perform any execution-specific tasks here (rather
+    # than pulling an unneeded "main" function into the environment.
+    usage="usage: $0 <lan_state|wifi_power_is_on|wifi_state"
+    usage="${usage}> <ifc_name>"
+    if [ -z "$*" ]; then
+        echo "$usage"
+        exit 1
+    fi
+    while [ -n "$1" ]; do
+        case "$1" in
+            lan_state|wifi_power_is_on|wifi_state)
+                opname="$1"
+                ;;
+            ut_*)
+                opname="${1##ut_}"
+                ;;
+            -h|--help|*)
+                echo "$usage"
+                exit 1
+                ;;
+        esac
+        shift
+        ifc=`get_actual_ifc_name "$1"`
+        shift
+        $opname "$ifc"
+        state2start_stop $?
+    done
+fi
 
 
 #################

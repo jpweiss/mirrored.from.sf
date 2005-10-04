@@ -106,15 +106,24 @@ prep() {
 
 
 case "$0" in
-    *bash|*sh|/etc/rc.d/*|/etc/rc?.d/*)
-        # Was sourced; do nothing
-        :
+    *bash)
+        file_was_sourced='y'
         ;;
     *)
-        # Was run as a script.
-        prep
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
+        fi
         ;;
 esac
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+    # No other special tasks needed in this case.
+else
+    # Was run as a script.
+    prep
+fi
 
 
 parse_kernel_cmdline
