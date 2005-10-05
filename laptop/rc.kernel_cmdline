@@ -90,9 +90,11 @@ write_init_env_file() {
 
 
 prep() {
-    . /tmp/.init.env
-    if [ -n "${POWERSAVE}" ]; then
-        old_pwersave="${POWERSAVE}"
+    if [ -f /tmp/.init.env ]; then
+        . /tmp/.init.env
+        if [ -n "${POWERSAVE}" ]; then
+            old_pwersave="${POWERSAVE}"
+        fi
     fi
     rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
 }
