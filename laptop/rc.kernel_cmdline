@@ -106,7 +106,9 @@ prep() {
 
 
 case "$0" in
-    *bash)
+    # Since this script is run under sh and not bash, need to check for
+    # plain-ol-sh as well.
+    *bash|*/sh|sh)
         file_was_sourced='y'
         ;;
     *)
