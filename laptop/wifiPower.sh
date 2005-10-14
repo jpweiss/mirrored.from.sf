@@ -13,7 +13,7 @@
 # You should have received a copy of the file "LICENSE", containing
 # the License John Weiss originally placed this program under.
 #
-# RCS $Id: script.sh 1401 2005-08-08 23:09:12Z candide $
+# RCS $Id$
 ############
 
 
