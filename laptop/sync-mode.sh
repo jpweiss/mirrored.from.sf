@@ -108,8 +108,19 @@ network_unavailable() {
 
 
 switch_net_profile() {
-    if [ -x ${SWITCH_NET_PROFILE_CMD} -a -n "$1" ]; then
-        $SWITCH_NET_PROFILE_CMD -p "$1"
+    profile_name="$1"
+    shift
+
+    if [ ! -x ${SWITCH_NET_PROFILE_CMD} -o -z "$profile_name" ]; then
+        return 1
+    fi
+    # else:
+
+    profile_active=$(grep "CURRENT_PROFILE=$profile_name" \
+        /etc/sysconfig/network)
+    if [ -z "$profile_active" ]; then
+        # Only switch the profile if needed.
+        $SWITCH_NET_PROFILE_CMD -p "$profile_name"
     fi
 }
 
@@ -374,8 +385,11 @@ elif [ -n "$stop" ]; then
     stop_tasks >>$LOG 2>&1
 else
     (cat - <<-EOF
-	"usage: $0 [<Options>] [--resume] {[--keeplog] start | stop | toggle}"
+	"usage: $0 [<Options>] {[--keeplog] start | stop | toggle}"
 	<Options>
+	--keeplog
+	    Appends to, instead of overwriting, an existing logfile.  Only used by
+        the "start" (or the "toggle" mode when behaving as "start").
 	-i
 	--ifc
 	--ifname
