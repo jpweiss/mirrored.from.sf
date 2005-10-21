@@ -43,6 +43,7 @@ L_DEST_CONSVT=8
 
 L_LOG="/tmp/suspend2any.log"
 L_LOCKFILE="/tmp/.suspenders.lock"
+L_RM_LOCKFILE_T=120
 
 # List of modules to unload/reload after resume.
 # List them in the order that they should be uninstalled.
@@ -98,6 +99,7 @@ declare -a IDX_DISABLED_SWAPS
 
 on_signal__() {
     sigval=$1
+    # A signal removes the lockfile immediately.
     rm -f $L_LOCKFILE
     exit ${sigval:-137} # 128+9
 }
@@ -431,6 +433,9 @@ read_config_set_local_vars__() {
     fi
     if [ -n "${LOCKFILE}" ]; then
         L_LOCKFILE="$LOCKFILE"
+    fi
+    if [ -n "${REMOVE_LOCKFILE_AFTER}" ]; then
+        L_RM_LOCKFILE_T="$REMOVE_LOCKFILE_AFTER"
     fi
 }
 
@@ -941,9 +946,6 @@ echo "$$" > $L_LOCKFILE
 # default pmdisk partition.
 suspend_system__ $how
 
-# Unlock after a pause.  Run the whole deal in a background subshell.
-(sleep 10; rm -f $L_LOCKFILE) >>$L_LOG 2>&1 &
-
 # Everything below gets executed after resume.
 resume_tasks $was_in_x
 
@@ -951,6 +953,11 @@ resume_tasks $was_in_x
 if [ $was_in_x -eq 0 ]; then
     return_to_X__ $is_running_xscreensaver
 fi
+
+# Unlock after a pause.  Run the whole deal in a background subshell.  (Yes,
+# the subshell *will* run independently, letting the main shell exit
+# immediately.)
+(sleep $L_RM_LOCKFILE_T; rm -f $L_LOCKFILE) >>$L_LOG 2>&1 &
 
 
 #################

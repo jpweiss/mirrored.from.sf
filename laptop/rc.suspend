@@ -132,13 +132,29 @@ LOGFILE=""
 
 # The Lock File.  (The default will be fine for most people.)
 # 
-# Prevents the suspend script from running multile instances at the same
+# Prevents the suspend script from running multiple instances at the same
 # time.  Without it, you will enter into a VERY annoying
 # suspend-resume-resuspend-reresume-reresuspend-... loop.
 #
 # Default: "/tmp/.suspenders.lock"
 #
 LOCKFILE=""
+
+# How long to wait before removing the lockfile.
+# 
+# Depending on your ACPI handler and how it's configured, it may "queue
+# keys".  Hitting that special "Hibernate" key on your laptop more than once
+# may cause a suspend-resume-resuspend-reresume-... loop.
+#
+# Or it would, if we removed the lockfile immediately.
+#
+# This is a delay, in seconds, to sleep before removing the lockfile.  The
+# sleep and the "rm" will run in the background, after the suspend script
+# exits.
+#
+# Default: 120 sec.
+#
+REMOVE_LOCKFILE_AFTER=120
 
 
 ############
