@@ -91,7 +91,7 @@ SUSPEND_PARTITION="/dev/hda10"
 # Default: None.  An empty list means do nothing.
 #
 ILL_BEHAVED_MODULES="uhci_hcd"
-##ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd ipw2200 firmware_class"
+##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
@@ -166,6 +166,7 @@ REMOVE_LOCKFILE_AFTER=120
 
 
 # MY_VAR="foo"
+REMOVE_ON_SUSPEND="e1000 ipw2200 firmware_class"
 
 
 ############
@@ -193,16 +194,24 @@ pre_suspend() {
     # The first argument to this function indicates whether or not we switched
     # consoles from X.  It will be '0' if we were, and '1' if not.
     was_in_x=$1
+    shift
 
-    # Close all networking devices (and sync)
+    # The second argument is how the suspend script was called.  Will be one
+    # of 'mem' or 'disk'.
+    how=$1
+    shift
+
+    # Close all networking devices (and sync beforehand).
     /bin/sync
-    /sbin/ifdown eth0_home >/dev/null 2>&1
-    /sbin/ifdown eth1_home >/dev/null 2>&1
+    /sbin/ifdown eth0 >/dev/null 2>&1
+    /sbin/ifdown eth1 >/dev/null 2>&1
 
     # Remove all networking modules that we're not going to bring back up on
-    # resume (and sync).
-    /bin/sync
-    ${MODPROBE:-modprobe} --remove --quiet ipw2200 e1000
+    # resume from a suspend-to-disk (and sync beforehand).
+    if [ "$how" = "disk" ]; then
+        /bin/sync
+        ${MODPROBE:-modprobe} --remove --quiet ${REMOVE_ON_SUSPEND}
+    fi
 
     # Sync
     /bin/sync
@@ -259,6 +268,11 @@ resume_tasks() {
     # The first argument to this function indicates whether or not we switched
     # consoles from X.  It will be '0' if we were, and '1' if not.
     was_in_x=$1
+
+    # The second argument is how the suspend script was called.  Will be one
+    # of 'mem' or 'disk'.
+    how=$1
+    shift
 
     #/etc/rc.d/omke-k.pl 1
     enableThinkPadLCD

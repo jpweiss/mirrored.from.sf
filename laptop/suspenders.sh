@@ -939,7 +939,7 @@ check_for_xscreensaver__ $was_in_x
 is_running_xscreensaver=$?
 
 # Pre-suspention tasks, including locking
-pre_suspend $was_in_x
+pre_suspend $was_in_x $how
 echo "$$" > $L_LOCKFILE
 
 # N.B.: No need to specify the "pmdisk" kernel option if you suspended to the 
@@ -947,7 +947,7 @@ echo "$$" > $L_LOCKFILE
 suspend_system__ $how
 
 # Everything below gets executed after resume.
-resume_tasks $was_in_x
+resume_tasks $was_in_x $how
 
 # Change back, if we were in X before the suspend
 if [ $was_in_x -eq 0 ]; then
