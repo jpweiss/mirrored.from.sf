@@ -349,7 +349,11 @@ swsusp_restore_swaps__() {
     # N.B.:  See reenable_swaps__() about $pretend
     pretend="$1"
 
+    echo "Beginning post-restore swapspace tasks..."
+    echo "Beginning post-restore swapspace tasks..." >>$L_LOG
+
     if [ -n "${L_PMDISK_SUPPORT}" ]; then
+
         swap_close_status=0
         case $close_suspdisk_on_wake in
             2)
@@ -357,32 +361,41 @@ swsusp_restore_swaps__() {
                 ;;
         esac
 
-        action_shfn__ "Restoring swaps to original state" \
+        bg_action_shfn__ "Restore swaps to original state:" \
             reenable_swaps__ $pretend $swap_close_status
-        if [ $? -eq 0 -a $close_suspdisk_on_wake -eq 0 ]; then 
+        restat=$?
+        if [ $retstat -eq 0 -a $close_suspdisk_on_wake -eq 0 ]; then 
             # Old restore_suspdisk__():
-            action_shfn__ "Cleaning up suspend partition" \
-                disable_swap__ $pretend ${L_SUSP_DISK} \
-                || return 1
-            if [ -n "${SUSP_DISK_ENABLED}" ]; then
-                action_shfn__ "Restoring original suspend partition state" \
+            bg_action_shfn__ "Clean up suspend partition:" \
+                disable_swap__ $pretend ${L_SUSP_DISK}
+            retstat=$?
+            if [  $retstat -eq 0 -a -n "${SUSP_DISK_ENABLED}" ]; then
+                bg_action_shfn__ "Restore original suspend partition state:" \
                     enable_swap__ $pretend \
                     ${SUSP_DISK_OLDPRIORITY} "${L_SUSP_DISK}"
-                return $?
+                retstat=$?                
             fi
-            return 0
         fi
-        # return otherstatus
+
     else 
+
         # SWSusp Support:  Just close the hibernation partition if it wasn't
         # originally enabled.
         if [ ${close_suspdisk_on_wake} -eq 0 ]; then
-            action_shfn__ "Closing suspend partition" \
+            bg_action_shfn__ "Close suspend partition:" \
                 disable_swap__ $pretend ${L_SUSP_DISK}
-            return $?
+            retstat=$?
         fi # else
-        return 0
+
     fi
+
+    lastmesg="Swapspace Tasks Completed."
+    if [ $retstat -ne 0 ]; then
+        lastmesg="ERROR in Swapspace Tasks."
+    fi
+    echo "$lastmesg"
+    echo "$lastmesg" >>$L_LOG
+    return $retstat
 }
 
 
@@ -522,13 +535,34 @@ get_meminfo__() {
 }
 
 
+remove_modules__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi 
+    L_MODULES_REMOVE="$@"
+    if [ -z "$L_MODULES_REMOVE" ]; then
+        return 0
+    fi
+    retstat=0
+    for m in $L_MODULES_REMOVE; do
+        action_shfn__ "Removing module: \"$m\"" \
+            $MODPROBE $pretend $RMMOD_SILENT --remove $m
+        if [ $? -ne 0 ]; then
+            let ++retstat
+        fi
+    done
+    return $retstat
+}
+
+
 disable_modules__() {
     if [ -z "$L_MODULES" ]; then
         DISABLED_MODULES=''
         return 0
     fi
     if [ "$1" = "-n" ]; then
-        pretend="$@"
+        pretend="$1"
         shift
     fi 
     retstat=0
@@ -551,7 +585,7 @@ reenable_modules__() {
         return 0
     fi
     if [ "$1" = "-n" ]; then
-        pretend="$@"
+        pretend="$1"
         shift
     fi 
     retstat=0
@@ -649,7 +683,7 @@ return_to_X__() {
         return 0
     fi
     if [ -n "$L_RET2X_PAUSE" ]; then
-        sleep $L_RET2X_PAUSE
+        action_shfn__ "Waiting to return to X..." sleep $L_RET2X_PAUSE
     fi
     $CHANGEVT ${L_X_VT}
     if [ $was_running_xscreensaver -ne 0 ]; then
@@ -692,7 +726,7 @@ perform_suspend__() {
 
     # This performs the suspend.
     echo -n $susp_type > /sys/power/state
-    # Alt Method:
+    # Alt Method:  Kernels pre-v-2.6.13
     #echo 3 >>/proc/acpi/sleep  # suspend to mem
     #echo 4 >>/proc/acpi/sleep  # suspend to disk
 }
@@ -719,6 +753,7 @@ suspend_system__() {
     perform_suspend__ $susp_type
     # ========== RESUME NOW
     echo "-.-.-.-.-"
+    # TODO:  "Wake" the current vt, so the user can see something.
     echo "Performing post-resume tasks:"
 
     # Fix the system clock.
@@ -726,10 +761,10 @@ suspend_system__() {
 
     # Re-enable any swap partitions shut down during suspend.
     if [ "$susp_type" = "disk" ]; then
-        # Run this in the background, as it can take a while.  Note that we
-        # pipe the output to `echo' and run the whole thing in a subshell to
-        # delay output of the status message(s).
-        (swsusp_restore_swaps__ $close_suspdisk_on_wake 2>&1 | echo) &
+        # Run this in the background, as it can take a while.
+        # The swsusp_swap_setup__() function is responsible for making sure
+        # that it doesn't mess up the console.
+        swsusp_restore_swaps__ $close_suspdisk_on_wake 2>&1 &
     fi
 
     # Reinstall any power-sensitive modules that were disabled.
@@ -737,6 +772,8 @@ suspend_system__() {
 }
 
 
+# Must be redefined if we're not using a Distro that defines the
+# echo_{warning,success,error} functions.
 print_warning__() {
     echo -n "$*"; echo_warning; echo
     echo "WARNING:  $*" >> $L_LOG
@@ -752,6 +789,7 @@ action_shfn__() {
     if [ -z "$cmd" ]; then 
         return 1
     fi
+    ##DBG##echo "!!!DBG!!! cmd==\"$cmd\" args=\"$@\"" >>$SILENT
     $cmd "$@" >>$SILENT 2>&1
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -760,6 +798,32 @@ action_shfn__() {
     else
         echo_failure
         echo "FAILED: $mesg" >> $L_LOG
+    fi
+    echo
+    return $rc
+}
+
+
+# A modified version of action_shfn__() that will run in a background subshell
+# without making a mess of the console output.
+bg_action_shfn__() {
+    mesg="$1"; shift
+    cmd="$1"; shift
+    if [ -z "$cmd" ]; then 
+        return 1
+    fi
+    ##DBG##echo "!!!DBG!!! cmd==\"$cmd\" args=\"$@\"" >>$SILENT
+    $cmd "$@" >>$SILENT 2>&1
+    rc=$?
+    # Lump all console output statements together.  We want to avoid any
+    # delays in which another process may print something, messing up our
+    # pretty status message.  ;) 
+    if [ $rc -eq 0 ]; then
+        echo -n " -- $mesg"; echo_success
+        echo "  - $mesg" >> $L_LOG
+    else
+        echo -n " -- $mesg"; echo_failure
+        echo "  FAILED: $mesg" >> $L_LOG
     fi
     echo
     return $rc
@@ -804,12 +868,12 @@ do_unit_tests_basic() {
     echo "Testing \"pmdisk_close_swaps__():\""
     #get_swapinfo__
     pmdisk_close_swaps__ -n
-    echo "Done."
+    echo "Test Done."
 
     echo "Testing \"swsusp_swap_setup__():\""
     swsusp_swap_setup__ -n
     swap_setup_state=$?
-    echo "Done."
+    echo "Test Done."
 
     echo "Swaps:          ${SWAPS[@]}"
     echo "SwapPriorities: ${SWAPS_PRI[@]}"
@@ -828,12 +892,12 @@ do_unit_tests_basic() {
 
     echo "Testing \"reenable_swaps__():\""
     reenable_swaps__ 0 -n
-    echo "Done."
+    echo "Test Done."
 
     echo "Testing \"swsusp_restore_swaps__():\""
     echo "Swap setup status was: $swap_setup_state"
     swsusp_restore_swaps__ $swap_setup_state  -n
-    echo "Done."
+    echo "Test Done."
 
     echo ""
 
@@ -909,10 +973,10 @@ else
         echo "WARNING:  $*" >> $L_LOG
     }
     echo_success() { 
-        echo -n "	[OK]"
+        echo -n "		[OK]"
     }
     echo_failure() { 
-        echo -n "	[FAILED]"
+        echo -n "		[FAILED]"
     }
 fi
 

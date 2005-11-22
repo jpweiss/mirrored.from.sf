@@ -90,7 +90,7 @@ SUSPEND_PARTITION="/dev/hda10"
 # 
 # Default: None.  An empty list means do nothing.
 #
-ILL_BEHAVED_MODULES="uhci_hcd"
+ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
@@ -166,7 +166,13 @@ REMOVE_LOCKFILE_AFTER=120
 
 
 # MY_VAR="foo"
-REMOVE_ON_SUSPEND="e1000 ipw2200 firmware_class"
+### N.B.: 'pcmcia' now depends on 'firmware_class'
+### 'yenta_socket' depends on two other modules, but doesn't need to be
+### removed (pcmcia is independent of it).
+##REMOVE_ON_SUSPEND="pcmcia yenta_socket rsrc_nonstatic pcmcia_core"
+##REMOVE_ON_SUSPEND="${REMOVE_ON_SUSPEND} i2c_{i801,core}"
+REMOVE_ON_SUSPEND="i2c_i801 i2c_core pcmcia"
+REMOVE_ON_SUSPEND="${REMOVE_ON_SUSPEND} e1000 ipw2200 firmware_class"
 
 
 ############
@@ -206,11 +212,14 @@ pre_suspend() {
     /sbin/ifdown eth0 >/dev/null 2>&1
     /sbin/ifdown eth1 >/dev/null 2>&1
 
+    /sbin/service pcmcia stop 
+
     # Remove all networking modules that we're not going to bring back up on
     # resume from a suspend-to-disk (and sync beforehand).
     if [ "$how" = "disk" ]; then
         /bin/sync
-        ${MODPROBE:-modprobe} --remove --quiet ${REMOVE_ON_SUSPEND}
+        sleep 1
+        remove_modules__ ${REMOVE_ON_SUSPEND}
     fi
 
     # Sync
