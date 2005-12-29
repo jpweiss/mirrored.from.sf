@@ -31,6 +31,10 @@
 ############
 
 
+IBM_ACPI=/proc/acpi/ibm
+SYS_MOUSE=/sys/class/input/mouse0/device
+
+
 ############
 #
 # Functions
@@ -40,7 +44,7 @@
 
 set_kernel() {
     # Do nothing if the kernel file doesn't exist
-    if [ ! -e $1 ]; then
+    if [ ! -f $1 ]; then
         return 0
     fi
     # Punt if there's no setting
@@ -72,10 +76,10 @@ activate_ThinkPad_keys() {
     #
     # The mask used below is equal to 100110011100, which preserves default
     # behavior for Fn+F7 only.
-    set_kernel /proc/acpi/ibm/hotkey 0x099C
+    set_kernel ${IBM_ACPI}/hotkey 0x099C
 
     # Now we turn on the ThinkPad hotkeys.
-    set_kernel /proc/acpi/ibm/hotkey enable
+    set_kernel ${IBM_ACPI}/hotkey enable
 }
 
 
@@ -181,6 +185,60 @@ mapscancodes() {
 }
 
 
+enableThinkPadLCD() {
+    lcdIsOff=""
+
+    # Make sure the LCD is on.  Ran into trouble with blank screen in X after
+    # a resume. 
+    set -- `cat ${IBM_ACPI}/video`
+    while [ -n "$1" ]; do
+        case "$1" in
+            lcd:)
+                shift
+                case "$1" in
+                    enabled)
+                        lcdIsOff=""
+                        ;;
+                    disabled)
+                        lcdIsOff="y"
+                        ;;
+                esac
+                ;;
+        esac
+        shift
+    done
+
+    if [ -n "$lcdIsOff" ]; then
+        set_kernel ${IBM_ACPI}/video lcd_enable
+    fi
+}
+
+
+activate_TrackPoint() {
+    if [ ! -d ${SYS_MOUSE} ]; then
+        return 1
+    fi
+
+    case "`cat ${SYS_MOUSE}/protocol`" in
+        [Tt][Pp][Pp][Ss])
+            :
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    if [ "$1" = "resume" ]; then
+        for flag in 1 0; do 
+            set_kernel ${SYS_MOUSE}/power/state $flag
+        done
+    fi
+
+    set_kernel ${SYS_MOUSE}/press_to_select 1
+    set_kernel ${SYS_MOUSE}/middle_btn_disable 1
+}
+
+
 ############
 #
 # Main
@@ -188,34 +246,50 @@ mapscancodes() {
 ############
 
 
-# Tool Mode
-if [ "$1" = "set_kernel" ]; then
-    shift
-    set_kernel "$1" "$2"
-    exit $?
-fi
+case "$0" in
+    *bash)
+        file_was_sourced='y'
+        ;;
+    *)
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
+        fi
+        ;;
+esac
 
-# Default Operations:
 
-# Permit monitor switching via Fn.+F7
-# Use "auto_disable" to turn it off.
-set_kernel /proc/acpi/ibm/video auto_enable
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+else
+    # Was run as a script.  Perform any execution-specific tasks here (rather
+    # than pulling an unneeded "main" function into the environment.
 
-# Use platform-based disk hibernation
-set_kernel /sys/power/disk platform
+    # Permit monitor switching via Fn.+F7
+    # Use "auto_disable" to turn it off.
+    set_kernel ${IBM_ACPI}/video auto_enable
 
-# Set up the ThinkPad Fn+F[x] keys.
-activate_ThinkPad_keys
+    # Use platform-based disk hibernation
+    set_kernel /sys/power/disk platform
 
-# Map the raw keyboard codes for non-ACPI keys
-mapscancodes
+    # Set up the ThinkPad Fn+F[x] keys.
+    activate_ThinkPad_keys
 
-# Then, bind them to something...
-load_custom_keymap
+    # Map the raw keyboard codes for non-ACPI keys
+    mapscancodes
 
-# FIXME:  Kludge - udev should take care of this correctly.  But, it doesn't.
-if [ -e /dev/nvram ]; then
-    chmod a+r,+t /dev/nvram
+    # Then, bind them to something...
+    load_custom_keymap
+
+    # Set up the new (v2.6.14+) TrackPoint support
+    activate_TrackPoint
+
+    # FIXME:  Kludge - udev should take care of this correctly.  But, it
+    # doesn't. 
+    if [ -e /dev/nvram ]; then
+        chmod a+r,+t /dev/nvram
+    fi
 fi
 
 
