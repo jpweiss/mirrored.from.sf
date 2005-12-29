@@ -264,7 +264,7 @@ resume_tasks() {
 
     enableThinkPadLCD
     /sbin/setsysfont
-    activate_TrackPoint
+    activate_TrackPoint resume
 }
 
 
