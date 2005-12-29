@@ -104,7 +104,7 @@ load_custom_keymap() {
     # them by accident, we'll unmap them all.  Only in combination with
     # modifier keys will they do anything.
 
-    # My ze4400 Mappings:
+    # My TPX40 Mappings:
     #  Fn              ==>  VoidSymbol Compose
     #  Left WinScroll  ==>  Scroll_Backward AltGr
     #    alt Left WinScroll  ==> Decr_Console
@@ -163,24 +163,24 @@ mapscancodes() {
     #     XKeycode==227
     # Map "Fn" to same keycode as Off.  No XKeycode/XKeySym needed.
     ##The default is correct in this case.  No change needed.
-    ##ONETOUCH_SCMAP="e063 143"
+    ##HOTKEY_SCMAP="e063 143"
     #
 	# The Left "Window-Scroll" Key
     # Default
     #     scancode==e06a,  keycode==158,
     #     XKeycode==234
     ##The default is correct in this case.  No change needed.
-    ##ONETOUCH_SCMAP="${ONETOUCH_SCMAP} e06a 158"
+    ##HOTKEY_SCMAP="${HOTKEY_SCMAP} e06a 158"
     #
 	# The Right "Window-Scroll" Key
     # Default:
     #     scancode==e069,  keycode==159,
     #     XKeycode==233
     ##The default is correct in this case.  No change needed.
-    ##ONETOUCH_SCMAP="${ONETOUCH_SCMAP} e069 159"
+    ##HOTKEY_SCMAP="${HOTKEY_SCMAP} e069 159"
 
     # Now actually set the scancode<-->console keycode mappings.
-    ##setkeycodes ${ONETOUCH_SCMAP}
+    ##setkeycodes ${HOTKEY_SCMAP}
     :
 }
 
