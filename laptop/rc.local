@@ -13,12 +13,6 @@ touch /var/lock/subsys/local
 . /etc/init.d/functions
 
 
-# Load Custom Modules
-CUST_MODULES='eth0 eth1'
-for m in $CUST_MODULES; do
-    modprobe $m
-done
-
 # Sane Keybindings
 action $"| Customizing Keybindings" \
   loadkeys backspace windowkeys linux-with-two-alt-keys.inc 2>/dev/null
@@ -72,6 +66,15 @@ fi
 if [ -f /etc/rc.d/rc.kernel_cmdline ]; then
     . /etc/rc.d/rc.kernel_cmdline
 fi
+
+
+# Load Custom Modules (depending on Powersave state):
+if [ -z "${POWERSAVE}" ]; then
+    CUST_MODULES='eth0 eth1'
+fi
+for m in $CUST_MODULES; do
+    modprobe $m
+done
 
 
 if [ -n "${POWERSAVE}" ]; then

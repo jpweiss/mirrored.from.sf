@@ -220,7 +220,7 @@ activate_TrackPoint() {
     fi
 
     case "`cat ${SYS_MOUSE}/protocol`" in
-        [Tt][Pp][Pp][Ss])
+        *[Tt][Pp][Pp][Ss]*)
             :
             ;;
         *)

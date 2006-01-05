@@ -212,11 +212,19 @@ pre_suspend() {
     /sbin/ifdown eth0 >/dev/null 2>&1
     /sbin/ifdown eth1 >/dev/null 2>&1
 
-    /sbin/service pcmcia stop 
+    /bin/sync
+    /sbin/service pcmcia stop
 
-    # Remove all modules that we're not going to bring back up on
-    # resume from a suspend-to-disk (and sync beforehand).
+    # Things to do for suspend-to-disk only
     if [ "$how" = "disk" ]; then
+        # Start by disabling "laptop-mode" ... it can cause suspend-to-disk to
+        # hang, ESPECIALLY if you've configured it to tweak IDE or drive
+        # device settings.
+        /bin/sync
+        /sbin/service laptop-mode stop
+
+        # Remove all modules that we're not going to bring back up on
+        # resume from a suspend-to-disk (and sync beforehand).
         /bin/sync
         sleep 1
         remove_modules__ ${REMOVE_ON_SUSPEND}
@@ -247,6 +255,7 @@ resume_tasks() {
     # The first argument to this function indicates whether or not we switched
     # consoles from X.  It will be '0' if we were, and '1' if not.
     was_in_x=$1
+    shift
 
     # The second argument is how the suspend script was called.  Will be one
     # of 'mem' or 'disk'.
@@ -265,6 +274,15 @@ resume_tasks() {
     enableThinkPadLCD
     /sbin/setsysfont
     activate_TrackPoint resume
+
+
+    # Lastly, re-enable laptop mode on a resume-from-disk.  However, do so
+    # only if we do so on boot.
+    if [ "$how" = "disk" ]; then
+        if [ -f /etc/rc${RUNLEVEL:-3}.d/S*laptop-mode ]; then
+            /sbin/service laptop-mode start
+        fi
+    fi
 }
 
 
