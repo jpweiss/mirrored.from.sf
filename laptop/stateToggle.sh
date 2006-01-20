@@ -25,6 +25,8 @@
 
 
 SYS_NET_BASE=/sys/class/net
+# This will be auto-set if left blank.
+SYS_WIFI_RF_KILL_RELPATH=""
 
 
 ############
@@ -99,24 +101,84 @@ lan_state() {
 }
 
 
+kernel_specific_wifi_setup()
+{
+    oIFS="$IFS"
+    IFS=".-_"
+    set -- `uname -r`
+    IFS="$oIFS"
+
+    kver_major=$1
+    shift
+    kver_minor=$1
+    shift
+    kver_release=$1
+    shift
+
+    if [ "${kver_major}.${kver_minor}" = "2.6" -a \
+         -z "${SYS_WIFI_RF_KILL_RELPATH}" ]; then
+        if [ $kver_release -gt 13 ]; then
+            # For kernel v2.6.14 and later.
+            SYS_WIFI_RF_KILL_RELPATH=device/rf_kill
+        else
+            # For kernel v2.6.13 and earlier.
+            SYS_WIFI_RF_KILL_RELPATH=rf_kill
+        fi
+    else
+        echo "!!! ERROR:  Not configured to handle kernels earlier than v2.6" \
+            >&2
+        return 1
+    fi
+    return 0
+}
+
+
+# Returns 0 if the power is on.
+# Returns 1 if the power is off.
+# Returns 2 if the "/sys/.../rf_kill" file for the WiFi interface can't be
+# found, and we can't make an unabiguous determination of the power state.
+# Returns 3 if the specified WiFi interface doesn't even exist.
+# Returns 127 if we can't run at all.
 wifi_power_is_on() {
     ifc="$1"
 
+    # Check if the ifc exists
+    sys_ifc_base="${SYS_NET_BASE}/$ifc"
+    if [ ! -e $sys_ifc_base ]; then
+        return 3
+    fi
+
+    # Run kernel-specific setup if it wasn't run already.
+    if [ -z "${SYS_WIFI_RF_KILL_RELPATH}" ]; then
+        kernel_specific_wifi_setup
+        # Punt if this is still blank.
+        [ -z "${SYS_WIFI_RF_KILL_RELPATH}" ] && return 127
+    fi
+
     # Check if rf_kill exists
-    ifc_rf_state="${SYS_NET_BASE}/$ifc/rf_kill"
+    ifc_rf_state="${sys_ifc_base}/${SYS_WIFI_RF_KILL_RELPATH}"
 
     if [ ! -e $ifc_rf_state ]; then
         # Unlike the other /sys/... state files, "rf_kill" doesn't exist until
-        # the power on the antenna is explicitly shut off or turned on.
-        # Sooo... we need to use an alternative check
+        # the power on the antenna is explicitly shut off or turned on. (Well,
+        # at least that was the case in certain kernel versions.)   Sooo... we
+        # need to use an alternative check 
         ifc_wireless_base="${SYS_NET_BASE}/$ifc/wireless"
         for f in beacon level link status; do
             check_sysfile "${ifc_wireless_base}/$f"
             if [ $? -ne 0 ]; then
-                return 1
+                return 2
             fi
         done
-        return 0
+        for f in beacon level link; do
+            check_sysfile "${ifc_wireless_base}/$f" 0
+            if [ $? -ne 0 ]; then
+                # If any of these flags happens to be nonzero, the wifi is
+                # definitely powered on.
+                return 0
+            fi
+        done
+        return 2
     fi
 
     # rf_state == 0 => power on    
@@ -131,7 +193,7 @@ wifi_state() {
     ifc="$1"
 
     # First, check that the wifi is actually turned on.
-    wifi_power_is_on $ifc || return 1
+    wifi_power_is_on $ifc || return $?
 
     # Check several other state files for existence (don't really care what
     # value they return).
