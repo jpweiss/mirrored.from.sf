@@ -44,10 +44,12 @@ L_DEST_CONSVT=8
 L_LOG="/tmp/suspend2any.log"
 L_LOCKFILE="/tmp/.suspenders.lock"
 L_RM_LOCKFILE_T=120
+L_FORCE_LOCKFILE_CLEANUP="/tmp/suspenders.force-lock-cleanup"
 
 # List of modules to unload/reload after resume.
 # List them in the order that they should be uninstalled.
 L_MODULES=''
+L_MODULES_REMOVEONLY=''
 
 
 ############
@@ -432,6 +434,9 @@ read_config_set_local_vars__() {
     if [ -n "${ILL_BEHAVED_MODULES}" ]; then
         L_MODULES="$ILL_BEHAVED_MODULES"
     fi
+    if [ -n "${REMOVE_MODULES}" ]; then
+        L_MODULES_REMOVEONLY="$REMOVE_MODULES"
+    fi
     if [ -n "${SWITCH_TO_CONSOLE}" ]; then
         L_DEST_CONSVT="$SWITCH_TO_CONSOLE"
     fi
@@ -449,6 +454,9 @@ read_config_set_local_vars__() {
     fi
     if [ -n "${REMOVE_LOCKFILE_AFTER}" ]; then
         L_RM_LOCKFILE_T="$REMOVE_LOCKFILE_AFTER"
+    fi
+    if [ -n "${FORCE_LOCKFILE_CLEANUP}" ]; then
+        L_FORCE_LOCKFILE_CLEANUP="$FORCE_LOCKFILE_CLEANUP"
     fi
 }
 
@@ -535,19 +543,33 @@ get_meminfo__() {
 }
 
 
-remove_modules__() {
+remove_module__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
     fi 
-    L_MODULES_REMOVE="$@"
-    if [ -z "$L_MODULES_REMOVE" ]; then
+    module="$1"
+    shift
+
+    if [ -z "$module" ]; then
         return 0
     fi
+
+    action_shfn__ "Removing module: \"$m\"" \
+        $MODPROBE $pretend $RMMOD_SILENT --remove $module
+    return $?
+}
+
+
+remove_modules_noresume__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi 
+
     retstat=0
-    for m in $L_MODULES_REMOVE; do
-        action_shfn__ "Removing module: \"$m\"" \
-            $MODPROBE $pretend $RMMOD_SILENT --remove $m
+    for m in $L_MODULES_REMOVEONLY; do
+        remove_module__ $pretend $m
         if [ $? -ne 0 ]; then
             let ++retstat
         fi
@@ -567,8 +589,7 @@ disable_modules__() {
     fi 
     retstat=0
     for m in $L_MODULES; do
-        action_shfn__ "Removing module: \"$m\"" \
-            $MODPROBE $pretend $RMMOD_SILENT --remove $m
+        remove_module__ $pretend $m
         if [ $? -eq 0 ]; then
             # Re-enable in reverse order.
             DISABLED_MODULES="$m ${DISABLED_MODULES}"
@@ -738,7 +759,12 @@ suspend_system__() {
     # Retrieve clock setup info.
     get_clockflags__
 
-    # Disable any power-sensitive modules
+    # Remove any modules that we do not want around after resume.  These
+    # may or may not be power-sensitive.
+    remove_modules_noresume__
+
+    # Disable any power-sensitive modules.
+    # These will be reloaded after resume.
     disable_modules__
 
     # PMDisk Support:  Close all swap devices except for the sleep partition.
@@ -841,6 +867,7 @@ do_unit_tests_switchvt() {
     is_running_xscreensaver=$?
     return $was_in_x
 }
+
 do_unit_tests_basic() {
     if [ "${UNIT_TEST}" != "noclock" ]; then
         get_clockflags__
@@ -848,8 +875,16 @@ do_unit_tests_basic() {
         reset_time__
     fi
 
+    echo "Testing Module Removal:"
+    echo "  \"modprobe\" has a --dry-run flag, which we use here.  So, if"
+    echo "  you see any errors, that's to be expected."
+
     # Disable any power-sensitive modules
     disable_modules__ -n
+
+    # Remove any other modules.
+    remove_modules_noresume__ -n
+    echo "Test Done"
 
     echo ""
 
@@ -902,8 +937,12 @@ do_unit_tests_basic() {
     echo ""
 
     # Reinstall any power-sensitive modules that were disabled.
+    echo "Testing Module Reinstall:"
+    echo "  Again, using \"modprobe\"'s  --dry-run flag; any errors are ok."
     reenable_modules__ -n
+    echo "Test Done."
 }
+
 do_unit_tests_switchback() {
     was_in_x=$1
     if [ "${UNIT_TEST}" != "switchvt" ]; then
@@ -914,6 +953,7 @@ do_unit_tests_switchback() {
         return_to_X__ 0
     fi
 }
+
 do_unit_tests() {
     SILENT=$L_LOG
     do_unit_tests_switchvt
@@ -951,11 +991,24 @@ read_config_set_local_vars__
 
 
 # Lock - Prevent a suspend-resume-suspend-resume loop.
-if [ -f $L_LOCKFILE ]; then
+if [ -f $L_FORCE_LOCKFILE_CLEANUP ]; then
+    echo "Cleaning up (possibly dead) lock file: \"$L_LOCKFILE\""
+    chmod -f a+w $L_LOCKFILE
+    rm -f $L_FORCE_LOCKFILE_CLEANUP
+    rm -f $L_LOCKFILE
+    if [ $? -ne 0 ]; then
+        echo "Failed to clean up lock file."
+        echo "Cowardly refusing to continue until the lock file is manually"
+        echo "removed."
+        exit 0
+    fi
+    echo "Continuing with suspend."
+elif [ -f $L_LOCKFILE ]; then
     echo "$0 already running."
     chmod -f a+w $L_LOCKFILE
     echo "(Run \"kill \$(< $L_LOCKFILE)\" to terminate. "
-    echo " Remove lock file \"$L_LOCKFILE\" if this is incorrect.)"
+    echo " To clean up dead lock files, run"
+    echo " \"touch $L_FORCE_LOCKFILE_CLEANUP\".)"
     exit 0
 fi
 
@@ -994,6 +1047,8 @@ if [ -n "$UNIT_TEST" ]; then
     do_unit_tests
 fi
 
+# Before anything else, write the lockfile.
+echo "$$" > $L_LOCKFILE
 
 # Change consoles, if in X
 maybe_changeconsole__
@@ -1002,9 +1057,9 @@ echo "========="
 check_for_xscreensaver__ $was_in_x
 is_running_xscreensaver=$?
 
-# Pre-suspention tasks, including locking
+# Pre-suspention tasks.
 pre_suspend $was_in_x $how
-echo "$$" > $L_LOCKFILE
+sleep 1
 
 # N.B.: No need to specify the "pmdisk" kernel option if you suspended to the 
 # default pmdisk partition.

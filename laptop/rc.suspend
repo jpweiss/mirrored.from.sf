@@ -84,14 +84,53 @@ SUSPEND_PARTITION="/dev/hda10"
 # reverse of the removal order, thereby properly accounting for module
 # dependencies.
 #
-# Note:  You only need to add your own module removal/reinstall code if you
-# require more complex control over the module settings or dependencies.
-# Otherwise, this built-in mechanism should suffice.
+# YOU MUST include interdependent modules in this list!
+# If you remove module "xyz", anything that depends on "xyz" MUST be in this
+# list, before "xyz".
+#
+# Notes:
+# 1. You only need to add your own module removal/reinstall code if you
+#    require more complex control over the module settings or dependencies.
+#    Otherwise, this built-in mechanism, combined with the `REMOVE_MODULES'
+#    feature (below), should suffice.
+# 2. If you need to stop any services before any of the modules in this list
+#    can be removed, do that in the "pre_suspend()" function, below.
+#    It's up to you to customize "pre_suspend()".  Only you know your needs.
+# 3. Similarly, if you want to restart any services after any of the modules
+#    in this list are reloaded, do that in the "resume_tasks()" function,
+#    below.
+#    It's up to you to customize "resume_tasks()".  Only you know your needs.
 # 
 # Default: None.  An empty list means do nothing.
 #
 ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
+
+# List of modules to remove before suspend and not restore on resume.
+# 
+# These modules will be removed (via rmmod) before mem/disk suspend, in the
+# order listed below.  However, unlike the `ILL_BEHAVED_MODULES' list, they
+# will not be restored after the resume.
+#
+# YOU MUST include interdependent modules in this list!
+# If you remove module "xyz", anything that depends on "xyz" MUST be in this
+# list, before "xyz".
+#
+# Note:
+# See the notes for `ILL_BEHAVED_MODULES'; all but #3 (which regards resuming)
+# apply to this feature.
+# 
+# Removal order:
+# First, modules in `REMOVE_MODULES', in the order you specify.
+# Next, the modules in `ILL_BEHAVED_MODULES', in the order you specify.
+#
+# DO NOT split interdependent modules between this list and
+# `ILL_BEHAVED_MODULES'.
+# 
+# Default: None.  An empty list means do nothing.
+#
+REMOVE_MODULES="i2c_i801 i2c_core pcmcia"
+REMOVE_MODULES="${REMOVE_MODULES} e1000 ipw2200 firmware_class"
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
@@ -156,6 +195,20 @@ LOCKFILE=""
 #
 REMOVE_LOCKFILE_AFTER=120
 
+# The Lock Cleanup Control File.  (The default will be fine for most people.)
+# 
+# Forces the suspend script to "clean up" any existing copy of its lockfile.
+# 
+# Specifically, if this file exists, the suspend script will forcibly remove
+# its lockfile and continue running.  This feature permits regular users to
+# clean up dead lockfiles that may be blocking all further suspend attempts.
+# Ordinarily, you'd need to be root to clean up dead lockfiles (since the user
+# running the suspend script --- typically "root" --- owns the lockfile).
+# 
+# Default: "/tmp/suspenders.force-lock-cleanup"
+#
+FORCE_LOCKFILE_CLEANUP=""
+
 
 ############
 #
@@ -166,13 +219,6 @@ REMOVE_LOCKFILE_AFTER=120
 
 
 # MY_VAR="foo"
-### N.B.: 'pcmcia' now depends on 'firmware_class'
-### 'yenta_socket' depends on two other modules, but doesn't need to be
-### removed (pcmcia is independent of it).
-##REMOVE_ON_SUSPEND="pcmcia yenta_socket rsrc_nonstatic pcmcia_core"
-##REMOVE_ON_SUSPEND="${REMOVE_ON_SUSPEND} i2c_{i801,core}"
-REMOVE_ON_SUSPEND="i2c_i801 i2c_core pcmcia"
-REMOVE_ON_SUSPEND="${REMOVE_ON_SUSPEND} e1000 ipw2200 firmware_class"
 
 
 ############
@@ -193,7 +239,7 @@ REMOVE_ON_SUSPEND="${REMOVE_ON_SUSPEND} e1000 ipw2200 firmware_class"
 # - Disable "xscreensaver";
 # - "rmmod" any modules listed in the $ILL_BEHAVED_MODULES configuration
 #    variable;
-#
+# 
 # Feel free to add other functions and call them from here.
 #
 pre_suspend() {
@@ -222,12 +268,6 @@ pre_suspend() {
         # device settings.
         /bin/sync
         /sbin/service laptop-mode stop
-
-        # Remove all modules that we're not going to bring back up on
-        # resume from a suspend-to-disk (and sync beforehand).
-        /bin/sync
-        sleep 1
-        remove_modules__ ${REMOVE_ON_SUSPEND}
     fi
 
     # Sync
