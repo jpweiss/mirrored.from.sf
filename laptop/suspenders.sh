@@ -434,8 +434,8 @@ read_config_set_local_vars__() {
     if [ -n "${ILL_BEHAVED_MODULES}" ]; then
         L_MODULES="$ILL_BEHAVED_MODULES"
     fi
-    if [ -n "${REMOVE_MODULES}" ]; then
-        L_MODULES_REMOVEONLY="$REMOVE_MODULES"
+    if [ -n "${MODULES_TO_REMOVE}" ]; then
+        L_MODULES_REMOVEONLY="$MODULES_TO_REMOVE"
     fi
     if [ -n "${SWITCH_TO_CONSOLE}" ]; then
         L_DEST_CONSVT="$SWITCH_TO_CONSOLE"

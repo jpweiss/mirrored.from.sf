@@ -91,7 +91,7 @@ SUSPEND_PARTITION="/dev/hda10"
 # Notes:
 # 1. You only need to add your own module removal/reinstall code if you
 #    require more complex control over the module settings or dependencies.
-#    Otherwise, this built-in mechanism, combined with the `REMOVE_MODULES'
+#    Otherwise, this built-in mechanism, combined with the `MODULES_TO_REMOVE'
 #    feature (below), should suffice.
 # 2. If you need to stop any services before any of the modules in this list
 #    can be removed, do that in the "pre_suspend()" function, below.
@@ -121,16 +121,16 @@ ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd"
 # apply to this feature.
 # 
 # Removal order:
-# First, modules in `REMOVE_MODULES', in the order you specify.
-# Next, the modules in `ILL_BEHAVED_MODULES', in the order you specify.
+# + First, modules in `MODULES_TO_REMOVE', in the order you specify.
+# + Next, the modules in `ILL_BEHAVED_MODULES', in the order you specify.
 #
 # DO NOT split interdependent modules between this list and
 # `ILL_BEHAVED_MODULES'.
 # 
 # Default: None.  An empty list means do nothing.
 #
-REMOVE_MODULES="i2c_i801 i2c_core pcmcia"
-REMOVE_MODULES="${REMOVE_MODULES} e1000 ipw2200 firmware_class"
+MODULES_TO_REMOVE="e1000 ipw2200 firmware_class"
+#MODULES_TO_REMOVE="${MODULES_TO_REMOVE} i2c_i801 i2c_core pcmcia"
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
