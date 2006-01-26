@@ -992,23 +992,24 @@ read_config_set_local_vars__
 
 # Lock - Prevent a suspend-resume-suspend-resume loop.
 if [ -f $L_FORCE_LOCKFILE_CLEANUP ]; then
-    echo "Cleaning up (possibly dead) lock file: \"$L_LOCKFILE\""
+    echo "Cleaning up (possibly dead) lock file: \"$L_LOCKFILE\""  >>$L_LOG
     chmod -f a+w $L_LOCKFILE
     rm -f $L_FORCE_LOCKFILE_CLEANUP
     rm -f $L_LOCKFILE
     if [ $? -ne 0 ]; then
-        echo "Failed to clean up lock file."
-        echo "Cowardly refusing to continue until the lock file is manually"
-        echo "removed."
+        echo "Failed to clean up lock file." >>$L_LOG
+        echo "Cowardly refusing to continue until the lock file is manually" \
+            >>$L_LOG
+        echo "removed." >>$L_LOG
         exit 0
     fi
-    echo "Continuing with suspend."
+    echo "Continuing with suspend." >>$L_LOG
 elif [ -f $L_LOCKFILE ]; then
-    echo "$0 already running."
+    echo "$0 already running." >>$L_LOG
     chmod -f a+w $L_LOCKFILE
-    echo "(Run \"kill \$(< $L_LOCKFILE)\" to terminate. "
-    echo " To clean up dead lock files, run"
-    echo " \"touch $L_FORCE_LOCKFILE_CLEANUP\".)"
+    echo "(Run \"kill \$(< $L_LOCKFILE)\" to terminate. " >>$L_LOG
+    echo " To clean up dead lock files, run" >>$L_LOG
+    echo " \"touch $L_FORCE_LOCKFILE_CLEANUP\".)" >>$L_LOG
     exit 0
 fi
 
