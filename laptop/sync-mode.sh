@@ -42,6 +42,10 @@ WAIT_TO_DRAINQ="2m"
 # Set to empty string to disable profile switching on start/restart
 NET_PROFILE_NAME=vslannet
 
+# The name of the profile which will allow your sendmail/postfix installation
+# to deliver its queued mail.
+MAIL_PROFILE_NAME=vslannet
+
 LOG=/tmp/sync-mode.log
 
 
@@ -108,19 +112,25 @@ network_unavailable() {
 
 
 switch_net_profile() {
-    profile_name="$1"
+    desired_ifc_name="$1"
+    shift
+    desired_profile_name="$1"
+    shift
+    force="$1"
     shift
 
-    if [ ! -x ${SWITCH_NET_PROFILE_CMD} -o -z "$profile_name" ]; then
+    if [ ! -x ${SWITCH_NET_PROFILE_CMD} -o \
+        -z "$desired_ifc_name" -o \
+        -z "$desired_profile_name" ]; then
         return 1
     fi
     # else:
 
-    profile_active=$(grep "CURRENT_PROFILE=$profile_name" \
-        /etc/sysconfig/network)
-    if [ -z "$profile_active" ]; then
+    ifc_active=$(ls -1 /etc/sysconfig/network-scripts  2>/dev/null |\
+        grep "$desired_ifc_name")
+    if [ -z "$ifc_active" -o -n "$force" ]; then
         # Only switch the profile if needed.
-        $SWITCH_NET_PROFILE_CMD -p "$profile_name"
+        $SWITCH_NET_PROFILE_CMD -p "$desired_profile_name"
     fi
 }
 
@@ -209,6 +219,7 @@ drainq() {
 
     i=0
     while `mail_queued`; do
+        let i++
         $POSTQUEUE -f
         if [ -n "$nowait" ]; then
             return 0
@@ -267,8 +278,14 @@ start_tasks() {
         netoff
     fi
 
-    # Change network profile back to "home base"
-    switch_net_profile "${NET_PROFILE_NAME}"
+    # Change network profile back to "home base", using the profile that will
+    # let you send off your queued mail.
+    `mail_queued` && mustDrainQ=y
+    if  [ -n "$mustDrainQ" -a -n "${MAIL_PROFILE_NAME}" ]; then
+        switch_net_profile "${IFC_NAME}" "${MAIL_PROFILE_NAME}" $mustDrainQ
+    else
+        switch_net_profile "${IFC_NAME}" "${NET_PROFILE_NAME}" $mustDrainQ
+    fi
 
     neton
     wait_for_connectivity
