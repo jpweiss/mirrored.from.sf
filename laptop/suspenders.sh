@@ -20,7 +20,7 @@
 # Configuration Variable:
 # Only one ... Where to find "rc.suspend"
 # 
-RC_SUSPEND=/etc/rc.d/rc.suspend
+RC_SUSPEND=${RC_SUSPEND:-/etc/rc.d/rc.suspend}
 
 
 ############
@@ -51,6 +51,9 @@ L_FORCE_LOCKFILE_CLEANUP="/tmp/suspenders.force-lock-cleanup"
 L_MODULES=''
 L_MODULES_REMOVEONLY=''
 
+# List of devices/directories to umount, in the order specified
+L_REMOVABLE_DEVS='/media/*'
+
 
 ############
 #
@@ -66,6 +69,7 @@ HWCLOCK=hwclock
 XSCREENSAVER_CMD=xscreensaver-command
 SWAPON=/sbin/swapon
 SWAPOFF=/sbin/swapoff
+UMOUNT=/bin/umount
 MODPROBE=/sbin/modprobe
 
 SILENT=/dev/null
@@ -431,6 +435,9 @@ read_config_set_local_vars__() {
     if [ -n "${PMDISK_SUPPORT}" ]; then
         L_PMDISK_SUPPORT="$PMDISK_SUPPORT"
     fi
+    if [ -n "${REMOVABLE_DEVICES}" ]; then
+        L_REMOVABLE_DEVS="$L_REMOVABLE_DEVS $REMOVABLE_DEVICES"
+    fi
     if [ -n "${ILL_BEHAVED_MODULES}" ]; then
         L_MODULES="$ILL_BEHAVED_MODULES"
     fi
@@ -618,6 +625,96 @@ reenable_modules__() {
 }
 
 
+not_mountable__() {
+    device="$1"
+    shift
+
+    [ -e $device ] \
+        && [ -d $device -o -b $device -o -c $device ] \
+        && return 1
+    # or
+
+    # Return true if this is not a device or directory.
+    return 0
+}
+
+
+umount_device__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi
+    device="$1"
+    shift
+
+    # Validation checks.
+    if [ -z "$device" ]; then
+        return 0
+    fi
+    if not_mountable__ $device; then
+        return 0
+    fi
+
+    if [ -n "$pretend" ]; then
+        echo ">>> umount $device" >>$L_LOG
+        return 0
+    fi
+    #else
+
+    result=`$UMOUNT $device 2>&1`
+    stat=$?
+    was_mounted='y'
+
+    case "$result" in
+        *busy*)
+            stat=1
+            ;;
+        *not*mounted*)
+            stat=0
+            was_mounted=''
+            ;;
+    esac
+
+    if [ $stat -ne 0 ]; then
+        echo "$result" >>$L_LOG
+    fi
+    if [ -n "$was_mounted" ]; then
+        action_shfn__ "Umounted device/mountpoint: \"$device\"" \
+            test $stat -eq 0
+    fi
+
+    return $?
+}
+
+
+umount_removable_devices__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi 
+
+    retstat=0
+    for f in $L_REMOVABLE_DEVS; do
+        # Although umount_device__() also performs this check, we do it here
+        # for the sake of cosmetic niceness.  Don't want error messages saying
+        # a nonexistent device failed to umount.
+        # 
+        # Besides, we could end up with $f containing wildcards or naming
+        # a plain file.  Those are both valid situations, not error
+        # conditions.
+        if not_mountable__ $f; then
+            echo "INFO: Not a device or mountpoint:  \"$device\"" >>$SILENT
+            continue
+        fi
+        umount_device__ $pretend $f
+        if [ $? -ne 0 ]; then
+            let ++retstat
+        fi
+    done
+    return $retstat
+}
+
+
 get_clockflags__() {
     # Snipped from RedHat's "rc.sysinit"
     ARC=0
@@ -759,6 +856,10 @@ suspend_system__() {
     # Retrieve clock setup info.
     get_clockflags__
 
+    # Umount any of the specified removable devices.  Do so before removing
+    # any power-sensitive modules.
+    umount_removable_devices__
+
     # Remove any modules that we do not want around after resume.  These
     # may or may not be power-sensitive.
     remove_modules_noresume__
@@ -887,6 +988,10 @@ do_unit_tests_basic() {
     echo "Test Done"
 
     echo ""
+
+    echo "Testing \"umount_removable_devices__():\""
+    umount_removable_devices__ -n
+    echo "Test Done."
 
     get_meminfo__
     read_fn_output__ mem_total mem_free swap_total swap_free -- \
@@ -1040,6 +1145,7 @@ FGCONSOLE=`find_binary__ $FGCONSOLE`
 HWCLOCK=`find_binary__ $HWCLOCK --force`
 SWAPON=`find_binary__ $SWAPON --force`
 SWAPOFF=`find_binary__ $SWAPOFF --force`
+UMOUNT=`find_binary__ $UMOUNT --force`
 MODPROBE=`find_binary__ $MODPROBE --force`
 
 rm -f $L_LOG

@@ -31,50 +31,26 @@
 #   it to "".
 
 
-# There were, at one time, two forms of the built-in kernel suspend feature,
-# SWSusp, and its forked cousin, PMDisk.  The former forces you to specify
-# which swap partition is the hibernation partition.  PMDisk, however, did
-# not.  It used the first empty, active partition that it could find.
-#"suspenders.sh" tried to remedy that.
-#
-# Those days, however, are gone.  SWSusp is all that remains in newer 2.6
-# kernels.
-#
-# If you happen to be using one of the earlier 2.6 kernels (up to 2.6.9), you
-# may still have PMDisk available.  On some hardware, PMDisk may be the only
-# form of software hibernation that works for you.  (HP Pavillion laptops are
-# on that list.)  Or perhaps you just like PMDisk better.
-#
-# Set this variable to any non-empty string to enable "suspenders.sh" PMDisk
-# support.  "suspenders.sh" will close all swap partitions, stopping only if
-# memory is full, then activate the hibernation partition (see below).  This
-# is in an attempt to encourage PMDisk to use the right partition.
-#
-# If, however, you want PMDisk to choose whichever partition is available,
-# then keep this setting disabled and make sure to set "SUSPEND_PARTITION"
-# (below) to any swap partition that is always active.
-#
-# Default: ""
-#
-PMDISK_SUPPORT=''
-
-# The partition to hibernate into.
-#
-# Under PMDISK_SUPPORT='y', this variable is the swap partition you'd like
-# to use as the hibernation disk.  "suspenders.sh" then tries several things
-# to make PMDisk choose this partition as its hibernation disk.
-#
-# For SWSusp, this setting is required.  It is the name of the swap partition
-# you specified at compile time or via the "resume=" kernel parameter.
+# List of devices or mountpoints to umount.
 # 
-# In either case, "suspenders.sh" will enable this partition if it isn't
-# already active.
+# A list of directories or device files to umount prior to suspend.
 # 
-# You MUST set this variable, or "suspenders.sh" will do nothing.
-# 
-# Default: *none* -  MUST be set!
+# None of the umount'ed devices will be remounted on resume.  The whole point
+# of this feature is to get rid of devices which are removable, since they may
+# not be attached on resume.
 #
-SUSPEND_PARTITION="/dev/hda10"
+# Each filesystem in the list is umount'ed in the order specified.  To
+# bulk-umount all of the subdirectories in a directory, append "/*" to the end
+# of the directory.
+#
+# Because of its association with hotplug, the "/media/*" directory will
+# always be preprended to the list of devices and mountpoints that you
+# specify.  Even if you specify nothing, "/media/*" is still checked for
+# mounted devices.
+# 
+# Default: /media/*
+#
+REMOVABLE_DEVICES="/mnt/*"
 
 # List of modules that are ill-behaved under any form of suspend.
 # 
@@ -103,7 +79,7 @@ SUSPEND_PARTITION="/dev/hda10"
 # 
 # Default: None.  An empty list means do nothing.
 #
-ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd"
+ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd mmc_block sdhci mmc_core"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
 # List of modules to remove before suspend and not restore on resume.
@@ -131,6 +107,51 @@ ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd"
 #
 MODULES_TO_REMOVE="e1000 ipw2200 firmware_class"
 #MODULES_TO_REMOVE="${MODULES_TO_REMOVE} i2c_i801 i2c_core pcmcia"
+
+# The partition to hibernate into.
+#
+# Under PMDISK_SUPPORT='y' (see below), this variable is the swap partition
+# you'd like to use as the hibernation disk.  "suspenders.sh" then tries
+# several things to make PMDisk choose this partition as its hibernation disk.
+#
+# For SWSusp, this setting is required.  It is the name of the swap partition
+# you specified at compile time or via the "resume=" kernel parameter.
+# 
+# In either case, "suspenders.sh" will enable this partition if it isn't
+# already active.
+# 
+# You MUST set this variable, or "suspenders.sh" will do nothing.
+# 
+# Default: *none* -  MUST be set!
+#
+SUSPEND_PARTITION="/dev/hda10"
+
+# There were, at one time, two forms of the built-in kernel suspend feature,
+# SWSusp, and its forked cousin, PMDisk.  The former forces you to specify
+# which swap partition is the hibernation partition.  PMDisk, however, did
+# not.  It used the first empty, active partition that it could find.
+#"suspenders.sh" tried to remedy that.
+#
+# Those days, however, are gone.  SWSusp is all that remains in newer 2.6
+# kernels.
+#
+# If you happen to be using one of the earlier 2.6 kernels (up to 2.6.9), you
+# may still have PMDisk available.  On some hardware, PMDisk may be the only
+# form of software hibernation that works for you.  (HP Pavillion laptops are
+# on that list.)  Or perhaps you just like PMDisk better.
+#
+# Set this variable to any non-empty string to enable "suspenders.sh" PMDisk
+# support.  "suspenders.sh" will close all swap partitions, stopping only if
+# memory is full, then activate the hibernation partition (see below).  This
+# is in an attempt to encourage PMDisk to use the right partition.
+#
+# If, however, you want PMDisk to choose whichever partition is available,
+# then keep this setting disabled and make sure to set "SUSPEND_PARTITION"
+# (below) to any swap partition that is always active.
+#
+# Default: ""
+#
+PMDISK_SUPPORT=''
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
