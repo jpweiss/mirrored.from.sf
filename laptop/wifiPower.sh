@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2005 by John P. Weiss
+# Copyright (C) 2005-2006 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -26,6 +26,12 @@
 
 IFC_NAME=eth1
 LOG=/tmp/wifi-power.log
+
+# The name of one or more services to shut down, in the listed order, when
+# turning the WiFi power off.
+# The script looks for these services in /etc/init.d/
+SERVICES="waproamd wifiroamd xsupplicant"
+
 # This is a filename prefix.  It will be appended with "-on" or "-off" to
 # construct the files that force the wifi power on or off, respectively.
 FORCE_WIFI_POWER=/tmp/force-wifi
@@ -55,12 +61,33 @@ FORCE_WIFI_POWER_OFF="${FORCE_WIFI_POWER}-off"
 ############
 
 
+stop_wifi_svcs() {
+    for svc in ${SERVICES}; do
+        svcBin=/etc/init.d/$svc
+        if [ ! -x $svcBin ]; then
+            echo "$svc Not installed.  Skipping."
+            continue
+        fi
+        case "$($svcBin status)" in
+            *running*)
+                /etc/init.d/$svc stop
+                ;;
+            *)
+                echo "$svc already stopped."
+                ;;
+        esac
+    done
+}
+
+
 power_off_wifi() {
     ifc_device="$1"
     shift
 
     # wifi_state returns 0 (true) if the WiFi device is currently up.
     if $(wifi_state "${ifc_device}"); then
+        echo "=== Closing all running WiFi services"
+        stop_wifi_svcs
         echo "=== Disabling interface:  ${IFC_NAME%%:*}"
         $IFDOWN ${IFC_NAME%%:*}
     fi
@@ -89,7 +116,7 @@ load_ifc_module() {
         echo "(Try defining an alias for \"${ifc_device}\" in "
         echo "/etc/modprobe.conf to load the wifi driver.)"
     else
-        sleep 1
+        sleep 2
     fi
 
     return $success
