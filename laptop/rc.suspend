@@ -276,8 +276,11 @@ pre_suspend() {
 
     # Close all networking devices (and sync beforehand).
     /bin/sync
-    /sbin/ifdown eth0 >/dev/null 2>&1
-    /sbin/ifdown eth1 >/dev/null 2>&1
+    for ndev in eth0 eth1; do
+        if [ -e /sys/class/net/$ndev ]; then
+            /sbin/ifdown $ndev >/dev/null 2>&1
+        fi
+    done
 
     /bin/sync
     /sbin/service pcmcia stop

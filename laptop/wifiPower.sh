@@ -27,6 +27,10 @@
 IFC_NAME=eth1
 LOG=/tmp/wifi-power.log
 
+# Unset this variable if your laptop doesn't use a firmware, or if your laptop
+# doesn't screw up the firmware_class module during suspend/resume.
+RELOAD_FIRMWARE_MODULE=firmware_class
+
 # The name of one or more services to shut down, in the listed order, when
 # turning the WiFi power off.
 # The script looks for these services in /etc/init.d/
@@ -109,6 +113,18 @@ load_ifc_module() {
     ifc_device="$1"
 
     echo "=== Loading module(s) for device:  ${ifc_device}"
+
+    if [ -n "${RELOAD_FIRMWARE_MODULE}" ]; then
+        $MODPROBE "${RELOAD_FIRMWARE_MODULE}"
+        if [ $? -eq 0 ]; then
+            # Give the kernel a breather before continuing.
+            sleep 1
+        else 
+            echo "!!! Failed to load module: \"${RELOAD_FIRMWARE_MODULE}\""
+            echo "Wifi driver probably won't work."
+        fi
+    fi
+
     $MODPROBE "${ifc_device}"
     success=$?
     if [ $success -ne 0 ]; then
@@ -249,7 +265,9 @@ if [ -e ${FORCE_WIFI_POWER_ON} -a -e ${FORCE_WIFI_POWER_OFF} ]; then
     echo "    Deleting both control files..." >>$LOG 2>&1
     rm -f ${FORCE_WIFI_POWER_ON} ${FORCE_WIFI_POWER_OFF} >>$LOG 2>&1
     echo "    Proceeding with default behavior..." >>$LOG 2>&1
-elif [ -e ${FORCE_WIFI_POWER_OFF} ]; then
+fi
+
+if [ -e ${FORCE_WIFI_POWER_OFF} ]; then
     echo "=== Forcing \"${ifc_device}\" off." >>$LOG 2>&1
     power_off_wifi "${ifc_device}" >>$LOG 2>&1
     rm -f ${FORCE_WIFI_POWER_OFF} >>$LOG 2>&1
