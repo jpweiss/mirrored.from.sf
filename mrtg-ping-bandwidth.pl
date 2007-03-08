@@ -43,13 +43,13 @@ my $_ConfigUpdateInterval = 7;
 # want to add the script's directory to the set of include-dirs.  This way, we
 # get any packages living in the script's directory.
 my $_MyName;
-my $_MyPath=".";
+my $_MyPath;
 BEGIN {
     if ($0 =~ m|\A(.*)/([^/]+\Z)|) {
         if ($1 ne ".") { $_MyPath = $1; }
         $_MyName = $2;
     } else { $_MyName = $0; }  # No path; only the script name.
-    if ($_MyPath ne ".") { push @INC, $_MyPath; }
+    if (defined($_MyPath)) { push @INC, $_MyPath; }
 }
 
 
@@ -198,35 +198,67 @@ sub read_config(\$\@\@) {
 
     build_cfgfile_name();
 
-    my @varnames;
-    my @cfg = UnDumper($_ConfigFile, @varnames);
-    my $errReason = $!;
-    $errReason .= ((($! ne "") && ($@ ne "")) ? "\n" : "");
-    $errReason .= $@;
-    if ($errReason ne "") {
-        print STDERR ("ERROR: Couldn't read \"",  $_ConfigFile, 
-                      "\"\nReason: \"", $!, "\"\n");
-        return 0;
-    }
-    # else
+    my %options=();
+    my $array_option="";
 
-    my $idx=0;
-    foreach (@varnames) {
-        if (m/remote_host/) {
-            $$ref_remote_host = $cfg[$idx];
-        } elsif (m/hop_numbers/) {
-            @$ref_hop_numbers = @{$cfg[$idx]};
-        } elsif (m/measurement_targets/) {
-            @$ref_measurement_targets = @{$cfg[$idx]};
-        } elsif (m/_ProbeInterval/) {
-            $_ProbeInterval = @{$cfg[$idx]};
-        } elsif (m/_ConfigUpdateInterval/) {
-            $_ConfigUpdateInterval = @{$cfg[$idx]};
-        } elsif (m/_DaemonLog/) {
-            $_DaemonLog = @{$cfg[$idx]};
+    open(IN_FS, "$_ConfigFile")
+        or die("Unable to open file for reading: \"$_ConfigFile\"\n".
+               "Reason: \"$!\"\n");
+
+    while (<IN_FS>) {
+        my $line = $_;
+        chomp $line; # Remove newline
+
+        # Trim whitespaces from either end of the line
+        # (This is faster than the obvious single-regexp way.)
+        for ($line) {
+            s/^\s+//;
+            s/\s+$//;
         }
-        ++$idx;
+
+        # Skip comment or blank lines (using optimizer-friendly Perl idiom).
+        next if ($line eq "");
+        next if ($line =~ m/^\#/);
+
+        # Special handling:
+        # This is the end of an array parameter.  Must come before the
+        # array processing block.
+        if ($line eq ")") {
+            $array_option = "";
+            next;
+        }
+
+        # Special handling:
+        # We are in the middle of processing an array option.
+        if ($array_option) {
+            push @{$options{$array_option}}, $line;
+            next;
+        }
+
+        # Get the option name and value, trimming whitespace on either
+        # side of the delimiter characters.
+        my ($optname, $val) = split /\s*[:=]\s*/, $line;
+
+        # Special handling:
+        # This is the start of an array parameter.
+        if ($val eq "(") {
+            $array_option=$optname;
+            $options{$array_option} = [ ];
+            next;
+        }
+
+        # Regular option processing
+        $options{$optname} = $val;
     }
+    close IN_FS;
+
+
+    $$ref_remote_host = $options{"remote_host"};
+    @$ref_hop_numbers = @{$options{"hop_numbers"}};
+    @$ref_measurement_targets = @{$options{"measurement_targets"}};
+    $_ProbeInterval = $options{"_ProbeInterval"};
+    $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
+    $_DaemonLog = $options{"_DaemonLog"};
 
     #print STDERR ("#DBG# @varnames\n");
     #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ", 
@@ -249,18 +281,16 @@ sub write_config($\@\@) {
         return 0;
     }
 
-    print CFGFH (Data::Dumper->Dump([ $remote_host, 
-                                      $ref_hop_numbers, 
-                                      $ref_measurement_targets,
-                                      $_ProbeInterval,
-                                      $_ConfigUpdateInterval,
-                                      $_DaemonLog ],
-                                    [qw( remote_host 
-                                         *hop_numbers 
-                                         *measurement_targets 
-                                         _ProbeInterval 
-                                         _ConfigUpdateInterval
-                                         _DaemonLog )]));
+    print CFGFH ("remote_host = ", $remote_host, "\n");
+    print CFGFH ("hop_numbers = (\n\t", 
+                 join("\n\t", @$hop_numbers), 
+                 ")\n");
+    print CFGFH ("measurement_targets = (\n\t", 
+                 join("\n\t", @$measurement_targets), 
+                 ")\n");
+    print CFGFH ("_ProbeInterval = ", $_ProbeInterval, "\n");
+    print CFGFH ("$_ConfigFile = ", $_ConfigFile, "\n");
+    print CFGFH ("$_DaemonLog = ", $_DaemonLog, "\n");
 
     close CFGFH;
     return 1;
@@ -281,17 +311,17 @@ sub update_config($\@;\@) {
 
     my $errmsg = "";
     if (scalar(@measurement_targets)) {
-        foreach my $hop (@$ref_hop_numbers) {
-            unless (defined($measurement_targets[$hop])) {
+        foreach my $idx (0 .. $#measurement_targets) {
+            unless (defined($measurement_targets[$idx])) {
                 if ($errmsg eq "") {
                     $errmsg .= "Failed to retrieve all hops from host: ";
                     $errmsg .= $remote_host;
                 }
                 $errmsg .= "\n\tMissing hop \#";
-                $errmsg .= $hop;
+                $errmsg .= $ref_hop_numbers->[$idx];
                 $errmsg .= ".  Reusing ";
-                $errmsg .= $ref_orig_targets->[$hop];
-                $measurement_targets[$hop] .= $ref_orig_targets->[$hop];
+                $errmsg .= $ref_orig_targets->[$idx];
+                $measurement_targets[$idx] .= $ref_orig_targets->[$idx];
             }
         }
 
