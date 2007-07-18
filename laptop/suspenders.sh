@@ -869,8 +869,8 @@ suspend_system__() {
     disable_modules__
 
     # PMDisk Support:  Close all swap devices except for the sleep partition.
-    # Note that SWSusp requires a partition name, rather than picking one at
-    # random.
+    # Note that SWSusp requires a partition name on the kernel cmdline, rather
+    # than picking one at random.
     if [ "$susp_type" = "disk" ]; then
         swsusp_swap_setup__
         close_suspdisk_on_wake=$?
@@ -908,7 +908,7 @@ print_warning__() {
 
 
 # A version of the RHAT "action" shell initscript function that's safe for
-# calling a shell function
+# calling a shell function.
 action_shfn__() {
     mesg="$1"; shift
     echo -n "$mesg"
