@@ -79,7 +79,8 @@ REMOVABLE_DEVICES="/mnt/*"
 # 
 # Default: None.  An empty list means do nothing.
 #
-ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd mmc_block sdhci mmc_core"
+ILL_BEHAVED_MODULES="sdhci"
+##ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd mmc_block sdhci mmc_core"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
 # List of modules to remove before suspend and not restore on resume.
@@ -105,7 +106,7 @@ ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd mmc_block sdhci mmc_core"
 # 
 # Default: None.  An empty list means do nothing.
 #
-MODULES_TO_REMOVE="e1000 ipw2200 firmware_class"
+MODULES_TO_REMOVE="e1000 ipw2200 pcmcia firmware_class"
 #MODULES_TO_REMOVE="${MODULES_TO_REMOVE} i2c_i801 i2c_core pcmcia"
 
 # The partition to hibernate into.
@@ -124,7 +125,7 @@ MODULES_TO_REMOVE="e1000 ipw2200 firmware_class"
 # 
 # Default: *none* -  MUST be set!
 #
-SUSPEND_PARTITION="/dev/hda10"
+SUSPEND_PARTITION="/dev/hda3"
 
 # There were, at one time, two forms of the built-in kernel suspend feature,
 # SWSusp, and its forked cousin, PMDisk.  The former forces you to specify
@@ -151,7 +152,7 @@ SUSPEND_PARTITION="/dev/hda10"
 #
 # Default: ""
 #
-PMDISK_SUPPORT=''
+PMDISK_SUPPORT='y'
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
@@ -283,7 +284,7 @@ pre_suspend() {
     done
 
     /bin/sync
-    /sbin/service pcmcia stop
+#    /sbin/service pcmcia stop
 
     # Things to do for suspend-to-disk only
     if [ "$how" = "disk" ]; then
@@ -292,6 +293,9 @@ pre_suspend() {
         # device settings.
         /bin/sync
         /sbin/service laptop-mode stop
+
+        /sbin/service NetworkManagerDispatcher stop
+        /sbin/service NetworkManager stop
     fi
 
     # Sync
@@ -340,12 +344,14 @@ resume_tasks() {
     activate_TrackPoint resume
 
 
-    # Lastly, re-enable laptop mode on a resume-from-disk.  However, do so
-    # only if we do so on boot.
+    # Lastly, re-enable some services on a resume-from-disk.  However, do so
+    # only if we did so on boot.
     if [ "$how" = "disk" ]; then
-        if [ -f /etc/rc${RUNLEVEL:-3}.d/S*laptop-mode ]; then
-            /sbin/service laptop-mode start
-        fi
+        for svc in laptop-mode NetworkManager NetworkManagerDispatcher; do
+            if [ -f /etc/rc${RUNLEVEL:-3}.d/S*${svc} ]; then
+                /sbin/service ${svc} start
+            fi
+        done
     fi
 }
 
