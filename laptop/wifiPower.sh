@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2005-2006 by John P. Weiss
+# Copyright (C) 2005-2008 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -35,6 +35,7 @@ RELOAD_FIRMWARE_MODULE=firmware_class
 # turning the WiFi power off.
 # The script looks for these services in /etc/init.d/
 SERVICES="waproamd wifiroamd xsupplicant"
+SERVICES="$SERVICES NetworkManagerDispatcher NetworkManager"
 
 # This is a filename prefix.  It will be appended with "-on" or "-off" to
 # construct the files that force the wifi power on or off, respectively.
@@ -49,6 +50,7 @@ FORCE_WIFI_POWER=/tmp/force-wifi
 
 
 MYPATH=`dirname $0`
+SYSNETPATH=/sys/class/net
 IWCONFIG=/sbin/iwconfig
 IFDOWN=/sbin/ifdown
 MODPROBE=/sbin/modprobe
@@ -94,10 +96,12 @@ power_off_wifi() {
         stop_wifi_svcs
         echo "=== Disabling interface:  ${IFC_NAME%%:*}"
         $IFDOWN ${IFC_NAME%%:*}
-    fi
 
-    echo "=== Powering down WiFi device:  ${ifc_device}"
-    $IWCONFIG "${ifc_device}" txpower off
+        # Lately, calling 'iwconfig" tickles the kernel into loading the
+        # modules.  This is a problem while suspending.
+        echo "=== Powering down WiFi device:  ${ifc_device}"
+        $IWCONFIG "${ifc_device}" txpower off
+    fi
 }
 
 
@@ -265,9 +269,7 @@ if [ -e ${FORCE_WIFI_POWER_ON} -a -e ${FORCE_WIFI_POWER_OFF} ]; then
     echo "    Deleting both control files..." >>$LOG 2>&1
     rm -f ${FORCE_WIFI_POWER_ON} ${FORCE_WIFI_POWER_OFF} >>$LOG 2>&1
     echo "    Proceeding with default behavior..." >>$LOG 2>&1
-fi
-
-if [ -e ${FORCE_WIFI_POWER_OFF} ]; then
+elif [ -e ${FORCE_WIFI_POWER_OFF} ]; then
     echo "=== Forcing \"${ifc_device}\" off." >>$LOG 2>&1
     power_off_wifi "${ifc_device}" >>$LOG 2>&1
     rm -f ${FORCE_WIFI_POWER_OFF} >>$LOG 2>&1

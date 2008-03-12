@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-5 by John P. Weiss
+# Copyright (C) 2004-2007 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2005 by John P. Weiss
+# Copyright (C) 2005-2008 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -79,7 +79,10 @@ REMOVABLE_DEVICES="/mnt/*"
 # 
 # Default: None.  An empty list means do nothing.
 #
-ILL_BEHAVED_MODULES="sdhci"
+ILL_BEHAVED_MODULES="sdhci mmc_block mmc_core"
+##ILL_BEHAVED_MODULES="$ILL_BEHAVED_MODULES tpm_atmel tpm tpm_bios"
+##ILL_BEHAVED_MODULES="$ILL_BEHAVED_MODULES iTCO_wdt iTCO_vendor_support"
+##ILL_BEHAVED_MODULES="$ILL_BEHAVED_MODULES i2c_i801 i2c_core"
 ##ILL_BEHAVED_MODULES="ehci_hcd uhci_hcd mmc_block sdhci mmc_core"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
@@ -106,8 +109,12 @@ ILL_BEHAVED_MODULES="sdhci"
 # 
 # Default: None.  An empty list means do nothing.
 #
-MODULES_TO_REMOVE="e1000 ipw2200 pcmcia firmware_class"
-#MODULES_TO_REMOVE="${MODULES_TO_REMOVE} i2c_i801 i2c_core pcmcia"
+WIFI_MODULES="ipw2200 ieee80211_crypt_wep ieee80211_crypt_tkip"
+WIFI_MODULES="$WIFI_MODULES ieee80211_crypt_ccmp ieee80211_crypt"
+MODULES_TO_REMOVE="e1000 ${WIFI_MODULES} pcmcia firmware_class"
+MODULES_TO_REMOVE="${MODULES_TO_REMOVE} tpm_atmel tpm tpm_bios"
+#MODULES_TO_REMOVE="${MODULES_TO_REMOVE} i2c_i801 i2c_core"
+#MODULES_TO_REMOVE="$MODULES_TO_REMOVE iTCO_wdt iTCO_vendor_support"
 
 # The partition to hibernate into.
 #
@@ -125,7 +132,7 @@ MODULES_TO_REMOVE="e1000 ipw2200 pcmcia firmware_class"
 # 
 # Default: *none* -  MUST be set!
 #
-SUSPEND_PARTITION="/dev/hda3"
+SUSPEND_PARTITION="/dev/sda3"
 
 # There were, at one time, two forms of the built-in kernel suspend feature,
 # SWSusp, and its forked cousin, PMDisk.  The former forces you to specify
@@ -152,7 +159,7 @@ SUSPEND_PARTITION="/dev/hda3"
 #
 # Default: ""
 #
-PMDISK_SUPPORT='y'
+PMDISK_SUPPORT=''
 
 # When initiating mem/disk suspend from within X, first switch to this virtual
 # console.  Upon resume, you will be switched back to the console running X.
@@ -250,6 +257,34 @@ FORCE_LOCKFILE_CLEANUP=""
 ############
 
 
+stop_NetworkManager() {
+    /sbin/service NetworkManagerDispatcher stop
+    /sbin/service NetworkManager stop
+    hungNMpid=`pgrep NetworkManager`
+    if [ -n "$hungNMpid" ]; then
+        echo "Forcibly killing NetworkManager..."
+        killall -9 NetworkManager
+    fi
+}
+
+
+forciblyRemoveWifi() {
+    killall -q -9 mii-tool
+    killall -q -9 knetworkmanager
+    if [ -e /etc/acpi/actions/wifiPower.sh ]; then
+        touch /tmp/force-wifi-off
+        /etc/acpi/actions/wifiPower.sh
+    fi
+    /bin/sleep 0.1s
+    ndev=eth1
+    if [ -e /sys/class/net/$ndev ]; then
+        /sbin/ifdown $ndev >/dev/null 2>&1
+    fi
+    /bin/sleep 0.3s
+    modprobe -r -q ${WIFI_MODULES} #>/dev/null 2>&1
+}
+
+
 # Your pre-hibernation tasks.
 #
 # This is the entry-point for all your pre-hibernation tasks.  It is called
@@ -277,6 +312,7 @@ pre_suspend() {
 
     # Close all networking devices (and sync beforehand).
     /bin/sync
+    forciblyRemoveWifi
     for ndev in eth0 eth1; do
         if [ -e /sys/class/net/$ndev ]; then
             /sbin/ifdown $ndev >/dev/null 2>&1
@@ -293,9 +329,6 @@ pre_suspend() {
         # device settings.
         /bin/sync
         /sbin/service laptop-mode stop
-
-        /sbin/service NetworkManagerDispatcher stop
-        /sbin/service NetworkManager stop
     fi
 
     # Sync
@@ -347,11 +380,27 @@ resume_tasks() {
     # Lastly, re-enable some services on a resume-from-disk.  However, do so
     # only if we did so on boot.
     if [ "$how" = "disk" ]; then
-        for svc in laptop-mode NetworkManager NetworkManagerDispatcher; do
+        for svc in laptop-mode; do
             if [ -f /etc/rc${RUNLEVEL:-3}.d/S*${svc} ]; then
                 /sbin/service ${svc} start
             fi
         done
+
+        if [ "$RUNLEVEL" != 4 ]; then 
+            for svc in NetworkManager NetworkManagerDispatcher; do
+                if [ -f /etc/rc${RUNLEVEL}.d/S*${svc} ]; then
+                    /sbin/service ${svc} start
+                fi
+            done
+        fi
+    fi
+
+    # Some extra things to shut down/remove to save power.
+    if [ "$RUNLEVEL" = 4 ]; then 
+        forciblyRemoveWifi
+        #modprobe -r -q eth1000
+        PCMCIA_MODULES="yenta_socket rsrc_nonstatic pcmcia_core"
+        modprobe -r -q ${PCMCIA_MODULES} #>/dev/null 2>&1
     fi
 }
 

@@ -68,22 +68,28 @@ if [ -f /etc/rc.d/rc.kernel_cmdline ]; then
 fi
 
 
-# Load Custom Modules (depending on Powersave state):
-if [ -z "${POWERSAVE}" ]; then
-    CUST_MODULES='eth0 eth1'
-fi
-for m in $CUST_MODULES; do
-    modprobe $m
-done
-
-
 if [ -n "${POWERSAVE}" ]; then
     # Use as little disk as possible in powersave mode
     action $"| Disabling swap space to save power : "  swapoff -a
+
+    # Disable the WiFi adapter.
+    touch /tmp/force-wifi-off
+    action $"| Disabling WiFi antenna to save power : "  \
+        /etc/acpi/actions/wifiPower.sh
+
+    # Set up some powersaving features
+    echo 1 > /sys/module/snd_ac97_codec/parameters/power_save
+    if [ -e /sbin/ethtool -a -d /sys/class/net/eth0 ]; then
+        ethtool -s eth0 wol d
+    fi
+fi
+
+if [ -e /etc/sysconfig/modules/rc.modules ]; then
+    etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
 fi
 
 
-if [ -z "${MUTE}" -o  -z "${POWERSAVE}" ]; then
+if [ -z "${MUTE}" -a  -z "${POWERSAVE}" ]; then
     action $"| Enabling Console Speaker : " /sbin/modprobe pcspkr
 fi
 
