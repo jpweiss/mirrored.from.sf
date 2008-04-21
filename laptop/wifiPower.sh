@@ -31,11 +31,16 @@ LOG=/tmp/wifi-power.log
 # doesn't screw up the firmware_class module during suspend/resume.
 RELOAD_FIRMWARE_MODULE=firmware_class
 
+# The name of one or more services to start, in the listed order, when
+# turning the WiFi power on.
+# The script looks for these services in /etc/init.d/
+START_SERVICES="NetworkManager"
+
 # The name of one or more services to shut down, in the listed order, when
 # turning the WiFi power off.
 # The script looks for these services in /etc/init.d/
-SERVICES="waproamd wifiroamd xsupplicant"
-SERVICES="$SERVICES NetworkManagerDispatcher NetworkManager"
+STOP_SERVICES="waproamd wifiroamd xsupplicant"
+STOP_SERVICES="$STOP_SERVICES NetworkManagerDispatcher NetworkManager"
 
 # This is a filename prefix.  It will be appended with "-on" or "-off" to
 # construct the files that force the wifi power on or off, respectively.
@@ -58,6 +63,7 @@ STATE_SCRIPT='stateToggle.sh'
 
 FORCE_WIFI_POWER_ON="${FORCE_WIFI_POWER}-on"
 FORCE_WIFI_POWER_OFF="${FORCE_WIFI_POWER}-off"
+SKIP_SERVICE_START=/tmp/skip-service-start
 
 
 ############
@@ -67,8 +73,25 @@ FORCE_WIFI_POWER_OFF="${FORCE_WIFI_POWER}-off"
 ############
 
 
+start_wifi_svcs() {
+    if [ -e $SKIP_SERVICE_START ]; then
+        /bin/rm -f $SKIP_SERVICE_START
+        return 0
+    fi
+
+    for svc in ${START_SERVICES}; do
+        svcBin=/etc/init.d/$svc
+        if [ ! -x $svcBin ]; then
+            echo "$svc Not installed.  Skipping."
+            continue
+        fi
+        /etc/init.d/$svc start
+    done
+}
+
+
 stop_wifi_svcs() {
-    for svc in ${SERVICES}; do
+    for svc in ${STOP_SERVICES}; do
         svcBin=/etc/init.d/$svc
         if [ ! -x $svcBin ]; then
             echo "$svc Not installed.  Skipping."
@@ -174,6 +197,8 @@ toggle_wifi_power() {
                 ;;
         esac
         turn_on_wifi "${ifc_device}"
+        sleep 1
+        start_wifi_svcs
     fi
 }
 
@@ -207,7 +232,12 @@ usage() {
 	    "touch ${FORCE_WIFI_POWER_ON}"
 	before this script runs.  To force the WiFi interface off, do:
 	    "touch ${FORCE_WIFI_POWER_OFF}"
-	binstead.
+	instead.
+
+	If you don't want $0 to start any services after powering on,
+	run:
+	    "touch ${SKIP_SERVICE_START}"
+	before this script runs.
 EOF
     exit 1
 }
