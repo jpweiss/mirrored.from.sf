@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-2007 by John P. Weiss
+# Copyright (C) 2004-2008 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -683,7 +683,7 @@ umount_device__() {
             test $stat -eq 0
     fi
 
-    return $?
+    return $stat
 }
 
 
@@ -859,6 +859,11 @@ suspend_system__() {
     # Umount any of the specified removable devices.  Do so before removing
     # any power-sensitive modules.
     umount_removable_devices__
+    if [ $? -ne 0 ]; then
+        print_warning__ \
+            $"Removable device(s) still mounted.  Cowardly aborting suspend."
+        return 1
+    fi
 
     # Remove any modules that we do not want around after resume.  These
     # may or may not be power-sensitive.
@@ -896,6 +901,8 @@ suspend_system__() {
 
     # Reinstall any power-sensitive modules that were disabled.
     reenable_modules__
+
+    return 0
 }
 
 
