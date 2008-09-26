@@ -85,7 +85,7 @@ if [ -n "${POWERSAVE}" ]; then
 fi
 
 if [ -e /etc/sysconfig/modules/rc.modules ]; then
-    etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
+    /etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
 fi
 
 

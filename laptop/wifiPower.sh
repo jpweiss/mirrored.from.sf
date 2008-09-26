@@ -105,6 +105,12 @@ stop_wifi_svcs() {
                 echo "$svc already stopped."
                 ;;
         esac
+
+        hungSvc_pid=`pgrep $svc`
+        if [ -n "$hungSvc_pid" ]; then
+            echo "Forcibly killing hung $svc..."
+            killall -q -9 $svc
+        fi
     done
 }
 

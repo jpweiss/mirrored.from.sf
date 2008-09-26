@@ -258,23 +258,30 @@ FORCE_LOCKFILE_CLEANUP=""
 
 
 stop_NetworkManager() {
-    /sbin/service NetworkManagerDispatcher stop
-    /sbin/service NetworkManager stop
-    hungNMpid=`pgrep NetworkManager`
-    if [ -n "$hungNMpid" ]; then
-        echo "Forcibly killing NetworkManager..."
-        killall -9 NetworkManager
-    fi
+    for svc in NetworkManager{Dispatcher,}; do
+        hungSvc_pid=`pgrep $svc`
+        if [ -n "$hungSvc_pid" ]; then
+            killall -q -9 $svc
+        fi
+    done
 }
 
 
 forciblyRemoveWifi() {
-    killall -q -9 mii-tool
-    killall -q -9 knetworkmanager
+    for svc in mii-tool knetworkmanager; do
+        hungSvc_pid=`pgrep $svc`
+        if [ -n "$hungSvc_pid" ]; then
+            killall -q -9 $svc
+        fi
+    done
+
     if [ -e /etc/acpi/actions/wifiPower.sh ]; then
         touch /tmp/force-wifi-off
         /etc/acpi/actions/wifiPower.sh
+    else
+        stop_NetworkManager
     fi
+
     /bin/sleep 0.1s
     ndev=eth1
     if [ -e /sys/class/net/$ndev ]; then
@@ -319,8 +326,11 @@ pre_suspend() {
         fi
     done
 
-    /bin/sync
-#    /sbin/service pcmcia stop
+    # Close pcmcia services (if present)
+    if [ -e /etc/init.d/pcmcia ]; then
+        /bin/sync
+        /sbin/service pcmcia stop
+    fi
 
     # Things to do for suspend-to-disk only
     if [ "$how" = "disk" ]; then
@@ -386,7 +396,7 @@ resume_tasks() {
             fi
         done
 
-        if [ "$RUNLEVEL" != 4 ]; then 
+        if [ "$RUNLEVEL" != "4" ]; then 
             for svc in NetworkManager NetworkManagerDispatcher; do
                 if [ -f /etc/rc${RUNLEVEL}.d/S*${svc} ]; then
                     /sbin/service ${svc} start
@@ -396,11 +406,11 @@ resume_tasks() {
     fi
 
     # Some extra things to shut down/remove to save power.
-    if [ "$RUNLEVEL" = 4 ]; then 
-        forciblyRemoveWifi
-        #modprobe -r -q eth1000
+    if [ "$RUNLEVEL" = "4" ]; then 
         PCMCIA_MODULES="yenta_socket rsrc_nonstatic pcmcia_core"
         modprobe -r -q ${PCMCIA_MODULES} #>/dev/null 2>&1
+        /bin/sleep 0.3s
+        modprobe -r -q ${WIFI_MODULES}
     fi
 }
 
