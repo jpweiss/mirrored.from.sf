@@ -25,6 +25,25 @@ Prefix: %{_prefix}
 %description
 xkb-support for IBM ThinkPads, mainly for the X40.
 
+To Use:
+-------
+
+In your "/etc/X11/xorg.conf" file, create a section for the keyboard as
+follows:
+
+    Section "InputDevice"
+        Identifier  "ThinkPadX40_Keys"
+        Driver      "kbd"
+        Option      "XkbModel"   "thinkpad"
+        Option      "XkbRules"   "thinkpad"
+        # Put whatever default options you want below; this is only an example.
+        ##Option      "XkbOptions" "invert_numlock+unnumlock:ctrl"
+    EndSection
+
+See the bottom of the file "/usr/share/X11/xkb/rules/thinkpad.lst" for the
+valid keyboard options.
+
+
 %prep
 rm -rf %{buildroot}/*
 mkdir -p %{buildroot}/usr/share/X11/xkb

@@ -209,12 +209,18 @@
 
 
 ! option
-  invert_numlock 	Invert ScrollLock/NumLock (Shift+<ScrLk_Key>==ScrollLock; <ScrLk_Key>==NumLock)
-  unnumlock		AltGr+KeyPad produces the underlying normal key.
-  unnumlock:ctrl 	Control+KeyPad produces the underlying normal key.
-  mousekeys		Alt+Shift+<ScrLk_Key> activates Mousekeys
-  mousekeys:alt		Alt+<ScrLk_Key> activates Mousekeys
-  mousekeys:ctrl_shift	Control+Shift+<ScrLk_Key> activates Mousekeys
-  mousekeys:ctrl	Control+<ScrLk_Key> activates Mousekeys
-  grp:fn_switch		The Blue "Fn" key maps to Mode_switch
-  wheelButton:noRepeat	Disables key repeat on the WheelButtons keys.
+  numlk				Fixing the Dain-Brammaged ThinkPad <ScrLk>/<NumLk> key behavior.
+  numlk:invert		Invert ScrollLock/NumLock (Shift+<ScrLk>==ScrollLock; <ScrLk>==NumLock)
+  numlk:un_altgr	AltGr+KeyPad produces the "normal" underlying letter key.
+  numlk:un_ctrl 	Control+KeyPad produces the "normal" underlying letter normal key.
+  mousekeys			What key combination activates Mousekeys?
+  mousekeys:default	Alt+Shift+<ScrLk> key activates Mousekeys
+  mousekeys:alt		Alt+<ScrLk> key activates Mousekeys
+  mousekeys:ctrl_shift	Control+Shift+<ScrLk> key activates Mousekeys
+  mousekeys:ctrl	Control+<ScrLk> key activates Mousekeys
+  altwin:fn_super	The Blue "Fn" key maps to Super
+  altwin:fn_switch	The Blue "Fn" key maps to Mode_switch
+  wheelButtons:norep	The two "scroll buttons" do not repeat.
+
+// Note:  Anything in the list above without a ':' in it is the name of an
+// option-group, not an actual option.
