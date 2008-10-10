@@ -1,0 +1,220 @@
+
+
+//=============================================================================
+//  Rule Descriptions
+//=============================================================================
+
+
+//=============================================================================
+//
+// include "xorg.lst"
+//
+// Well, that's what I'd *like* to do, at least.  Unfortunately, no
+// such mechanism exists for rules descriptions.
+//
+// However, we don't need to include the entire rules/xorg.lst (or
+// rules/xfree86.lst), since we're not doing that in the custom
+// rules/thinkpad.  As for rules/thinkpad, we just want support for a
+// ThinkPad and any external keyboard that might reasonably be plugged
+// into it. 
+//
+//=============================================================================
+
+
+//
+//  Rules descriptions for X
+//  Copyright 1996 by Joseph Moss
+//
+
+! model
+  pc101		Generic 101-key PC
+  pc102		Generic 102-key (Intl) PC
+  pc104		Generic 104-key PC
+  pc105		Generic 105-key (Intl) PC
+  acpi		ACPI Standard
+  thinkpad	IBM ThinkPad (Models w/the "Scroll-Wheel-Keys")
+
+
+// The entries here should be ordered as follows:
+//
+//   US entries first
+//   others in alphabetical order by the language/country name in English
+
+! layout
+  us		U.S. English
+  en_US		U.S. English w/ ISO9995-3
+  us_intl	U.S. English w/ deadkeys
+  al		Albanian
+  ar		Arabic
+  am		Armenian
+  az		Azerbaijani
+  by		Belarusian
+  be		Belgian
+  ben		Bengali
+  bs		Bosnian
+  br		Brazilian
+  bg		Bulgarian
+  mm		Burmese
+  ca		Canadian
+  ca_enhanced	French Canadian
+  hr		Croatian
+  hr_US		Croatian (US)
+  cz		Czech
+  cz_qwerty	Czech (qwerty)
+  dk		Danish
+  nl		Dutch
+  dvorak	Dvorak
+  dz		Dzongkha / Tibetan
+  ee		Estonian
+  fo		Faroese 
+  fi		Finnish
+  fr		French
+  fr-latin9	French (alternative)
+  ge_la		Georgian (latin)
+  ge_ru		Georgian (russian)
+  de		German
+  el		Greek
+  guj		Gujarati
+  gur		Gurmukhi
+  dev		Hindi
+  hu		Hungarian
+  hu_qwerty	Hungarian (qwerty)
+  is		Icelandic
+  iu		Inuktitut
+  ir		Iranian
+  il		Israeli
+  it		Italian
+  jp		Japanese
+  kan		Kannada
+  ko		Korean
+  lo		Lao
+  la		Latin America
+  lt		Lithuanian qwerty "numeric"
+  lt_std	Lithuanian azerty standard
+  lv		Latvian
+  mk		Macedonian
+  ml		Malayalam
+  mt		Maltese
+  mt_us		Maltese (US layout)
+  mn		Mongolian
+  no		Norwegian
+  ogham		Ogham
+  ori		Oriya
+  pl		Polish
+  pl2		Polish (qwertz)
+  pt		Portuguese
+  ro		Romanian
+  ru		Russian
+  se_FI		Northern Saami (Finland)
+  se_NO		Northern Saami (Norway)
+  se_SE		Northern Saami (Sweden)
+  sr		Serbian (Cyrillic)
+  yu		Serbian (Latin)
+  si		Slovenian
+  sk		Slovak
+  sk_qwerty	Slovak (qwerty)
+  es		Spanish
+  se		Swedish
+  fr_CH		Swiss French
+  de_CH		Swiss German
+  syr		Syriac
+  tj		Tajik
+  tml		Tamil
+  tel		Telugu
+  th		Thai (Kedmanee)
+  th_tis	Thai (TIS-820.2538)
+  th_pat	Thai (Pattachote)
+  tr		Turkish 
+  tr_f		Turkish (F)
+  ua		Ukrainian 
+  gb		United Kingdom
+  uz            Uzbek
+  vn		Vietnamese
+  nec/jp	PC-98xx Series
+
+! variant
+  nodeadkeys	Eliminate dead keys
+
+! option
+  grp			Group Shift/Lock behavior
+  grp:switch		Right Alt key switches group while pressed
+  grp:lswitch		Left Alt key switches group while pressed
+  grp:lwin_switch	Left Win-key switches group while pressed
+  grp:rwin_switch	Right Win-key switches group while pressed
+  grp:win_switch	Both Win-keys switch group while pressed
+  grp:toggle		Right Alt key changes group
+  grp:lalt_toggle       Left Alt key changes group
+  grp:caps_toggle	Caps Lock key changes group
+  grp:shift_caps_toggle	Shift+CapsLock changes group
+  grp:shift_toggle 	Both Shift keys together change group
+  grp:alts_toggle 	Both Alt keys together change group
+  grp:ctrls_toggle 	Both Ctrl keys together change group
+  grp:ctrl_shift_toggle Control+Shift changes group
+  grp:ctrl_alt_toggle	Alt+Control changes group
+  grp:alt_shift_toggle	Alt+Shift changes group
+  grp:menu_toggle	Menu key changes group
+  grp:lwin_toggle	Left Win-key changes group
+  grp:rwin_toggle	Right Win-key changes group
+  grp:lshift_toggle     Left Shift key changes group
+  grp:rshift_toggle     Right Shift key changes group
+  grp:lctrl_toggle      Left Ctrl key changes group
+  grp:rctrl_toggle      Right Ctrl key changes group
+  lv3			Third level choosers
+  lv3:switch		Press Right Control to choose 3rd level
+  lv3:lalt_switch	Press Left Alt key to choose 3rd level
+  lv3:ralt_switch	Press Right Alt key to choose 3rd level
+  lv3:alt_switch	Press any of Alt keys to choose 3rd level
+  lv3:menu_switch	Press Menu key to choose 3rd level
+  lv3:win_switch	Press any of Win-keys to choose 3rd level
+  lv3:lwin_switch	Press Left Win-key to choose 3rd level
+  lv3:rwin_switch	Press Right Win-key to choose 3rd level
+  ctrl			Control Key Position
+  ctrl:nocaps		Make CapsLock an additional Control
+  ctrl:swapcaps		Swap Control and Caps Lock
+  ctrl:ctrl_ac		Control key at left of 'A'
+  ctrl:ctrl_aa		Control key at bottom left
+  ctrl:ctrl_ra		Right Control key works as Right Alt
+  grp_led		Use keyboard LED to show alternative group
+  grp_led:num		Num_Lock LED shows alternative group
+  grp_led:caps		Caps_Lock LED shows alternative group
+  grp_led:scroll	Scroll_Lock LED shows alternative group
+  caps			CapsLock key behavior
+  caps:internal		uses internal capitalization. Shift cancels Caps.
+  caps:internal_nocancel uses internal capitalization. Shift doesn't cancel Caps.
+  caps:shift		acts as Shift with locking. Shift cancels Caps.
+  caps:shift_nocancel	acts as Shift with locking. Shift doesn't cancel Caps.
+
+  altwin		Alt/Win key behavior
+  altwin:menu		Add the standard behavior to Menu key.
+  altwin:meta_alt	Alt and Meta on the Alt keys (default).
+  altwin:meta_win	Meta is mapped to the Win-keys.
+  altwin:left_meta_win	Meta is mapped to the left Win-key.
+  altwin:meta_super	Super is mapped to the Win-keys (default).
+  altwin:meta_hyper	Hyper is mapped to the Win-keys.
+
+  compose:ralt		Right Alt is Compose
+  compose:rwin		Right Win-key is Compose
+  compose:menu		Menu is Compose
+
+  numpad:microsoft	Shift with numpad keys works as in MS Windows.
+
+  srvrkeys:none		Special keys (Ctrl+Alt+<key>) handled in a server.
+
+
+//=============================================================================
+//
+// The ThinkPad-Specific Rules
+//
+//=============================================================================
+
+
+! option
+  invert_numlock 	Invert ScrollLock/NumLock (Shift+<ScrLk_Key>==ScrollLock; <ScrLk_Key>==NumLock)
+  unnumlock		AltGr+KeyPad produces the underlying normal key.
+  unnumlock:ctrl 	Control+KeyPad produces the underlying normal key.
+  mousekeys		Alt+Shift+<ScrLk_Key> activates Mousekeys
+  mousekeys:alt		Alt+<ScrLk_Key> activates Mousekeys
+  mousekeys:ctrl_shift	Control+Shift+<ScrLk_Key> activates Mousekeys
+  mousekeys:ctrl	Control+<ScrLk_Key> activates Mousekeys
+  grp:fn_switch		The Blue "Fn" key maps to Mode_switch
+  wheelButton:noRepeat	Disables key repeat on the WheelButtons keys.

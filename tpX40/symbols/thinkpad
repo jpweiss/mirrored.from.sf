@@ -1,0 +1,396 @@
+// [jpw]  The keyboard mappings for the ThinkPad X40.
+//	  This file should be named "thinkpad"
+
+
+// The ThinkPad has no separate keypad keys.  By default, when NumLock
+// is active, the overlayed keypad keys generate the bona-fide keypad
+// number-keycodes.  Even better, Shift a keypad key generates the
+// actual motion-keypad keycodes!  :)  Therefore, there is no reason
+// to alter the default X behavior.
+
+// Indeed, the only things that need altering for a ThinkPad are:
+//   1. Get rid of Shift+NumLock being bound to ANYTHING.
+//
+//      When you press any "normal" keyboard key, it generates a
+//      scancode (keycode in X-parlance).  That includes the Shift,
+//      Ctrl, and Alt keys.
+//      So, on a ThinkPad, Shift+ScrollLock generates the *hardware*
+//      keycodes of NumLock *and* Shift.  There is NO unshifted
+//      NumLock.
+//
+//   2. Enabling NumLock by default when starting X.
+//
+//      For a desktop keyboard, this is fine.  For a laptop, it's
+//      pointless.  For the ThinkPads, it's both pointless AND
+//      annoying!
+
+
+//=============================================================================
+//  Symbols
+//=============================================================================
+
+
+// The mappings for the special ThinkPad keys:
+//  - The blue "Fn" key;
+//  - The Left/Backward Scroll key;
+//  - The Right/Forward Scroll key;
+//
+// These keys are unlike the other special keys (Mute, AccessIBM,
+// Dock, Sleep ...) which do not generate 
+
+
+partial hidden alphanumeric_keys modifier_keys
+xkb_symbols "specialkeys_base" {
+    // Fix the dain-brammaged default settings that screw up the NumLock on
+    // ThinkPads.
+    //
+    // Do it here, so that, in case no other choice is made for the
+    // ScrollLock/NumLock key, the Keypad will work correctly.
+    //
+
+    // Assign <SBAK> key.
+    //
+    // Bind the unshifted key to the same button used for the upward
+    // Wheel-Scroll by X.
+    //
+    // Bind the Shifted key to <MENU>.
+    //
+    key <I6A> {
+        repeat= no,
+        symbols[Group1] = [ Pointer_Button4, Menu ]
+    };
+
+    // Assign <SFWD> key.
+    //
+    // Bind the unshifted key to the same button used for the upward
+    // Wheel-Scroll by X.
+    //
+    // Bind the Shifted key to <RWIN>.
+    //
+    key <I69>  { 
+        repeat= no,
+        symbols[Group1] = [ Pointer_Button5, Super_R ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+default
+xkb_symbols "fn_default" {
+    include "thinkpad(specialkeys_base)"
+
+    // Assign <FN> key.
+    //
+    // Because of its size and close proximity to Control_L, don't give
+    // it an unshifted mapping.  This will also discourage bad habits
+    // (like gettting used to hitting "Fn" regularly ... a dangerous
+    // prospect if you accidentally hit F1-F12).
+    //
+    key <I63>  { 
+        repeat= no,
+        symbols[Group1] = [ NoSymbol, Super_L ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_modesw" {
+    include "thinkpad(specialkeys_base)"
+
+    // Assign <FN> key.
+    //
+    // Here, we simply redirect the blue "Fn" key, when unshifted, to AltGr.
+    //
+    key <I63>  { 
+        repeat= no,
+        symbols[Group1] = [ Mode_switch, Super_L ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_super" {
+    include "thinkpad(specialkeys_base)"
+
+    // Assign <FN> key.
+    //
+    // This is the same as fn_modesw, but swapped; the unshifted "Fn"
+    // key is Super_L, while the shifted version is Mode_switch.
+    //
+    key <I63>  { 
+        repeat= no,
+        symbols[Group1] = [ Super_L, Mode_switch  ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_lctrl" {
+    include "thinkpad(specialkeys_base)"
+
+    // Assign <FN> key.
+    //
+    // This variant redirects the unmodified blue "Fn" key to
+    // <LCTL>, assigning Shift-Fn to <LWIN>.
+    //
+    // I *STRONGLY* *DISCOURAGE* use of this binding!  It's best
+    // not to build up muscle-memory for hitting "Fn" in place of
+    // "Ctrl".  You could inadvertently change your ThinkPad's
+    // machine-state when you merely intended to switch VT's or
+    // perform some application-based operation.
+    //
+    key <I63>  { 
+        repeat= no,
+        symbols[Group1] = [ Control_L, Super_L ]
+    };
+};
+
+
+// 
+// Reparing the dain-brammaged way X handles <NumLock> on a ThinkPad.
+//
+// Notation:
+// We'll use "<NumLock>" and "<ScrollLock>" to refer to the *key*
+// *codes*.  We'll refer to the X key *symbols* as "Num_Lock" and
+// "Scroll_Lock" (i.e. with underlines).
+//
+// Recall from the comments up top that a ThinkPad really has no
+// "Shift+<ScrollLock>" ... this combination generates "<NumLock>".
+// Which, really, is quite stupid, when you think of it.  A numeric
+// keypad is nominally useful.  Nobody uses a scroll lock.
+// 
+// However, under X people seem to like remapping the scroll lock key
+// to other modifiers, so we won't just get rid of it.  In Fine Unix
+// Tradition, we'll provide the user with choices.
+// 
+
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "inv_numlock" {
+    // Invert the <ScrollLock>/<NumLock> mapping.
+
+    key <NMLK> {  
+        symbols[Group1]= [ Scroll_Lock, Scroll_Lock ] 
+    };
+    key <SCLK> { 
+        symbols[Group1]= [ Num_Lock ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys" {
+    // Make "Alt+Shift+<NumLock>" enable the mousekeys, which is the Xkb
+    // standard.
+    //
+    // Note that "Alt+<NumLock>" <==> "Alt+Shift+<NumLock>" on a ThinkPad
+    // keyboard.
+    //
+    // Note, too, that the ThinkPad will generate numpad keysyms only
+    // when Num_Lock mode is turned on.  The upshot is that mousekeys
+    // on a ThinkPad will only work when both Mousekeys and Num_Lock
+    // mode are turned on.  Remove Num_Lock mode, and the keyboard
+    // goes back to generating letters.
+    //
+    key <NMLK> { 
+        type="PC_SYSRQ", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_ctrl_shift" {
+    // Make "Control+Shift+<NumLock>" enable the mousekeys.
+    //
+    // Note that "Control+<NumLock>" <==> "Control+Shift+<NumLock>" on a
+    // ThinkPad keyboard.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <NMLK> { 
+        type="PC_BREAK", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_alt" {
+    // Make "Alt+<ScrollLock>" enable the mousekeys.
+    //
+    // Note that "Alt+Shift+<ScrollLock>" doesn't exist on a ThinkPad
+    // keyboard.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="PC_SYSRQ", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_ctrl" {
+    // Make "Control+<ScrollLock>" enable the mousekeys.
+    //
+    // Note that "Control+Shift+<ScrollLock>" doesn't exist on a ThinkPad
+    // keyboard.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="PC_BREAK", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+
+//
+// Thinkpad Numpad Overlay
+//
+// Sometimes, while you're typing away with NumLock enabled, you need
+// one of the letter keys from your ThinkPad.  Just one.  and it's
+// often a 'p' or an 'i' or one of the other ThinkPad keys that does
+// double-duty as part of the Numpad.  On other laptops, you can use
+// the special "Fn" key to briefly "Un-NumLock" that one key, at the
+// hardware level.  Not so with a ThinkPad.  :(
+//
+// So, we improvise.  We Un-NumLock using another key, like AltGr or
+// Control.  The keysym part of this is defined below.  Which modifier
+// Un-NumLocks is defined in a corresponding "types/thinkpad" file.
+//
+// TODO:  See about creating a virtual modifier that can be coupled to
+// one of the other modifiers.  Would make this easier to customize.
+// 
+
+
+partial alphanumeric_keys keypad_keys
+xkb_symbols "un_numlock" {
+    // Map the ThinkPad "numeric-keypad" so that it generates the symbols
+    // it overlays when used in combination with ... something.  Control, in
+    // this case.
+    // 
+
+    virtual_modifiers NumLock;
+
+    // IDEA: Create a VirtualMod called "numpad_overlay", which we
+    //       then define however we want.
+
+    key <KP7> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Home, KP_7 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AE07>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AE07>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP8> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Up, KP_8 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AE08>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AE08>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP9> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Prior, KP_9 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AE09>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AE09>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KPDV> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[group1]= [ KP_Divide, KP_Divide, XF86_Ungrab ],
+        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+                           RedirectKey(key=<AE10>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AE10>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP4> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Left, KP_4 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AD07>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AD07>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP5> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Begin, KP_5 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AD08>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AD08>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP6> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Right, KP_6 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AD09>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AD09>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KPMU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[group1]= [ KP_Multiply, KP_Multiply, XF86_ClearGrab ],
+        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+                           RedirectKey(key=<AD10>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AD10>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP1> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_End, KP_1 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AC07>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AC07>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP2> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Down, KP_2 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AC08>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AC08>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP3> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Next, KP_3 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AC09>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AC09>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KPSU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[group1]= [ KP_Subtract, KP_Subtract, XF86_Prev_VMode ],
+        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+                           RedirectKey(key=<AC10>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AC10>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KP0> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Insert, KP_0 ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AB07>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AB07>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KPDL> {
+        type="THINKPAD_KEYPAD",
+        symbols[group1]= [ KP_Delete, KP_Decimal ],
+        actions[group1]= [ NoAction(), NoAction(), 
+                           RedirectKey(key=<AB09>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AB09>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+    key <KPAD> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[group1]= [ KP_Add, KP_Add, XF86_Next_VMode ],
+        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+                           RedirectKey(key=<AB10>, clearMods=Control+AltGr),
+                           RedirectKey(key=<AB10>, 
+                                       clearMods=Control+AltGr, mods=Shift) ]
+    };
+};
