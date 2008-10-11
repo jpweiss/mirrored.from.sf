@@ -1,6 +1,6 @@
 %define mySrcRoot /home/candide/src/xkb
 
-%define _builddir %mySrcRoot
+%define _builddir %mySrcRoot/tpX40
 %define _topdir /tmp
 %define _rpmdir  %mySrcRoot/RPMS
 %undefine makeinstall
@@ -12,7 +12,7 @@ Name: xkb-thinkpad
 Summary: Extra "xkb" files for supporting recent ThinkPads.
 Version: 1.0
 Release: 1
-Source: file://%mySrcRoot
+Source: file://%{_builddir}
 URL: http://does.not.have.src.file/
 License: Artistic
 Group: User Interface/X
@@ -27,7 +27,6 @@ xkb-support for IBM ThinkPads, mainly for the X40.
 
 To Use:
 -------
-
 In your "/etc/X11/xorg.conf" file, create a section for the keyboard as
 follows:
 
@@ -36,8 +35,8 @@ follows:
         Driver      "kbd"
         Option      "XkbModel"   "thinkpad"
         Option      "XkbRules"   "thinkpad"
-        # Put whatever default options you want below; this is only an example.
-        ##Option      "XkbOptions" "invert_numlock+unnumlock:ctrl"
+        # Put whatever default options you want below; this is only an example.
+        ##Option      "XkbOptions" "invert_numlock+unnumlock:ctrl"
     EndSection
 
 See the bottom of the file "/usr/share/X11/xkb/rules/thinkpad.lst" for the
