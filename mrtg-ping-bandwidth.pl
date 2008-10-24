@@ -28,7 +28,8 @@ my $_ConfigFile = undef();
 my $_DataFile = "/tmp/mrtg-ping-bandwidth.dat";
 my $_TieAttempts = 5;
 my $_TieWait = 1;
-my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
+my $_DaemonPIDFile = "/tmp/mrtg-ping-bandwidth.pid";
+#my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
 my $_DaemonLog = "/tmp/mrtg-ping-bandwidth.log";
 my $_ProbeInterval = 5*60;
 my $_ConfigUpdateInterval = 7;
@@ -256,9 +257,15 @@ sub read_config(\$\@\@) {
     $$ref_remote_host = $options{"remote_host"};
     @$ref_hop_numbers = @{$options{"hop_numbers"}};
     @$ref_measurement_targets = @{$options{"measurement_targets"}};
-    $_ProbeInterval = $options{"_ProbeInterval"};
-    $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
-    $_DaemonLog = $options{"_DaemonLog"};
+    if (defined($options{"_ProbeInterval"})) {
+        $_ProbeInterval = $options{"_ProbeInterval"};
+    }
+    if (defined($options{"_ConfigUpdateInterval"})) {
+        $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
+    }
+    if (defined($options{"_DaemonLog"})) {
+        $_DaemonLog = $options{"_DaemonLog"};
+    }
 
     #print STDERR ("#DBG# @varnames\n");
     #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ", 
@@ -283,11 +290,11 @@ sub write_config($\@\@) {
 
     print CFGFH ("remote_host = ", $remote_host, "\n");
     print CFGFH ("hop_numbers = (\n\t", 
-                 join("\n\t", @$hop_numbers), 
-                 ")\n");
+                 join("\n\t", @$ref_hop_numbers), 
+                 "\n)\n");
     print CFGFH ("measurement_targets = (\n\t", 
-                 join("\n\t", @$measurement_targets), 
-                 ")\n");
+                 join("\n\t", @$ref_measurement_targets), 
+                 "\n)\n");
     print CFGFH ("_ProbeInterval = ", $_ProbeInterval, "\n");
     print CFGFH ("$_ConfigFile = ", $_ConfigFile, "\n");
     print CFGFH ("$_DaemonLog = ", $_DaemonLog, "\n");
@@ -648,7 +655,7 @@ if (scalar(@ARGV)) {
     $hop_target2 = shift(@ARGV);
 }
 my @rates = retrieve_rates($hop_target1, $hop_target2);
-printf "%d\n%d\n", $rates[1], $rates[2];
+printf "%d\n%d\n", $rates[0], $rates[1];
 
 
 #################
