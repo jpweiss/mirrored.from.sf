@@ -2,6 +2,6 @@ xkb_keymap {
 	xkb_keycodes  { include "xfree86+aliases(qwerty)"	};
 	xkb_types     { include "complete"	};
 	xkb_compat    { include "complete+thinkpad(default)"	};
-	xkb_symbols   { include "pc(pc104)+us+thinkpad(fn_default)"	};
-	xkb_geometry  { include "ibm_vndr/thinkpad(common)"	};
+	xkb_symbols   { include "pc(pc105)+us+thinkpad(fn_default)"	};
+	xkb_geometry  { include "thinkpad(common)"	};
 };

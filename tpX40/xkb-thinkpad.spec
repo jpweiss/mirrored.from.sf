@@ -11,7 +11,7 @@
 Name: xkb-thinkpad
 Summary: Extra "xkb" files for supporting recent ThinkPads.
 Version: 1.0
-Release: 1
+Release: 2.fc8
 Source: file://%{_builddir}
 URL: http://does.not.have.src.file/
 License: Artistic
@@ -47,6 +47,8 @@ valid keyboard options.
 rm -rf %{buildroot}/*
 mkdir -p %{buildroot}/usr/share/X11/xkb
 if [ ! -d %_rpmdir ]; then mkdir -p %_rpmdir; fi
+rm -f %{_topdir}/SOURCES
+ln -s %{mySrcRoot} %{_topdir}/SOURCES
 
 %build
 
@@ -59,11 +61,14 @@ if [ ! -d %_rpmdir ]; then mkdir -p %_rpmdir; fi
 
 %clean
 rm -rf %{buildroot}/*
+rm -f %{_topdir}/SOURCES
 
 %files
     %defattr(-,root,root)
     %{_datadir}/*
 
 %changelog
+* Fri Dec 05 2008 John Weiss <jpw_public@frontiernet.net> 1.0
+- Updated to work with Fedora8/XOrg 7.3
 * Tue May 27 2008 John Weiss <jpw_public@frontiernet.net> 1.0
 - Initial version.

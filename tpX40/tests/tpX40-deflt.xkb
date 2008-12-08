@@ -1000,7 +1000,7 @@ xkb_compatibility "complete+thinkpad(default)" {
     };
 };
 
-xkb_symbols "pc(pc104)+us+thinkpad(fn_default)" {
+xkb_symbols "pc(pc105)+us+thinkpad(fn_default)" {
 
     name[group1]="U.S. English";
 

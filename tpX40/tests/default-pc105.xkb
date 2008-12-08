@@ -1511,7 +1511,7 @@ xkb_symbols "pc(pc105)+us" {
     modifier_map Mod1 { <META> };
 };
 
-xkb_geometry "pc(pc104)" {
+xkb_geometry "pc(pc105)" {
 
     width=       470;
     height=      210;
@@ -1529,7 +1529,7 @@ xkb_geometry "pc(pc104)" {
 //     color[4]= "green"
 //     color[5]= "green30"
 
-    description= "Generic 104";
+    description= "Generic 105";
 
     shape "NORM" {
         corner= 1,
