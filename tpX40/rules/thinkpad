@@ -968,8 +968,8 @@
   mousekeys:alt		=  +thinkpad(mousekeys_alt)
   mousekeys:ctrl_shift	=  +thinkpad(mousekeys_ctrl_shift)
   mousekeys:ctrl	=  +thinkpad(mousekeys_ctrl)
-  grp:fn_switch		=  +thinkpad(fn_modesw)
-  grp:fn_super		=  +thinkpad(fn_super)
+  altwin:fn_switch	=  +thinkpad(fn_modesw)
+  altwin:fn_super	=  +thinkpad(fn_super)
   wheelButton:noRepeat	=  +thinkpad(nonRepeatingWheelButtons)
 
 ! model		=  symbols
