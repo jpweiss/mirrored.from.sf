@@ -956,21 +956,21 @@
 
 
 ! option		=  types
-  unnumlock	    	=  +thinkpad(altgr_UnNumlock)
-  unnumlock:ctrl 	=  +thinkpad(ctrl_UnNumlock)
+  numlk:un_altgr   	=  +thinkpad(altgr_UnNumlock)
+  numlk:un_ctrl 	=  +thinkpad(ctrl_UnNumlock)
 
 
 ! option		=  symbols
-  unnumlock    		=  +thinkpad(un_numlock)
-  unnumlock:ctrl 	=  +thinkpad(un_numlock)
-  invert_numlock 	=  +thinkpad(inv_numlock)
-  mousekeys		=  +thinkpad(mousekeys)
+  numlk:un_altgr	=  +thinkpad(un_numlock)
+  numlk:un_ctrl 	=  +thinkpad(un_numlock)
+  numlk:invert		=  +thinkpad(inv_numlock)
+  mousekeys:default	=  +thinkpad(mousekeys)
   mousekeys:alt		=  +thinkpad(mousekeys_alt)
   mousekeys:ctrl_shift	=  +thinkpad(mousekeys_ctrl_shift)
   mousekeys:ctrl	=  +thinkpad(mousekeys_ctrl)
   altwin:fn_switch	=  +thinkpad(fn_modesw)
   altwin:fn_super	=  +thinkpad(fn_super)
-  wheelButton:noRepeat	=  +thinkpad(nonRepeatingWheelButtons)
+  wheelButton:norep =  +thinkpad(nonRepeatingWheelButtons)
 
 ! model		=  symbols
   thinkpad	=  +thinkpad(fn_default)
