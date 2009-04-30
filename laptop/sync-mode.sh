@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-2008 by John P. Weiss
+# Copyright (C) 2004-2009 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -48,6 +48,10 @@ MAIL_PROFILE_NAME=vslannet
 
 LOG=/tmp/sync-mode.log
 
+# How old the logfile should be in order to trigger an NTP-sync.
+# In units of days.
+LOG_AGE_TRIGGER=7
+
 
 ############
 #
@@ -63,6 +67,10 @@ MAILQ=/usr/bin/mailq
 POSTQUEUE=/usr/sbin/postqueue
 SWITCH_NET_PROFILE_CMD=/usr/sbin/system-config-network-cmd
 SYSCFG_NETPATH=/etc/sysconfig/network-scripts
+NTP_SYNC=/etc/LocalSys/maintenance-scripts/xntp-sync.sh
+
+# Based on the modification time of the log file, trigger certain things.
+LOG_OLDER_THAN_AGE_TRIGGER=""
 
 
 ############
@@ -70,6 +78,46 @@ SYSCFG_NETPATH=/etc/sysconfig/network-scripts
 # Functions
 #
 ############
+
+
+check_logfile_age() {
+    case "$LOG_AGE_TRIGGER" in
+        [^0-9]*|*[^0-9])
+            LOG_OLDER_THAN_AGE_TRIGGER="t"
+            return 0
+            ;;
+    esac
+    if [ -z "$LOG" -o -z "$LOG_AGE_TRIGGER" ]; then
+        # Do nothing if the cfgvars aren't set correctly.
+        echo "Error:  $0 is misconfigured.  Missing setting(s):"
+        echo "    \$LOG==$LOG"
+        echo "    \$LOG_AGE_TRIGGER==$LOG_AGE_TRIGGER"
+        return 0
+    fi
+
+    if [ -e $LOG ]; then
+
+        rm -f ${LOG}--datecheck >/dev/null 2>&1 && \
+            touch --date="-${LOG_AGE_TRIGGER} day" ${LOG}--datecheck
+
+        retstat=$?
+        if [ -e ${LOG}--datecheck ]; then
+            if [ ${LOG}--datecheck -nt ${LOG} ]; then
+                LOG_OLDER_THAN_AGE_TRIGGER="t"
+            fi
+            rm -f ${LOG}--datecheck >/dev/null 2>&1
+        else
+            # Don't force the trigger in the event of any sort of error.
+            return $retstat            
+        fi
+
+    else
+        # Treat "log missing" as "log is ancient".
+        LOG_OLDER_THAN_AGE_TRIGGER="t"
+    fi
+
+    return 0
+}
 
 
 pingcheck_unavailable() {
@@ -201,6 +249,15 @@ wait_for_connectivity() {
 }
 
 
+sync_clock() {
+    if [ ! -x $NTP_SYNC -o z "$LOG_OLDER_THAN_AGE_TRIGGER" ]; then
+        return 0
+    fi
+
+    $NTP_SYNC ntpdate 2>&1 >>${LOG}
+}
+
+
 mail_queued() {
     case `$MAILQ` in
         *is*empty*)
@@ -290,7 +347,12 @@ start_tasks() {
 
     neton
     wait_for_connectivity
+
+    # Run this one first, and only at startup
+    sync_clock
+
     service_start_or_restart sshd
+
     # Run this one last.
     drainq
 }
@@ -339,6 +401,10 @@ for pid in `pgrep sync-mode`; do
     fi
 done 
 
+# Next, check how old $LOG is before anything starts writing to it.
+check_logfile_age
+
+# Now we can process the commandline options.
 resume=''
 start=''
 stop=''
