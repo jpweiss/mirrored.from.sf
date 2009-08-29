@@ -24,7 +24,8 @@
 ############
 
 
-IFC_NAME=eth0_home
+SERVICES="ssh privoxy"
+
 IFC_HOSTNAME=mloe
 REMOTE_HOSTNAME=uqbar
 PING_TIMEOUT=10
@@ -34,17 +35,7 @@ IFUP_TIMEOUT=15
 NETCHECK_WAIT=15
 NETCHECK_MAX=20 # 12 <==> 5m / 25s
 
-# Give the network a bit of time to change state after an ifup/ifdown.
-IFC_STATE_WAIT=10
-
 WAIT_TO_DRAINQ="2m"
-
-# Set to empty string to disable profile switching on start/restart
-NET_PROFILE_NAME=vslannet
-
-# The name of the profile which will allow your sendmail/postfix installation
-# to deliver its queued mail.
-MAIL_PROFILE_NAME=vslannet
 
 LOG=/tmp/sync-mode.log
 
@@ -62,11 +53,9 @@ LOG_AGE_TRIGGER=7
 
 #. some.include.sh
 
-SERVICE=/sbin/service
+SERVICE=/usr/bin/service
 MAILQ=/usr/bin/mailq
 POSTQUEUE=/usr/sbin/postqueue
-SWITCH_NET_PROFILE_CMD=/usr/sbin/system-config-network-cmd
-SYSCFG_NETPATH=/etc/sysconfig/network-scripts
 NTP_SYNC=/etc/LocalSys/maintenance-scripts/xntp-sync.sh
 
 # Based on the modification time of the log file, trigger certain things.
@@ -156,73 +145,6 @@ network_unavailable() {
 
     pingcheck_unavailable ${pingTimeout} ${pingCount} ${REMOTE_HOSTNAME}
     return $?
-}
-
-
-switch_net_profile() {
-    desired_ifc_name="$1"
-    shift
-    desired_profile_name="$1"
-    shift
-    force="$1"
-    shift
-
-    if [ ! -x ${SWITCH_NET_PROFILE_CMD} -o \
-        -z "$desired_ifc_name" -o \
-        -z "$desired_profile_name" ]; then
-        return 1
-    fi
-    # else:
-
-    ifc_active=$(ls -1 /etc/sysconfig/network-scripts  2>/dev/null |\
-        grep "$desired_ifc_name")
-    if [ -z "$ifc_active" -o -n "$force" ]; then
-        # Only switch the profile if needed.
-        $SWITCH_NET_PROFILE_CMD -p "$desired_profile_name"
-    fi
-}
-
-
-netoff() {
-    nowait=''
-    if [ "$1" == nowait ]; then
-        nowait='y'
-    fi
-
-    /sbin/ifdown ${IFC_NAME%%:*}
-    if [ -z "$nowait" ]; then
-        sleep ${IFC_STATE_WAIT}
-    fi
-}
-
-
-neton() {
-    # Initial quickcheck 
-    if `ifc_unavailable 10 3`; then
-        sleep 5
-        /sbin/ifup ${IFC_NAME}
-        sleep ${IFC_STATE_WAIT}
-    else
-        # The IFC is already up.  Nothing more to do.
-        echo "Already Connected:  \"$IFC_NAME\""
-        return 0
-    fi
-
-    i=0
-    while `ifc_unavailable ${PING_TIMEOUT} ${PING_COUNT}`; do
-        let i++
-        sleep ${IFUP_TIMEOUT}
-        /sbin/ifup ${IFC_NAME}
-        sleep ${IFC_STATE_WAIT}
-        echo -n "."
-        if [ $((i % 10)) -eq 0 ]; then
-            echo "No connection established on \"$IFC_NAME\" after $i tries."
-        fi
-    done
-
-    ethtool -s $IFC_NAME wol d
-    echo ""
-    echo "Connected:  \"$IFC_NAME\""
 }
 
 
@@ -329,29 +251,15 @@ service_stop() {
 
 
 start_tasks() {
-    resume="$1"
-    shift
-
-    if [ -n "$resume" ]; then
-        netoff
-    fi
-
-    # Change network profile back to "home base", using the profile that will
-    # let you send off your queued mail.
-    `mail_queued` && mustDrainQ=y
-    if  [ -n "$mustDrainQ" -a -n "${MAIL_PROFILE_NAME}" ]; then
-        switch_net_profile "${IFC_NAME}" "${MAIL_PROFILE_NAME}" $mustDrainQ
-    else
-        switch_net_profile "${IFC_NAME}" "${NET_PROFILE_NAME}" $mustDrainQ
-    fi
-
-    neton
     wait_for_connectivity
 
     # Run this one first, and only at startup
     sync_clock
 
-    service_start_or_restart sshd
+    # Start the rest
+    for s in $SERVICES; do
+        service_start_or_restart $s
+    done
 
     # Run this one last.
     drainq
@@ -361,16 +269,11 @@ start_tasks() {
 stop_tasks() {
     # Run this one first.
     drainq nowait
-    service_stop sshd >>$LOG 2>&1
-    netoff nowait >>$LOG 2>&1
-}
 
-
-determine_state() {
-    mypath=$(dirname $0)
-    state_script='stateToggle.sh'
-
-    $mypath/$state_script lan_state $IFC_NAME
+    # Stop the rest
+    for s in $SERVICES; do
+        service_stop $s >>$LOG 2>&1
+    done
 }
 
 
@@ -383,7 +286,7 @@ first_mesg() {
     echo ""
     date
     echo ""
-    echo "=== $what Docked-Mode:"
+    echo "=== ifplugd:  $what Services:"
 }
 
 
@@ -401,25 +304,32 @@ for pid in `pgrep sync-mode`; do
     fi
 done 
 
+
 # Next, check how old $LOG is before anything starts writing to it.
 check_logfile_age
 
+
+# Process the name under which this script ran.
+is_named_start=''
+is_named_stop=''
+clearlog='y'
+case "$0" in
+    *start*)
+        is_named_start='y'
+        clearlog=''
+        ;;
+    *stop*)
+        is_named_stop='y'
+        ;;
+esac
+
+
 # Now we can process the commandline options.
-resume=''
-start=''
-stop=''
 clearlog='y'
 while [ -n "$1" ]; do
     arg="$1"
     shift
-    if [ "${arg##--}" = "toggle" ]; then
-        arg=`determine_state`
-    fi
     case "$arg" in
-        -i|--ifc|--ifname)
-            shift
-            IFC_NAME=$1
-            ;;
         -H|-n|--hostname)
             shift
             IFC_HOSTNAME=$1
@@ -432,23 +342,18 @@ while [ -n "$1" ]; do
             shift
             PING_TIMEOUT=$1
             ;;
-        -p|--profile)
-            NET_PROFILE_NAME="$1"
-            shift
-            ;;
         --keeplog)
             clearlog=''
             ;;
-        --resume|resume)
-            resume='y'
-            ;;
-        --start|start)
+        --start|start|up)
             start='y'
+            stop=''
             ;;
-        --stop|stop)
+        --stop|stop|down)
             stop='y'
+            start=''
             ;;
-        *)
+        --help|-h)
             start=''
             stop=''
             break
@@ -458,29 +363,35 @@ done
 
 
 if [ -n "$start" ]; then
-    if [ -n "$clearlog" ]; then
-        rm -f $LOG >/dev/null 2>&1
-    fi
 
-    first_mesg "Starting" >>$LOG 2>&1 
-    start_tasks $resume >>$LOG 2>&1
+    if [ -z "$is_named_stop" ]; then
+        if [ -n "$clearlog" ]; then
+            rm -f $LOG >/dev/null 2>&1
+        fi
+
+        first_mesg "Starting" >>$LOG 2>&1 
+        start_tasks >>$LOG 2>&1
+    fi
+    # else:
+    # Script name contains "stop", so ignore requests to start.
+
 elif [ -n "$stop" ]; then
-    first_mesg "Stopping" >>$LOG 2>&1 
-    stop_tasks >>$LOG 2>&1
+
+    if [ -z "$is_named_start" ]; then
+        first_mesg "Stopping" >>$LOG 2>&1 
+        stop_tasks >>$LOG 2>&1
+    fi
+    # else:
+    # Script name contains "start", so ignore requests to stop.
+
 else
     (cat - <<-EOF
-	"usage: $0 [<Options>] {[--keeplog] start | stop | toggle}"
+	"usage: $0 [<Options>] \\
+	                {[--keeplog] {start | up} | {stop | down}"
+	"usage: <prefix>start<suffix> [<Options>] up"
+	"usage: <prefix>stop<suffix> [<Options>] down"
+
 	<Options>
-	--keeplog
-	    Appends to, instead of overwriting, an existing logfile.  Only used by
-        the "start" (or the "toggle" mode when behaving as "start").
-	-i
-	--ifc
-	--ifname
-	    Name of the network interface to activate/deactivate.  This
-	    could be the name of the network interface device, or it could
-	    be a logical name of an interface device under a specific 
-	    network profile.  See the "--profile" option for more info.
 	-H
 	-n
 	--hostname
@@ -495,14 +406,43 @@ else
 	--ping_timeout
 	    How long (in seconds) to ping the target network before deciding 
 	    that it's not active.
-	-p
-	--profile
-	    The name of a network profile to switch to before activating the
-	    network interface.
-	--resume
-	    Used with "start":	Are we starting after a resume from
-	    sleep/hibernation?	If so, turn the target network interface off
-	    first.
+	start
+	up
+	--start
+	    Start services.  Also syncs the clock using NTP, and drains the mail
+	    queue.
+	stop
+	down
+	--stop
+	    Stops services.
+
+
+	Special Options
+	-h
+	--help
+	    This message.
+	--keeplog
+	    Appends to, instead of overwriting, an existing logfile.  Only used by
+        the "start" mode.
+
+
+	Any commandline arguments or options not listed above are ignored.
+
+
+	Special Script Names
+
+	In addition to running this script manually, you can also run it from
+	a symlink with a special name.  When the symlink (or filename) matches one
+	of the following patterns, $0 behaves as follows:
+
+	*start*
+	    a) The '--keeplog' option is enabled.
+	    b) Ignores the 'stop', '--stop', or 'down' options.
+	       [They're effectively a no-op.]
+
+	*stop*
+	    Ignores the 'start', '--start', or 'up' options.
+	    [They're effectively a no-op.]
 EOF
     ) | tee -a $LOG
     exit 1
