@@ -1,5 +1,5 @@
 // [jpw]  The keyboard mappings for the ThinkPad X40.
-//	  This file should be named "thinkpad"
+//	  This file should be named "thinkpadx40"
 
 
 // The ThinkPad has no separate keypad keys.  By default, when NumLock
@@ -76,7 +76,7 @@ xkb_symbols "specialkeys_base" {
 partial alphanumeric_keys modifier_keys
 default
 xkb_symbols "fn_default" {
-    include "thinkpad(specialkeys_base)"
+    include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
     //
@@ -93,7 +93,7 @@ xkb_symbols "fn_default" {
 
 partial alphanumeric_keys modifier_keys
 xkb_symbols "fn_modesw" {
-    include "thinkpad(specialkeys_base)"
+    include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
     //
@@ -107,7 +107,7 @@ xkb_symbols "fn_modesw" {
 
 partial alphanumeric_keys modifier_keys
 xkb_symbols "fn_super" {
-    include "thinkpad(specialkeys_base)"
+    include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
     //
@@ -122,7 +122,7 @@ xkb_symbols "fn_super" {
 
 partial alphanumeric_keys modifier_keys
 xkb_symbols "fn_lctrl" {
-    include "thinkpad(specialkeys_base)"
+    include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
     //

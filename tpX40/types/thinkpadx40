@@ -1,5 +1,5 @@
 // [jpw]  The keyboard mappings for the ThinkPad X40.
-//	  This file should be named "thinkpad"
+//	  This file should be named "thinkpadx40"
 
 
 // The ThinkPad has no separate keypad keys.  By default, when NumLock

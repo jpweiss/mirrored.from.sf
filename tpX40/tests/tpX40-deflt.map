@@ -1,7 +1,7 @@
 xkb_keymap {
 	xkb_keycodes  { include "xfree86+aliases(qwerty)"	};
 	xkb_types     { include "complete"	};
-	xkb_compat    { include "complete+thinkpad(default)"	};
-	xkb_symbols   { include "pc(pc105)+us+thinkpad(fn_default)"	};
+	xkb_compat    { include "complete+thinkpadx40(default)"	};
+	xkb_symbols   { include "pc(pc105)+us+thinkpadx40(fn_default)"	};
 	xkb_geometry  { include "thinkpad(common)"	};
 };

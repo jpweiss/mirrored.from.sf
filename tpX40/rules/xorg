@@ -59,7 +59,7 @@
               oretec \
               presario propeller \
               qtronix \
-              rapidaccess rapidaccess2 rapidaccess2a thinkpad \
+              rapidaccess rapidaccess2 rapidaccess2a thinkpadx40 \
               samsung4500 samsung4510 \
               scorpius silvercrest \
               sk1300 sk2500 sk6200 sk7100 sp_inet \
@@ -123,7 +123,7 @@
   apple:goodmap		=	+macintosh(goodmap)
 
 ! model		layout	=	geometry
-  thinkpad     us              =       thinkpad(us)
+  thinkpadx40     us              =       thinkpadx40(us)
 
 ! model		=	geometry
  $msmodels	=	microsoft(natural)
@@ -135,7 +135,7 @@
  $pcmodels	=	pc(%m)
  $pcgeometries	=	pc(%m)
   everex	=	everex(STEPnote)
-  thinkpad	=	thinkpad(intl)
+  thinkpadx40	=	thinkpadx40(intl)
   winbook	=	winbook(XP5)
   pc98		=	nec(pc98)
  $macbooks      =       macintosh(%m)
@@ -276,7 +276,7 @@
   macintosh_old	*			=	macintosh_vndr/us(oldmac)+%l%(v)
  $macs		en_US			=	pc+macintosh_vndr/us(extended)
  $macs		$macvendorlayouts	=	pc+macintosh_vndr/%l%(v)
-  thinkpad   	br			=	pc+br(thinkpad)
+  thinkpadx40   	br			=	pc+br(thinkpadx40)
   *	   	$nonlatin		=	pc+us+%l%(v):2
   *		*			=	pc+%l%(v)
 
@@ -356,7 +356,7 @@
   macintosh_old	$macvendorlayouts	=	macintosh_vndr/us(oldmac)+macintosh_vndr/%l[1]%(v[1])
   macintosh_old	*			=	macintosh_vndr/us(oldmac)+%l[1]%(v[1])
  $macs		$macvendorlayouts	=	pc+macintosh_vndr/%l[1]%(v[1])
-  thinkpad	br			=	pc+%l[1](thinkpad)
+  thinkpadx40	br			=	pc+%l[1](thinkpadx40)
   *		*			=	pc+%l[1]%(v[1])
 
 ! model		layout[1]	variant[1]	=	symbols

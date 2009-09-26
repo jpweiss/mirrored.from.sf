@@ -78,7 +78,7 @@ echo "Creating '${nameBase}.map'"
 if [ -n "$testOptions" ]; then
     echo -e "    Using options:${testOptions//-o/\n\t-o}"
 fi
-setxkbmap -option -rules thinkpad -model thinkpad $testOptions \
+setxkbmap -option -rules thinkpadx40 -model thinkpadx40 $testOptions \
      -print > ${nameBase}.map
 
 echo "Creating '${nameBase}.xkb'"

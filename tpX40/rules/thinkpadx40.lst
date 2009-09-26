@@ -12,7 +12,7 @@
 //
 // However, we don't need to include the entire rules/xorg.lst (or
 // rules/xfree86.lst), since we're not doing that in the custom
-// rules/thinkpad.  As for rules/thinkpad, we just want support for a
+// rules/thinkpadx40.  As for rules/thinkpadx40, we just want support for a
 // ThinkPad and any external keyboard that might reasonably be plugged
 // into it. 
 //
@@ -30,7 +30,7 @@
   pc104		Generic 104-key PC
   pc105		Generic 105-key (Intl) PC
   acpi		ACPI Standard
-  thinkpad	ThinkPad (Models w/the "Scroll-Wheel-Keys")
+  thinkpadx40	ThinkPad (Models w/the "Scroll-Wheel-Keys")
 
 
 // The entries here should be ordered as follows:
