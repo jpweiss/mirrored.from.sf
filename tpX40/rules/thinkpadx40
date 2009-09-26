@@ -1,5 +1,5 @@
 // [jpw]  The keyboard mappings for the ThinkPad X40.
-//	  This file should be named "thinkpad"
+//	  This file should be named "thinkpadx40"
 
 
 // The ThinkPad has no separate keypad keys.  By default, when NumLock
@@ -34,7 +34,7 @@
 //
 // include "xorg"
 //
-// Alas, must do this by-hand, since rules files contain no include
+// Alas, we must do this by-hand, since rules files contain no include
 // mechanism.
 //
 // However, we don't need to include the entire rules/xorg (or
@@ -103,7 +103,7 @@
               oretec \
               presario propeller \
               qtronix \
-              rapidaccess rapidaccess2 rapidaccess2a thinkpad \
+              rapidaccess rapidaccess2 rapidaccess2a thinkpadx40 \
               samsung4500 samsung4510 \
               scorpius silvercrest \
               sk1300 sk2500 sk6200 sk7100 sp_inet \
@@ -168,6 +168,7 @@
 
 ! model		layout	=	geometry
   thinkpad     us              =       thinkpad(us)
+  thinkpadx40  us              =       thinkpad(us)
 
 ! model		=	geometry
  $msmodels	=	microsoft(natural)
@@ -180,6 +181,7 @@
  $pcgeometries	=	pc(%m)
   everex	=	everex(STEPnote)
   thinkpad	=	thinkpad(intl)
+  thinkpadx40	=	thinkpad(intl)
   winbook	=	winbook(XP5)
   pc98		=	nec(pc98)
  $macbooks      =       macintosh(%m)
@@ -321,6 +323,7 @@
  $macs		en_US			=	pc+macintosh_vndr/us(extended)
  $macs		$macvendorlayouts	=	pc+macintosh_vndr/%l%(v)
   thinkpad   	br			=	pc+br(thinkpad)
+  thinkpadx40  	br			=	pc+br(thinkpadx40)
   *	   	$nonlatin		=	pc+us+%l%(v):2
   *		*			=	pc+%l%(v)
 
@@ -401,6 +404,7 @@
   macintosh_old	*			=	macintosh_vndr/us(oldmac)+%l[1]%(v[1])
  $macs		$macvendorlayouts	=	pc+macintosh_vndr/%l[1]%(v[1])
   thinkpad	br			=	pc+%l[1](thinkpad)
+  thinkpadx40	br			=	pc+%l[1](thinkpadx40)
   *		*			=	pc+%l[1]%(v[1])
 
 ! model		layout[1]	variant[1]	=	symbols
@@ -942,10 +946,10 @@
 // into the rules, or if I even should.
 
 //! model		=  keycodes
-//  thinkpad:X_series	=  +thinkpad(X_series)
+//  thinkpadx40:X_series	=  +thinkpadx40(X_series)
 
 ! model			=  compat
-  thinkpad		=  +thinkpad(default)
+  thinkpadx40		=  +thinkpadx40(default)
 
 //
 // The options:  Where most of the action takes place.
@@ -956,21 +960,21 @@
 
 
 ! option		=  types
-  numlk:un_altgr   	=  +thinkpad(altgr_UnNumlock)
-  numlk:un_ctrl 	=  +thinkpad(ctrl_UnNumlock)
+  numlk:un_altgr   	=  +thinkpadx40(altgr_UnNumlock)
+  numlk:un_ctrl 	=  +thinkpadx40(ctrl_UnNumlock)
 
 
 ! option		=  symbols
-  numlk:un_altgr	=  +thinkpad(un_numlock)
-  numlk:un_ctrl 	=  +thinkpad(un_numlock)
-  numlk:invert		=  +thinkpad(inv_numlock)
-  mousekeys:default	=  +thinkpad(mousekeys)
-  mousekeys:alt		=  +thinkpad(mousekeys_alt)
-  mousekeys:ctrl_shift	=  +thinkpad(mousekeys_ctrl_shift)
-  mousekeys:ctrl	=  +thinkpad(mousekeys_ctrl)
-  altwin:fn_switch	=  +thinkpad(fn_modesw)
-  altwin:fn_super	=  +thinkpad(fn_super)
-  wheelButton:norep =  +thinkpad(nonRepeatingWheelButtons)
+  numlk:un_altgr	=  +thinkpadx40(un_numlock)
+  numlk:un_ctrl 	=  +thinkpadx40(un_numlock)
+  numlk:invert		=  +thinkpadx40(inv_numlock)
+  mousekeys:default	=  +thinkpadx40(mousekeys)
+  mousekeys:alt		=  +thinkpadx40(mousekeys_alt)
+  mousekeys:ctrl_shift	=  +thinkpadx40(mousekeys_ctrl_shift)
+  mousekeys:ctrl	=  +thinkpadx40(mousekeys_ctrl)
+  altwin:fn_switch	=  +thinkpadx40(fn_modesw)
+  altwin:fn_super	=  +thinkpadx40(fn_super)
+  wheelButton:norep =  +thinkpadx40(nonRepeatingWheelButtons)
 
 ! model		=  symbols
-  thinkpad	=  +thinkpad(fn_default)
+  thinkpadx40	=  +thinkpadx40(fn_default)
