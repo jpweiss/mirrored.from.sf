@@ -24,7 +24,7 @@
 ############
 
 
-SERVICES="ssh privoxy"
+SERVICES="ssh privoxy samba cups"
 
 IFC_HOSTNAME=mloe
 REMOTE_HOSTNAME=uqbar
@@ -172,7 +172,7 @@ wait_for_connectivity() {
 
 
 sync_clock() {
-    if [ ! -x $NTP_SYNC -o z "$LOG_OLDER_THAN_AGE_TRIGGER" ]; then
+    if [ ! -x $NTP_SYNC -o -z "$LOG_OLDER_THAN_AGE_TRIGGER" ]; then
         return 0
     fi
 
@@ -297,15 +297,7 @@ first_mesg() {
 ############
 
 
-# Begin by terminating any other running instance of this script:
-for pid in `pgrep sync-mode`; do
-    if [ $pid -ne $$ ]; then
-        kill -15 $pid
-    fi
-done 
-
-
-# Next, check how old $LOG is before anything starts writing to it.
+# Begin by checking how old $LOG is before anything starts writing to it.
 check_logfile_age
 
 
