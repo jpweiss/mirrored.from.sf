@@ -1,0 +1,92 @@
+# -*- shell-script -*-
+#
+# Copyright (C) 2005-2009 by John P. Weiss under the Artistic License
+#
+# RCS $Id: rc.kernel_cmdline 1439 2005-10-05 22:04:42Z candide $
+############
+
+
+rmmodsAll()
+{
+    status=0
+    for m in "$@"; do
+        modprobe --syslog --quiet --remove $m || status=1
+    done
+    return $status
+}
+
+
+getRunlevel()
+{
+    runlevel=2
+    for rltmp in `/sbin/runlevel`; do
+        if [ "$rl" != "N" ]; then
+            runlevel=$rltmp
+        fi
+    done
+    echo $runlevel
+}
+
+
+disableAllWireless()
+{
+    status=0
+
+    for DEVICE in /sys/class/net/* ; do
+        if [ -d $DEVICE/wireless ] ; then
+            # $DEVICE is a wireless device.
+
+            FOUND=
+            # Yes, that's right... the new interface reverses the truth
+            # values.
+            ON=1
+            OFF=0
+            for CONTROL in $DEVICE/device/rfkill/rfkill*/state; do
+                if [ -w "$CONTROL" ]; then
+                    FOUND=1
+
+                    if [ "$(cat "$CONTROL")" = "$ON" ] ; then
+                        # It's powered on. Switch it off.
+                        echo -n "$OFF" > "$CONTROL" || status=1
+                    fi # else
+                       # It's powered off; ignore it.
+                fi
+            done
+            # it might be safe to assume that a device only supports one
+            # interface at a time; but just in case, we short-circuit
+            # here to avoid toggling the power twice
+            if [ -n "$FOUND" ]; then
+                continue
+            fi
+
+            ON=0
+            OFF=1  # 1 for rf_kill, 2 for power/state
+            for CONTROL in $DEVICE/device/rf_kill $DEVICE/device/power/state;
+            do
+                if [ -w $CONTROL ] ; then
+                    # We have a way of controlling the device, lets try
+                    if [ "`cat $CONTROL`" = 0 ] ; then
+                        # It's powered on. Switch it off.
+                        if echo -n $OFF > $CONTROL; then 
+                            break
+                        elif [ "$OFF" = 2 ]; then
+                            # Both "echo" commands failed.  Return error
+                            # status.
+                            status=1
+                        else
+                            OFF=2 # for power/state, second time around
+                        fi
+                    fi # else
+                       # It's powered off; ignore it.
+                fi
+            done
+        fi
+    done
+
+    return $status
+}
+
+
+#################
+#
+#  End

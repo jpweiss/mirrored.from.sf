@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2005 by John P. Weiss
+# Copyright (C) 2005-2009 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -19,16 +19,28 @@
 
 ############
 #
+# Exportable Globals
+#
+############
+
+
+RUNLEVEL="${RUNLEVEL:-2}"
+MUTE=''
+SYNC_MODE=''
+POWER_BUTTON_HALT_TIME=''
+
+
+############
+#
 # Includes & Other Global Variables
 #
 ############
 
 
-MUTE=''
-SYNC_MODE=''
-POWER_BUTTON_HALT_TIME=''
-old_pwersave=''
-
+old_powersave=''
+SYNC_MODE_SCRIPT="/usr/local/bin/sync-mode.sh"
+sysCPUFREQ=/sys/devices/system/cpu/cpu0/cpufreq/
+scaling_governor=$sysCPUFREQ/scaling_governor
 
 ############
 #
@@ -38,9 +50,13 @@ old_pwersave=''
 
 
 parse_kernel_cmdline() {
+    raw_runlevel=''
     set -- `cat /proc/cmdline`
     while [ -n "$1" ]; do
         case "$1" in
+            init:[2-4])
+                raw_runlevel="$1"
+                ;;
             nosound|mute)
                 MUTE='y'
                 ;;
@@ -67,16 +83,26 @@ parse_kernel_cmdline() {
         esac
         shift
     done
+
+    if [ -n "$raw_runlevel" ]; then 
+        oIFS="$IFS"
+        IFS=":"
+        set -- $raw_runlevel
+        if [ -n "$2" ]; then
+            RUNLEVEL="$2"
+        fi
+        IFS="$oIFS"
+    fi
 }
 
 
 write_init_env_file() {
     # Save the current environment, including the runlevel
-    echo "RUNLEVEL=${RUNLEVEL:-3}" >> /tmp/.init.env
+    echo "RUNLEVEL=${RUNLEVEL:-2}" >> /tmp/.init.env
     echo "export RUNLEVEL" >> /tmp/.init.env
     echo "MUTE=${MUTE}" >> /tmp/.init.env
     echo "export MUTE" >> /tmp/.init.env
-    if [ -n "${old_pwersave}" ]; then
+    if [ -n "${old_powersave}" -o "${RUNLEVEL:-2}" = "4" ]; then
         echo "POWERSAVE='y'" >> /tmp/.init.env
         echo "export POWERSAVE" >> /tmp/.init.env
     fi
@@ -93,7 +119,7 @@ prep() {
     if [ -f /tmp/.init.env ]; then
         . /tmp/.init.env
         if [ -n "${POWERSAVE}" ]; then
-            old_pwersave="${POWERSAVE}"
+            old_powersave="${POWERSAVE}"
         fi
     fi
     rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
@@ -119,6 +145,11 @@ case "$0" in
         fi
         ;;
 esac
+
+parse_kernel_cmdline
+export MUTE SYNC_MODE POWER_BUTTON_HALT_TIME RUNLEVEL
+write_init_env_file
+
 if [ -n "$file_was_sourced" ]; then
     # Was sourced.  Remove the temporary variable created during the startup
     # checks.
@@ -127,27 +158,18 @@ if [ -n "$file_was_sourced" ]; then
 else
     # Was run as a script.
     prep
-fi
 
+    # Powersave tasks to perform on boot or on any form of resume.
+    if [ -n "${POWERSAVE}" -a -w $scaling_governor ]; then
+        echo -n ondemand >$scaling_governor
+    fi
 
-parse_kernel_cmdline
-export MUTE
-export SYNC_MODE
-export POWER_BUTTON_HALT_TIME
-write_init_env_file
-
-
-# Powersave tasks to perform on boot or on any form of resume.
-if [ -n "${POWERSAVE}" ]; then
-    echo -n ondemand > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-fi
-
-
-# Another task to do on either boot or resume:  Sync-Mode
-if [ -n "${SYNC_MODE}" ]; then
-    # TODO:  May need to pry out any "--resume" option passed to this script
-    # if this script starts taking other args.
-    /usr/local/bin/sync-mode.sh start "$@" &
+    # Another task to do on either boot or resume:  Sync-Mode
+    if [ -n "${SYNC_MODE}" -a -x $SYNC_MODE_SCRIPT ]; then
+        # TODO:  May need to pry out any "--resume" option passed to this
+        # script if this script starts taking other args.
+        $SYNC_MODE_SCRIPT start "$@" &
+    fi
 fi
 
 

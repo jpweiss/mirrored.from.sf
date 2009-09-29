@@ -1,102 +1,142 @@
-#!/bin/sh
+#!/bin/sh -e
 #
-# This script will be executed *after* all the other init scripts.
-# You can put your own initialization stuff in here if you don't
-# want to do the full Sys V style init stuff.
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+#
+# [Contents (C) 2004-2009 by John P. Weiss under the Artistic License]
+#
+# RCS $Id$
+############
 
-touch /var/lock/subsys/local
+
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+
 
 #
-# [jpw; 12/03] Custom Laptop Config Cmds.
+# [jpw; 09/09] Custom Laptop Config Cmds.
 #
 
-. /etc/init.d/functions
-
-
-# Sane Keybindings
-action $"| Customizing Keybindings" \
-  loadkeys backspace windowkeys linux-with-two-alt-keys.inc 2>/dev/null
-if [ -f /etc/LocalSys/kbd/custom-us.map.gz ]; then
-    loadkeys /etc/LocalSys/kbd/custom-us 2>/dev/null
+# Initialization
+set +e # Doesn't work with the '[...]' test command.
+. /lib/lsb/init-functions
+. /etc/LocalSys/init.d/functions
+if [ -z "$RUNLEVEL" ]; then
+    RUNLEVEL=`getRunlevel`
+    export RUNLEVEL
 fi
-  
-# The extra function keys on an HP laptop
-##action $"| Enabling OneTouch Keys" /etc/rc.d/hpOneTouchKeys.sh 2>/dev/null
+
+
+# Keyboard Setup
+log_begin_msg "| Customizing Keybindings"
+# [jpw] The usual loadkeys database isn't present in Ubuntu, and I don't
+# really know how to check for it.  So disable it for now.
+if [ -n "$notUbuntu" ]; then
+    loadkeys backspace windowkeys linux-with-two-alt-keys.inc 2>/dev/null
+    laststat=$?
+else
+    laststat=0
+fi
+if [ -f /etc/LocalSys/kbd/custom-us.map.gz -a "$laststat" = 0 ]; then
+    loadkeys /etc/LocalSys/kbd/custom-us 2>/dev/null \
+        || laststat=1
+fi
+log_end_msg $laststat
+
 
 # ThinkPad-specific setup.
-action $"| Setting Up ThinkPad" /etc/rc.d/thinkpadSetup.sh 2>/dev/null
+log_begin_msg "| Setting Up ThinkPad"
+/etc/LocalSys/init.d/thinkpadSetup.sh 2>/dev/null
+log_end_msg $?
 
-# Remove /etc/nologin on book
+
+# Remove /etc/nologin on boot
 rm -f /etc/nologin 2>&1 >/dev/null
 
-# Determine if we're in powersave mode
-POWERSAVE=''
-if [ "${RUNLEVEL:-3}" = "4" ]; then
-    POWERSAVE='y'
+# Touch Up the Console Fonts
+# [jpw; 09/09]  Not needed on Ubuntu (for now).
+if [ -x /bin/setfont -a -n "$notUbuntu" ]; then
+    /bin/setfont
+fi
+
+
+# Determine if we're in powersave mode [if the envvar wasn't set anywhere].
+if [ -z "$POWERSAVE" ]; then
+    if [ "${RUNLEVEL:-2}" = "4" ]; then
+        POWERSAVE='y'
+    fi
 fi
 export POWERSAVE
 
 
-# Keep this here!
-# This code will also nuke several files that we'd otherwise need to remove
-# later on in this script.
-if [ -z "${POWERSAVE}" ]; then
-    # Clean up all of the "/tmp/.[-azA-Z]*" files except a few
-    for dotfile in /tmp/.[-azA-Z]*; do
-        if [ ! -f $dotfile ]; then
-            continue
-        fi
-        case "$dotfile" in
-            .bash*|.rnd)
-                echo > /dev/null # NOOP
-                ;;
-            *)
-                rm -f $dotfile 2>/dev/null
-                ;;
-        esac
-    done
-else
-    # We're in Powersave mode, but we still need to nuke some old state
-    # files.
-    rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
-fi
-
-
-# This builds the /tmp/.init.env file.
-if [ -f /etc/rc.d/rc.kernel_cmdline ]; then
-    . /etc/rc.d/rc.kernel_cmdline
-fi
-
-
+# Powersaving tasks
+# [jpw]  Many aren't needed in Ubuntu, but we'll leave the code.
 if [ -n "${POWERSAVE}" ]; then
     # Use as little disk as possible in powersave mode
-    action $"| Disabling swap space to save power : "  swapoff -a
+    if [ -n "$notUbuntu" ]; then
+        log_begin_msg "| Disabling swap space to save power : "
+        swapoff -a
+        log_end_msg $?
+    fi
 
     # Disable the WiFi adapter.
     touch /tmp/force-wifi-off
-    action $"| Disabling WiFi antenna to save power : "  \
-        /etc/acpi/actions/wifiPower.sh
+    log_begin_msg "| Disabling WiFi antenna to save power : "
+    #/etc/acpi/actions/wifiPower.sh
+    disableAllWireless
+    log_end_msg $?
+
+    # Disable modules that we don't want running when power is a concern.
+    log_begin_msg "| Removing unneeded modules : "
+    rmmodsAll vfat fat nls_cp437 nls_iso8859_1 \
+        serio_raw kqemu \
+        nsc_ircc irda crc_ccitt \
+        tpm_atmel tpm tpm_bios \
+        iTCO_wdt iTCO_vendor_support \
+        i2c_i801 tpm_infineon snd-intel8x0m \
+        ipw2200 eth1000 \
+        ieee80211_crypt_ccmp ieee80211_crypt_tkip \
+        ieee80211_crypt_wep ieee80211 ieee80211_crypt \
+        pcmcia yenta_socket rsrc_nonstatic pcmcia_core
+    log_end_msg $?
 
     # Set up some powersaving features
+    log_begin_msg "| Enabling other powersaving features : "
     echo 1 > /sys/module/snd_ac97_codec/parameters/power_save
+    laststat=$?
     if [ -e /sbin/ethtool -a -d /sys/class/net/eth0 ]; then
-        ethtool -s eth0 wol d
+        ethtool -s eth0 wol d || laststat=$?
     fi
+    log_end_msg $laststat
 fi
+
 
 if [ -e /etc/sysconfig/modules/rc.modules ]; then
     /etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
 fi
 
 
-if [ -z "${MUTE}" -a  -z "${POWERSAVE}" ]; then
-    action $"| Enabling Console Speaker : " /sbin/modprobe pcspkr
+# Silence the PC Speaker if needed.
+if [ -n "${MUTE}" -o  -n "${POWERSAVE}" ]; then
+    log_begin_msg "| Disabling Console Speaker : "
+    modprobe --quiet --remove pcspkr
+    laststat=$?
+    log_end_msg $laststat
 fi
 
 
-# Lastly, echo lots-o-newlines to scroll this info off screen so that it 
-# stays visible in scrollback.
-# Anything emitted by the special "success", "failure" and "action" functions
-# shows up in /var/log/messages. 
+exit 0
+
+
+#################
 #
-echo -e "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+#  End
