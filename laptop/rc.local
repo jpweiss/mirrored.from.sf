@@ -38,13 +38,20 @@ fi
 
 # Keyboard Setup
 log_begin_msg "| Customizing Keybindings"
-# [jpw] The usual loadkeys database isn't present in Ubuntu, and I don't
-# really know how to check for it.  So disable it for now.
-if [ -n "$notUbuntu" ]; then
-    loadkeys backspace windowkeys linux-with-two-alt-keys.inc 2>/dev/null
+# [jpw] The usual loadkeys database isn't installed by default under Ubuntu.
+# So check for it.
+stdCustomizations="backspace windowkeys linux-with-two-alt-keys"
+keymapdir=/usr/share/keymaps/i386/include/
+loadTheseMaps=""
+laststat=0
+for m in $stdCustomizations; do
+    if [ -f ${keymapdir}/${m}.inc.gz ]; then
+        loadTheseMaps="$loadTheseMaps $m"
+    fi
+done
+if [ -n "$loadTheseMaps" ]; then
+    loadkeys $loadTheseMaps 2>/dev/null
     laststat=$?
-else
-    laststat=0
 fi
 if [ -f /etc/LocalSys/kbd/custom-us.map.gz -a "$laststat" = 0 ]; then
     loadkeys /etc/LocalSys/kbd/custom-us 2>/dev/null \
