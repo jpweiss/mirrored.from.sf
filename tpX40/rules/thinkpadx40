@@ -113,7 +113,7 @@
               oretec \
               presario propeller \
               qtronix \
-              rapidaccess rapidaccess2 rapidaccess2a thinkpadx40 thinkpad60 \
+              rapidaccess rapidaccess2 thinkpadx40 thinkpad60 \
               samsung4500 samsung4510 \
               silvercrest \
               sk1300 sk2500 sk6200 sk7100 \
@@ -147,21 +147,10 @@
 ! $dvoraklayouts = br ca de ee es fr gb no pl se us
 
 ! model		=	keycodes
-  amiga		=	amiga(de)
-  ataritt	=	ataritt(de)
-  sun4		=	sun(type4_euro)
-  sun5		=	sun(type5_euro)
-  sun6		=	sun(type6_usb)
-  pc98		=	xfree98(pc98)
-  abnt2		=	xfree86(abnt2)
-  jp106		=	xfree86(jp106)
-  evdev		=	evdev
-  olpc		=	evdev
-  macintosh_hhk	=	macintosh(hhk)
-  macintosh_old	=	macintosh(old)
- $macs   	=	macintosh
-  thinkpadz60	=	xfree86(thinkpadz60)
-  *		=	xfree86
+  pc98		=	evdev(pc98)
+  abnt2		=	evdev(abnt2)
+  jp106		=	evdev(jp106)
+  *		=	evdev
 
 ! layout[1]	=	keycodes
   $azerty       =       +aliases(azerty)
@@ -174,8 +163,6 @@
   *             =       +aliases(qwerty)
 
 ! option	=	keycodes
-  apple:badmap		=	+macintosh(badmap)
-  apple:goodmap		=	+macintosh(goodmap)
 
 ! model		layout	=	geometry
   thinkpad     us              =       thinkpad(us)
@@ -823,52 +810,7 @@
   yu		unicodeyz	=	+srp(latinunicodeyz):4
 
 ! model		=	symbols
-  a4techKB21    =       +inet(media_nav_common)
-  a4techKBS8    =       +inet(media_nav_acpi_common)
-  a4_rfkb23     =       +inet(media_nav_acpi_common)
-  asus_laptop   =       +inet(media_common)
-  acer_tm_800   =       +inet(acer_laptop)
-  acpi          =       +inet(acpi_common)
-  benqx730      =       +inet(benqx)
-  benqx800      =       +inet(benqx)
-  btc5126t      =       +inet(nav_acpi_common)
-  btc9116u      =       +inet(btc9019u)
-  btc6301urf    =       +inet(media_nav_acpi_common)
-  dellsk8125    =       +inet(dell)
-  dellsk8135    =       +inet(dell)
-  dexxa         =       +inet(media_nav_common)
-  dtk2000       =       +inet(media_nav_acpi_common)
-  fscaa1667g    =       +inet(media_nav_common)
-  geniuskb19e   =       +inet(media_nav_acpi_common)
-  geniuscomfy   =       +inet(media_nav_acpi_common)
-  hpnx9020      =       +inet(hpi6)
-  latitude      =       +inet(media_common)
-  logicd        =       +inet(logitech_base)
-  logicd_it     =       +inet(logitech_base)
-  logicd_nav    =       +inet(logitech_base)
-  logicd_opt    =       +inet(logitech_base)
-  logiultrax    =       +inet(logitech_base)
-  logiclx300    =       +inet(logiex110)
-  logii350      =       +inet(logiex110)
-  logimel       =       +inet(logiex110)
-  logicdit      =       +inet(logicd)
-  logicdo       =       +inet(logicd)
-  logicdp       =       +inet(logicd)
-  logicdpa      =       +inet(logicda)
-  logiciink     =       +inet(logicink)
-  ltcd          =       +inet(logicda)
-  microsoftccurve2k =   +inet(microsoftprooem)
-  microsoftpro  =       +inet(media_nav_acpi_common)
-  precision_m   =       +inet(media_nav_common)
-  scorpius      =       +inet(media_nav_acpi_common)
-  sp_inet       =       +inet(media_nav_acpi_common)
-  targa_v811    =       +inet(media_nav_acpi_common)
-  thinkpad      =       +inet(media_nav_common)
-  thinkpadz60   =       +inet(thinkpad60)
-  vsonku306     =       +inet(microsoftprooem)
-  $inetkbds     =       +inet(%m)
-  $maclaptop    =       +inet(apple)+level3(enter_switch)
-  $macs	        =       +inet(apple)
+  *     =       +inet(evdev)
 
 ! model		layout		=	compat
   pc98		nec_vndr/jp	=	pc98(basic)
@@ -1040,9 +982,15 @@
 
 //! model		=  keycodes
 //  thinkpadx40:X_series	=  +thinkpadx40(X_series)
+//
+//! model		=  keycodes
+//  thinkpadx40	=  +thinkpadx40(X_series)
 
 ! model			=  compat
   thinkpadx40		=  +thinkpadx40(default)
+
+! model		=  symbols
+  thinkpadx40	=  +thinkpadx40(fn_default)
 
 //
 // The options:  Where most of the action takes place.
@@ -1068,6 +1016,3 @@
   altwin:fn_switch	=  +thinkpadx40(fn_modesw)
   altwin:fn_super	=  +thinkpadx40(fn_super)
   wheelButton:norep =  +thinkpadx40(nonRepeatingWheelButtons)
-
-! model		=  symbols
-  thinkpadx40	=  +thinkpadx40(fn_default)

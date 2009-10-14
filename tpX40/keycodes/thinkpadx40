@@ -43,7 +43,10 @@ xkb_keycodes "X_series" {
     // There will be warnings from xkbcomp because of multiple definitions.
     virtual indicator 3 = "None";
 
-    alias <FN> = <I63>;
-    alias <SBAK> = <I6A>;
-    alias <SFWD> = <I69>;
+    // keycode: 151
+    alias <FN> = <I151>;
+    // keycode: 166
+    alias <SBAK> = <I166>;
+    // keycode: 167
+    alias <SFWD> = <I167>;
 };

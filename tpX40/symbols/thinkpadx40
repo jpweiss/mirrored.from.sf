@@ -49,25 +49,27 @@ xkb_symbols "specialkeys_base" {
     //
 
     // Assign <SBAK> key.
+    // [keycode: 166]
     //
     // Bind the unshifted key to the same button used for the upward
     // Wheel-Scroll by X.
     //
     // Bind the Shifted key to <MENU>.
     //
-    key <I6A> {
+    key <I166> {
         repeat= no,
         symbols[Group1] = [ Pointer_Button4, Menu ]
     };
 
     // Assign <SFWD> key.
+    // [keycode: 167]
     //
     // Bind the unshifted key to the same button used for the upward
     // Wheel-Scroll by X.
     //
     // Bind the Shifted key to <RWIN>.
     //
-    key <I69>  { 
+    key <I167>  { 
         repeat= no,
         symbols[Group1] = [ Pointer_Button5, Super_R ]
     };
@@ -79,13 +81,14 @@ xkb_symbols "fn_default" {
     include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
+    // [keycode: 151]
     //
     // Because of its size and close proximity to Control_L, don't give
     // it an unshifted mapping.  This will also discourage bad habits
     // (like gettting used to hitting "Fn" regularly ... a dangerous
     // prospect if you accidentally hit F1-F12).
     //
-    key <I63>  { 
+    key <I151>  { 
         repeat= no,
         symbols[Group1] = [ NoSymbol, Super_L ]
     };
@@ -96,10 +99,11 @@ xkb_symbols "fn_modesw" {
     include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
+    // [keycode: 151]
     //
     // Here, we simply redirect the blue "Fn" key, when unshifted, to AltGr.
     //
-    key <I63>  { 
+    key <I151>  { 
         repeat= no,
         symbols[Group1] = [ Mode_switch, Super_L ]
     };
@@ -110,11 +114,12 @@ xkb_symbols "fn_super" {
     include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
+    // [keycode: 151]
     //
     // This is the same as fn_modesw, but swapped; the unshifted "Fn"
     // key is Super_L, while the shifted version is Mode_switch.
     //
-    key <I63>  { 
+    key <I151>  { 
         repeat= no,
         symbols[Group1] = [ Super_L, Mode_switch  ]
     };
@@ -125,6 +130,7 @@ xkb_symbols "fn_lctrl" {
     include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
+    // [keycode: 151]
     //
     // This variant redirects the unmodified blue "Fn" key to
     // <LCTL>, assigning Shift-Fn to <LWIN>.
@@ -135,7 +141,7 @@ xkb_symbols "fn_lctrl" {
     // machine-state when you merely intended to switch VT's or
     // perform some application-based operation.
     //
-    key <I63>  { 
+    key <I151>  { 
         repeat= no,
         symbols[Group1] = [ Control_L, Super_L ]
     };
