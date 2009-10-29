@@ -1,6 +1,6 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 #
-# Copyright (C) 2006-2007 by John P. Weiss
+# Copyright (C) 2006-2009 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -28,8 +28,8 @@ my $_ConfigFile = undef();
 my $_DataFile = "/tmp/mrtg-ping-bandwidth.dat";
 my $_TieAttempts = 5;
 my $_TieWait = 1;
-my $_DaemonPIDFile = "/tmp/mrtg-ping-bandwidth.pid";
-#my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
+#my $_DaemonPIDFile = "/tmp/mrtg-ping-bandwidth.pid";
+my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
 my $_DaemonLog = "/tmp/mrtg-ping-bandwidth.log";
 my $_ProbeInterval = 5*60;
 my $_ConfigUpdateInterval = 7;
@@ -65,7 +65,6 @@ require 5;
 use strict;
 use bytes;           # Overrides Unicode support
 use Data::Dumper;
-use Data::UnDumper;
 use Tie::File;
 
 
@@ -76,6 +75,7 @@ use Tie::File;
 ############
 
 
+my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 ";
 my @_Measurements;
 my $_refDataTieObj;
 
@@ -98,7 +98,7 @@ sub bandwidth_ping($) {
     $pingcmd .= $host;
     $pingcmd .= " 2>&1 |";
     unless (open(PINGFH, $pingcmd)) {
-        print STDERR ("FATAL: Can't run command: ", $pingcmd, 
+        print STDERR ("FATAL: Can't run command: ", $pingcmd,
                       "\nReason: \"", $!, "\"\n");
         return -1;
     }
@@ -114,11 +114,11 @@ sub bandwidth_ping($) {
     close(PINGFH);
 
     my $rate = $bytes;
-    if ($msecs) { 
+    if ($msecs) {
         $rate /= $msecs;
         $rate *= 1000;
-    } else { 
-        $rate = 0; 
+    } else {
+        $rate = 0;
     }
 
     return $rate;
@@ -130,17 +130,25 @@ sub get_hop_ips($\@) {
     my $ref_hop_numbers = shift();
     my @hops = ();
 
-    my $cmd="traceroute -4 -n -w 1 ";
+    my $cmd = $_TracerouteCmd;
+    $cmd .= " -q 1 ";
     $cmd .= $target;
     $cmd .= " 2>&1 |";
     unless (open(TRTFH, $cmd)) {
-        print STDERR ("ERROR: Can't run command: ", $cmd, 
+        print STDERR ("ERROR: Can't run command: ", $cmd,
                       "\nReason: \"", $!, "\"\n");
         return ();
     }
 
-    while (<TRTFH>) {
-        next unless (m/^\s*\d\s/);
+    my @traceroute_output = <TRTFH>;
+
+    close(TRTFH)
+        or warn("Error closing pipe to command:\n\t", $cmd,
+                ($! ? "\nReason: \"".$!."\"\n" : "\n"));
+
+    foreach (@traceroute_output) {
+        chomp;
+        next unless (m/^\s*\d+\s/);
         my @fields = split();
         if ($fields[1] =~ m/\*/) {
              $hops[$fields[0]] = undef();
@@ -148,7 +156,6 @@ sub get_hop_ips($\@) {
              $hops[$fields[0]] = $fields[1];
         }
     }
-    close(TRTFH);
 
     return @hops[@$ref_hop_numbers];
 }
@@ -156,7 +163,7 @@ sub get_hop_ips($\@) {
 
 #
 # Configfile Processing
-# 
+#
 
 
 sub are_numbers(;@) {
@@ -253,6 +260,7 @@ sub read_config(\$\@\@) {
     }
     close IN_FS;
 
+    #print STDERR ("#DBG# ", Dumper(\%options), "\n");
 
     $$ref_remote_host = $options{"remote_host"};
     @$ref_hop_numbers = @{$options{"hop_numbers"}};
@@ -260,7 +268,7 @@ sub read_config(\$\@\@) {
     if (defined($options{"_ProbeInterval"})) {
         $_ProbeInterval = $options{"_ProbeInterval"};
     }
-    if (defined($options{"_ConfigUpdateInterval"})) {
+   if (defined($options{"_ConfigUpdateInterval"})) {
         $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
     }
     if (defined($options{"_DaemonLog"})) {
@@ -268,10 +276,51 @@ sub read_config(\$\@\@) {
     }
 
     #print STDERR ("#DBG# @varnames\n");
-    #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ", 
-    #              join("\n#DBG2# ", @$ref_hop_numbers), " )\n#DBG3# ( ", 
+    #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ",
+    #              join("\n#DBG2# ", @$ref_hop_numbers), " )\n#DBG3# ( ",
     #              join("\n#DBG3# ", @$ref_measurement_targets), " )\n");
     return 1;
+}
+
+
+sub log_config_changes(\@\@) {
+    my $ref_old = shift();
+    my $ref_new = shift();
+
+    return unless (scalar(@$ref_old) && scalar(@$ref_new));
+
+    my $min_n = $#{$ref_old};
+    my $max_n = $min_n;
+    my $targChangetypeMsg = "";
+    my $targAdded = 0;
+
+    if ($#{$ref_new} > $max_n) {
+        $targChangetypeMsg = "Added";
+        $targAdded = 1;
+        $max_n = $#{$ref_new};
+    } else {
+        if ($#{$ref_new} != $max_n) {
+            $targChangetypeMsg = "Removed   -  was";
+        }
+        $min_n = $#{$ref_new};
+    }
+
+    foreach my $targ_idx (0 .. $min_n) {
+        if ($ref_old->[$targ_idx] ne $ref_new->[$targ_idx]) {
+            print STDERR ("Target #", $targ_idx + 1, " Changed:\t",
+                          $ref_old->[$targ_idx],
+                          "   -->   ",
+                          $ref_new->[$targ_idx], "\n");
+        }
+    }
+
+    foreach my $targ_idx (($min_n+1) .. $max_n) {
+        print STDERR ("Target #", $targ_idx + 1, " ",
+                      $targChangetypeMsg, ":\t",
+                      ( $targAdded ? $ref_new->[$targ_idx]
+                        : $ref_old->[$targ_idx] ),
+                      "\n");
+    }
 }
 
 
@@ -283,21 +332,21 @@ sub write_config($\@\@) {
     build_cfgfile_name();
 
     unless (open(CFGFH, ">", $_ConfigFile)) {
-        print STDERR ("ERROR: Can't open \"",  $_ConfigFile, 
+        print STDERR ("ERROR: Can't open \"",  $_ConfigFile,
                       "\" for writing.\nReason: \"", $!, "\"\n");
         return 0;
     }
 
     print CFGFH ("remote_host = ", $remote_host, "\n");
-    print CFGFH ("hop_numbers = (\n\t", 
-                 join("\n\t", @$ref_hop_numbers), 
+    print CFGFH ("hop_numbers = (\n\t",
+                 join("\n\t", @$ref_hop_numbers),
                  "\n)\n");
-    print CFGFH ("measurement_targets = (\n\t", 
-                 join("\n\t", @$ref_measurement_targets), 
+    print CFGFH ("measurement_targets = (\n\t",
+                 join("\n\t", @$ref_measurement_targets),
                  "\n)\n");
     print CFGFH ("_ProbeInterval = ", $_ProbeInterval, "\n");
-    print CFGFH ("$_ConfigFile = ", $_ConfigFile, "\n");
-    print CFGFH ("$_DaemonLog = ", $_DaemonLog, "\n");
+    print CFGFH ("_ConfigUpdateInterval = ", $_ConfigUpdateInterval, "\n");
+    print CFGFH ("_DaemonLog = ", $_DaemonLog, "\n");
 
     close CFGFH;
     return 1;
@@ -313,7 +362,7 @@ sub update_config($\@;\@) {
         usage();
     }
     my @measurement_targets = get_hop_ips($remote_host, @$ref_hop_numbers);
-    #print STDERR ("#DBG# (\n#DBG# ", join("\n#DBG# ", @measurement_targets, 
+    #print STDERR ("#DBG# (\n#DBG# ", join("\n#DBG# ", @measurement_targets,
     #                                      $remote_host), "\n#DBG# )\n");
 
     my $errmsg = "";
@@ -326,8 +375,12 @@ sub update_config($\@;\@) {
                 }
                 $errmsg .= "\n\tMissing hop \#";
                 $errmsg .= $ref_hop_numbers->[$idx];
-                $errmsg .= ".  Reusing ";
-                $errmsg .= $ref_orig_targets->[$idx];
+                if (defined($ref_orig_targets->[$idx])) {
+                    $errmsg .= ".  Reusing:  ";
+                    $errmsg .= $ref_orig_targets->[$idx];
+                } else {
+                    $errmsg .= ".";
+                }
                 $measurement_targets[$idx] .= $ref_orig_targets->[$idx];
             }
         }
@@ -342,6 +395,9 @@ sub update_config($\@;\@) {
     }
 
     if ($errmsg eq "") {
+        if (defined($ref_orig_targets)) {
+            log_config_changes(@$ref_orig_targets, @measurement_targets);
+        }
         write_config($remote_host, @$ref_hop_numbers, @measurement_targets);
     } else {
         print STDERR ($errmsg, "\n");
@@ -362,6 +418,8 @@ sub retrieve_rates($$) {
     my $targ1=shift();
     my $targ2=shift();
 
+    #print STDERR ("#DBG# t_0: ", time(),"\n");
+
     # Process the args
     unless (are_numbers($targ1, $targ2)) {
         usage();
@@ -371,9 +429,9 @@ sub retrieve_rates($$) {
     my @measurements;
     my $ref_tied=undef();
     my $attempts=0;
-    my $failureReason="";;
+    my $failureReason="";
     do {
-        if ($attempts) { 
+        if ($attempts) {
             sleep($_TieWait);
         }
         $ref_tied = tie(@measurements, 'Tie::File', $_DataFile);
@@ -385,8 +443,11 @@ sub retrieve_rates($$) {
             $failureReason .= $@;
         }
         ++$attempts;
-    } while ((!defined($ref_tied) || !scalar(@measurements)) && 
+        #print STDERR ("#DBG# TieAttempts: ",$attempts,"\n");
+    } while ((!defined($ref_tied) || !scalar(@measurements)) &&
              ($attempts < $_TieAttempts));
+
+    #print STDERR ("#DBG# t1: ", time(),"\n");
 
     # Handle failed tie-attempt.
     if (!defined($ref_tied) || !scalar(@measurements)) {
@@ -413,9 +474,13 @@ sub retrieve_rates($$) {
     if ($targ2 < 0) { $targ2 = 0; }
     my @result = ($measurements[$targ1], $measurements[$targ2]);
 
+    #print STDERR ("#DBG# t2: ", time(),"\n");
+
     # Cleanup
     undef($ref_tied);
     untie(@measurements);
+
+    #print STDERR ("#DBG# t_f: ", time(),"\n");
 
     # //Now// we can return.
     return @result;
@@ -435,6 +500,7 @@ sub no_remote_daemon() {
     open(PIDFH, "<", $_DaemonPIDFile) or return 1;
     my $daemonPid = <PIDFH>;
     close(PIDFH);
+    chomp $daemonPid;
 
     # Do something to check on process existence.
     # In linux & solaris, we can do this:
@@ -448,6 +514,9 @@ sub no_remote_daemon() {
     #return !scalar(@match);
     ## Don't use "system()", as it discards the output.
 
+    print STDERR ("Process '", $daemonPid, "'not found.\n");
+    print STDERR ("Check for dead/stale PID file:  \"", $_DaemonPIDFile,
+                  "\"\n");
     return 1;
 }
 
@@ -476,14 +545,16 @@ sub daemon_main(\@$\@) {
     print "#  Starting $_MyName in Daemon Mode\n";
     my $date = localtime();
     print "#  ", $date, "\n\n";
- 
+
     # Write our PID to the PID file.
     #
-    open(PIDFH, ">", $_DaemonPIDFile) 
+    open(PIDFH, ">", $_DaemonPIDFile)
         or die("Cannot open PIDfile: \"".$_DaemonPIDFile."\"\n".
                "Reason: \"".$!."\"\n");
     print PIDFH ($$, "\n");
-    close(PIDFH);
+    close(PIDFH)
+        or die("Cannot write PIDfile: \"".$_DaemonPIDFile."\"\n".
+               "Reason: \"".$!."\"\n");
 
     # Install Signal Handlers
     #
@@ -512,7 +583,7 @@ sub daemon_main(\@$\@) {
     }
 
     # The Main Loop
-    # 
+    #
     my $configUpdateInterval_secs = $_ConfigUpdateInterval * 24 * 3600;
     my $nextConfigUpdate = time() + $configUpdateInterval_secs;
     while (1) {
@@ -524,10 +595,10 @@ sub daemon_main(\@$\@) {
         }
 
         # Rebuild the config from time to time.
-        # 
+        #
         if (($network_state != 0) && (time() > $nextConfigUpdate)) {
-            @measurement_targets = update_config($remote_host, 
-                                                 @hop_numbers, 
+            @measurement_targets = update_config($remote_host,
+                                                 @hop_numbers,
                                                  @measurement_targets);
             $nextConfigUpdate += $configUpdateInterval_secs;
         }
@@ -544,13 +615,48 @@ sub daemon_main(\@$\@) {
 
 sub usage() {
     print STDERR ("usage: ", $_MyName, " -b <host1> [<host2>]\n");
-    print STDERR (" "x7, $_MyName, " -c <hop#>[,<hop#>[,...]] <host1>\n");
-    print STDERR (" "x7, $_MyName, " -d [ <hop#>[,<hop#>[,...]] <host1> ]\n");
-    print STDERR (" "x7, $_MyName, " <target#> [<target#>]\n\n");
-    print STDERR ("The <target#> is 1-offset.  <target#> is not the same as ",
-                  "<hop#>.\n\n");
+    print STDERR (" "x7, $_MyName, " -c <hop#>[,<hop#>[,...]] <host>\n");
+    print STDERR (" "x7, $_MyName, " -d [ <hop#>[,<hop#>[,...]] <host> ]\n");
+    print STDERR (" "x7, $_MyName, " [-r] <target#> [<target#>]\n\n");
+    print STDERR ("Both <target#> and <hop#> are 1-offset.  <target#> is ",
+                  "not the same as <hop#>.\n\n");
     print STDERR ("In the configfile, \"_ProbeInterval\" is in seconds, ",
                   "while\n\"_ConfigUpdateInterval\" is in days.\n");
+    print STDERR ("\nRun Modes:\n\n");
+    print STDERR ("'-c':  (Re)creates the configfile.  <host> is the ",
+                  "traceroute target,\n");
+    print STDERR ("       monitor.  The <host> is always monitored.\n");
+    print STDERR ("'-d':  Run in daemon mode.  Refreshes the configfile on ",
+                  "init if you\n");
+    print STDERR ("       specify the other commandline args (which look ",
+                  "quite a lot\n");
+    print STDERR ("       like the ones for '-c' mode).\n");
+    print STDERR ("'-b':  Run in one-shot ping mode.  Checks one or two ",
+                  "destination hosts,\n");
+    print STDERR ("       as required by MRTG.\n");
+    print STDERR ("<no-option>:\n");
+    print STDERR ("       Returns the last throughput check from an ",
+                  "instance of this script\n");
+    print STDERR ("       already running in '-d' mode.  Like '-b' mode, ",
+                  "returns the throughput \n");
+    print STDERR ("       for one or two targets, as required by MRTG.  The ",
+                  "<target#> is the\n");
+    print STDERR ("       list index of the IPs/hosts being monitored.  ",
+                  "So, if you ran '-c'\n");
+    print STDERR ("       with the hop-list '3,5,6,11', then <target#>==3 ",
+                  "would return the\n");
+    print STDERR ("       throughput of hop-#6, while <target#>==5 would ",
+                  "return the\n");
+    print STDERR ("       throughput of the target host.\n");
+    print STDERR ("'-r':  Identical to the previous mode, but will start a ",
+                  "daemon if one\n");
+    print STDERR ("       isn't already running.\n");
+
+    print STDERR ("\nTo kill a daemonized instance, use:\n\t",
+                  "kill \$(\< ", $_DaemonPIDFile, ")\n");
+    print STDERR ("\nTo list the througput of all targets, in order, ",
+                  "use:\n\t",
+                  "cat ", $_DataFile, "\n");
     exit 1;
 }
 
@@ -568,6 +674,7 @@ sub usage() {
 my $check_bandwidth=0;
 my $update_hop_ips=0;
 my $daemonize=0;
+my $exit_after_daemonize=0;
 my $in_daemon_mode=0;
 if ($ARGV[0] eq "-b") {
     shift(@ARGV);
@@ -575,9 +682,13 @@ if ($ARGV[0] eq "-b") {
 } elsif ($ARGV[0] eq "-c") {
     shift(@ARGV);
     $update_hop_ips=1;
+} elsif ($ARGV[0] eq "-r") {
+    shift(@ARGV);
+    $daemonize=1;
 } elsif ($ARGV[0] eq "-d") {
     shift(@ARGV);
     $daemonize = 1;
+    $exit_after_daemonize=1;
     if (scalar(@ARGV) > 1) {
         $update_hop_ips=1;
     }
@@ -637,25 +748,36 @@ if ($in_daemon_mode) {
 # -d  or no flags : Make sure a version of this script is currently running
 #                   daemonized.
 #
-if ($daemonize || no_remote_daemon()) {
-    system("$0 -idm >>$_DaemonLog 2>&1 &");
-    exit 0 if ($daemonize);
-    # else:
+if (no_remote_daemon()) {
+    if ($daemonize) {
+        system("$0 -idm >>$_DaemonLog 2>&1 &");
+        exit 0 if ($exit_after_daemonize);
+        # else:
 
-    # Give the daemon some time to start.
-    sleep($_TieAttempts*$_TieWait);
+        # Give the daemon some time to start.
+        sleep($_TieAttempts*$_TieWait);
+    } else {
+        print ("No daemonized instance running.  Rerun \n",
+               "$0 with the '-d' option.\n\n",
+               "Cowardly refusing to continue.\n");
+        exit 2;
+    }
+} elsif ($daemonize && $exit_after_daemonize) {
+    # Nothing left to do.
+    exit 0;
 }
 
-# 
+
+#
 # no flags:  Normal run mode.  Retrieve desired measurements from the daemon.
-# 
+#
 my $hop_target1 = shift(@ARGV);
 my $hop_target2 = $hop_target1;
 if (scalar(@ARGV)) {
     $hop_target2 = shift(@ARGV);
 }
 my @rates = retrieve_rates($hop_target1, $hop_target2);
-printf "%d\n%d\n", $rates[0], $rates[1];
+printf ("%.0f\n%.0f\n", $rates[0], $rates[1]);
 
 
 #################
