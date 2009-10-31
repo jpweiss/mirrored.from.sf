@@ -26,6 +26,7 @@
 
 SERVICES="ssh privoxy samba cups"
 
+LAN_IFC=eth0
 IFC_HOSTNAME=mloe
 REMOTE_HOSTNAME=uqbar
 PING_TIMEOUT=10
@@ -60,6 +61,8 @@ NTP_SYNC=/etc/LocalSys/maintenance-scripts/xntp-sync.sh
 
 # Based on the modification time of the log file, trigger certain things.
 LOG_OLDER_THAN_AGE_TRIGGER=""
+
+MY_NAME="ifplugd-service-actions.sh"
 
 
 ############
@@ -286,7 +289,7 @@ first_mesg() {
     echo ""
     date
     echo ""
-    echo "=== ifplugd:  $what Services:"
+    echo "=== ${MY_NAME}:  $what Services:"
 }
 
 
@@ -306,14 +309,19 @@ is_named_start=''
 is_named_stop=''
 clearlog='y'
 case "$0" in
-    *start*)
+    *start*|*-up*)
         is_named_start='y'
+        export MODE="start"
+        export PHASE="up"
         clearlog=''
         ;;
-    *stop*)
+    *stop*|*-down*)
         is_named_stop='y'
+        export MODE="stop"
+        export PHASE="down"
         ;;
 esac
+MY_NAME=${0##*/}
 
 
 # Now we can process the commandline options.
@@ -350,8 +358,14 @@ while [ -n "$1" ]; do
             stop=''
             break
             ;;
+        [eilw]*)
+            export IFACE="$arg"
+            export LOGICAL="$arg"
     esac
 done
+[ "$IFACE" = "$LAN_IFC" ] || exit 0
+export ADDRFAM="NetworkManager"
+export METHOD="NetworkManager"
 
 
 if [ -n "$start" ]; then
@@ -378,7 +392,7 @@ elif [ -n "$stop" ]; then
 
 else
     (cat - <<-EOF
-	"usage: $0 [<Options>] \\
+	"usage: $MY_NAME [<Options>] \\
 	                {[--keeplog] {start | up} | {stop | down}"
 	"usage: <prefix>start<suffix> [<Options>] up"
 	"usage: <prefix>stop<suffix> [<Options>] down"
@@ -388,7 +402,7 @@ else
 	-n
 	--hostname
 	    Name of a host on the network of the target interface.
-	    $0 pings this host to determine if/when
+	    $MY_NAME pings this host to determine if/when
 	    the interface has come up.
 	-c
 	--ping_count
@@ -415,8 +429,11 @@ else
 	    This message.
 	--keeplog
 	    Appends to, instead of overwriting, an existing logfile.  Only used by
-        the "start" mode.
-
+	    the "start" mode.
+	[eiwl]*
+	    Any argument starting with an 'e', 'i', 'w', or 'l' is assumed to be
+	    the name of a network interface.  If it's "lo", then
+	    $MY_NAME exits.
 
 	Any commandline arguments or options not listed above are ignored.
 
@@ -425,14 +442,16 @@ else
 
 	In addition to running this script manually, you can also run it from
 	a symlink with a special name.  When the symlink (or filename) matches one
-	of the following patterns, $0 behaves as follows:
+	of the following patterns, $MY_NAME behaves as follows:
 
 	*start*
+	*-up*
 	    a) The '--keeplog' option is enabled.
 	    b) Ignores the 'stop', '--stop', or 'down' options.
 	       [They're effectively a no-op.]
 
 	*stop*
+	*-down*
 	    Ignores the 'start', '--start', or 'up' options.
 	    [They're effectively a no-op.]
 EOF
