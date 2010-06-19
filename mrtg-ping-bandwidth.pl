@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2006-2009 by John P. Weiss
+# Copyright (C) 2006-2010 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -28,6 +28,7 @@ my $_ConfigFile = undef();
 my $_DataFile = "/tmp/mrtg-ping-bandwidth.dat";
 my $_TieAttempts = 5;
 my $_TieWait = 1;
+my $_PostDaemonizeWait = 5;
 #my $_DaemonPIDFile = "/tmp/mrtg-ping-bandwidth.pid";
 my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
 my $_DaemonLog = "/tmp/mrtg-ping-bandwidth.log";
@@ -66,6 +67,7 @@ use strict;
 use bytes;           # Overrides Unicode support
 use Data::Dumper;
 use Tie::File;
+use POSIX qw(nice setsid);
 
 
 ############
@@ -94,7 +96,7 @@ my $_refDataTieObj;
 sub bandwidth_ping($) {
     my $host = shift();
 
-    my $pingcmd="/bin/ping -A -w 2 ";
+    my $pingcmd="/bin/ping -A -w 2 -n ";
     $pingcmd .= $host;
     $pingcmd .= " 2>&1 |";
     unless (open(PINGFH, $pingcmd)) {
@@ -102,16 +104,17 @@ sub bandwidth_ping($) {
                       "\nReason: \"", $!, "\"\n");
         return -1;
     }
+    my @pingLines = <PINGFH>;
+    close(PINGFH);
 
     my $bytes = 0;
     my $msecs = 0;
-    while (<PINGFH>) {
+    foreach (@pingLines) {
         if (m/(\d+) bytes from .* time=([[:digit:].]+) ms/) {
             $bytes += $1;
             $msecs += $2;
         }
     }
-    close(PINGFH);
 
     my $rate = $bytes;
     if ($msecs) {
@@ -492,7 +495,44 @@ sub retrieve_rates($$) {
 #
 
 
-sub no_remote_daemon() {
+sub daemonize(;$) {
+    my $keepParentRunning = (scalar(@_) ? shift() : 0);
+
+    if ($keepParentRunning) {
+        defined(my $pid = fork) or die "Can't fork: $!";
+        return 0 if ($pid);
+        # else:  We're the child, which we'll use to create the daemon.
+    }
+
+    chdir "/tmp"      or die "Can't chdir to /tmp: $!";
+    open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
+    open STDOUT, ">>$_DaemonLog"
+        or die "Can't write to $_DaemonLog: $!";
+
+    defined(my $pid = fork) or die "Can't fork: $!";
+    exit 0 if ($pid);
+    #else:  We're the (grand)child;
+
+    setsid                  or die "Can't start a new session: $!";
+    open STDERR, '>&STDOUT' or die "Can't dup stdout: $!";
+    return 1;
+}
+
+
+sub renice_self(;$) {
+    my $niceness=shift();
+
+    unless (defined($niceness) && (0 <= $niceness) && ($niceness < 20)) {
+        $niceness = 19;
+    }
+
+    unless (nice($niceness)) {
+        warn("Failed to renice myself to '$niceness'.  Aborting.\n");
+    }
+}
+
+
+sub no_running_daemon() {
     # Check that the PID file exists.
     return 1 unless (-e $_DaemonPIDFile);
 
@@ -597,6 +637,8 @@ sub daemon_main(\@$\@) {
         # Rebuild the config from time to time.
         #
         if (($network_state != 0) && (time() > $nextConfigUpdate)) {
+#FIXME:  This isn't running.
+            print STDERR ("#DBG#  Trying to update config...\n");
             @measurement_targets = update_config($remote_host,
                                                  @hop_numbers,
                                                  @measurement_targets);
@@ -610,6 +652,23 @@ sub daemon_main(\@$\@) {
             sleep($_ProbeInterval - $probe_duration);
         }
     }
+}
+
+
+sub start_daemon($\@$\@) {
+    my $keepParentRunning = shift();
+    my $ref_measurement_targets = shift();
+    my $remote_host = shift();
+    my $ref_hop_numbers = shift();
+
+    # daemonize() either exits the parent process or returns 0.
+    daemonize($keepParentRunning) or return 1;
+
+    # We're the child process if we reach this point.
+    renice_self();
+    daemon_main(@$ref_measurement_targets, $remote_host, @$ref_hop_numbers);
+    # Should never reach here.
+    exit 127;
 }
 
 
@@ -674,32 +733,28 @@ sub usage() {
 my $check_bandwidth=0;
 my $update_hop_ips=0;
 my $daemonize=0;
-my $exit_after_daemonize=0;
-my $in_daemon_mode=0;
+my $pingAfterDaemonizing=0;
 if ($ARGV[0] eq "-b") {
     shift(@ARGV);
     $check_bandwidth=1;
 } elsif ($ARGV[0] eq "-c") {
     shift(@ARGV);
     $update_hop_ips=1;
-} elsif ($ARGV[0] eq "-r") {
-    shift(@ARGV);
-    $daemonize=1;
 } elsif ($ARGV[0] eq "-d") {
     shift(@ARGV);
     $daemonize = 1;
-    $exit_after_daemonize=1;
     if (scalar(@ARGV) > 1) {
         $update_hop_ips=1;
     }
-} elsif ($ARGV[0] eq "-idm") {
+} elsif ($ARGV[0] eq "-r") {
     shift(@ARGV);
-    $in_daemon_mode = 1;
+    $daemonize=1;
+    $pingAfterDaemonizing=1;
 } elsif ($ARGV[0] =~ m/^-/) {
     usage();
 }
 
-if (($ARGV[0] eq "") && !$daemonize && !$in_daemon_mode) {
+if (($ARGV[0] eq "") && !$daemonize) {
     print STDERR ("Missing args.\n");
     usage();
 }
@@ -737,34 +792,38 @@ if ($update_hop_ips) {
 }
 
 #
-# -idm : Started as a daemon.  Runs forever.
+# If we reach this point, then we were run with either the '-d' or no flags at
+# all.  The former starts a running daemon.  The latter requires one.
+# So, check for one.
 #
-if ($in_daemon_mode) {
-    daemon_main(@measurement_targets, $remote_host, @hop_numbers,);
-    exit 0;
-}
+my $noDaemonRunning = no_running_daemon();
 
-#
-# -d  or no flags : Make sure a version of this script is currently running
-#                   daemonized.
-#
-if (no_remote_daemon()) {
-    if ($daemonize) {
-        system("$0 -idm >>$_DaemonLog 2>&1 &");
-        exit 0 if ($exit_after_daemonize);
-        # else:
+if ($daemonize) {
+    if ($noDaemonRunning) {
+        start_daemon($pingAfterDaemonizing,
+                     @measurement_targets, $remote_host, @hop_numbers);
 
-        # Give the daemon some time to start.
-        sleep($_TieAttempts*$_TieWait);
-    } else {
-        print ("No daemonized instance running.  Rerun \n",
-               "$0 with the '-d' option.\n\n",
-               "Cowardly refusing to continue.\n");
-        exit 2;
+        # If we return from start_daemon(), we're the parent.  Let's sleep for
+        # a bit for the daemon to start up before going on (and getting the
+        # ping data).
+        sleep($_TieAttempts*$_TieWait + $_PostDaemonizeWait);
+
+    } elsif (!$pingAfterDaemonizing) {
+        # Don't do anything more.
+        print ("Daemonized instance already running.  Examine \n\"",
+               $_DaemonPIDFile, "\" for its PID.\n\n",
+               "To restart $0, do the following:\n",
+               "\tkill \$(\< ", $_DaemonPIDFile, ");\n",
+               "\t$0 -d\n");
+        exit 0;
     }
-} elsif ($daemonize && $exit_after_daemonize) {
-    # Nothing left to do.
-    exit 0;
+
+    # else:  We want to ping whether or not we daemonize.
+} elsif ($noDaemonRunning && !$daemonize) {
+    print ("No daemonized instance running.  Rerun \n",
+           "$0 with the '-d' option.\n\n",
+           "Cowardly refusing to continue.\n");
+    exit 2;
 }
 
 
