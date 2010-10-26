@@ -36,18 +36,11 @@
 //  - The Right/Forward Scroll key;
 //
 // These keys are unlike the other special keys (Mute, AccessIBM,
-// Dock, Sleep ...) which do not generate 
+// Dock, Sleep ...) and do not generate X symbols by default.
 
 
 partial hidden alphanumeric_keys modifier_keys
 xkb_symbols "specialkeys_base" {
-    // Fix the dain-brammaged default settings that screw up the NumLock on
-    // ThinkPads.
-    //
-    // Do it here, so that, in case no other choice is made for the
-    // ScrollLock/NumLock key, the Keypad will work correctly.
-    //
-
     // Assign <SBAK> key.
     // [keycode: 166]
     //
@@ -56,6 +49,7 @@ xkb_symbols "specialkeys_base" {
     //
     // Bind the Shifted key to <MENU>.
     //
+//    key <SBAK> { // NOTE:  keycodes aliases not working yet!
     key <I166> {
         repeat= no,
         symbols[Group1] = [ Pointer_Button4, Menu ]
@@ -69,7 +63,8 @@ xkb_symbols "specialkeys_base" {
     //
     // Bind the Shifted key to <RWIN>.
     //
-    key <I167>  { 
+//    key <SFWD>  { // NOTE:  keycodes aliases not working yet!
+    key <I167>  {
         repeat= no,
         symbols[Group1] = [ Pointer_Button5, Super_R ]
     };
@@ -88,7 +83,8 @@ xkb_symbols "fn_default" {
     // (like gettting used to hitting "Fn" regularly ... a dangerous
     // prospect if you accidentally hit F1-F12).
     //
-    key <I151>  { 
+//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
         repeat= no,
         symbols[Group1] = [ NoSymbol, Super_L ]
     };
@@ -103,7 +99,8 @@ xkb_symbols "fn_modesw" {
     //
     // Here, we simply redirect the blue "Fn" key, when unshifted, to AltGr.
     //
-    key <I151>  { 
+//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
         repeat= no,
         symbols[Group1] = [ Mode_switch, Super_L ]
     };
@@ -119,7 +116,8 @@ xkb_symbols "fn_super" {
     // This is the same as fn_modesw, but swapped; the unshifted "Fn"
     // key is Super_L, while the shifted version is Mode_switch.
     //
-    key <I151>  { 
+//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
         repeat= no,
         symbols[Group1] = [ Super_L, Mode_switch  ]
     };
@@ -141,7 +139,8 @@ xkb_symbols "fn_lctrl" {
     // machine-state when you merely intended to switch VT's or
     // perform some application-based operation.
     //
-    key <I151>  { 
+//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
         repeat= no,
         symbols[Group1] = [ Control_L, Super_L ]
     };
