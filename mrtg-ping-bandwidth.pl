@@ -78,6 +78,9 @@ use POSIX qw(nice setsid);
 
 
 my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 ";
+# WARMING:  A packet size above 1k will not work with all hosts.
+#my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 32768 ";
+my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 1024 ";
 my @_Measurements;
 my $_refDataTieObj;
 
@@ -96,9 +99,10 @@ my $_refDataTieObj;
 sub bandwidth_ping($) {
     my $host = shift();
 
-    my $pingcmd="/bin/ping -A -w 2 -n ";
+    my $pingcmd=$_PingCmd;
     $pingcmd .= $host;
     $pingcmd .= " 2>&1 |";
+    #print STDERR ("#DBG#  Running:  $pingcmd\n");
     unless (open(PINGFH, $pingcmd)) {
         print STDERR ("FATAL: Can't run command: ", $pingcmd,
                       "\nReason: \"", $!, "\"\n");
@@ -508,13 +512,13 @@ sub daemonize(;$) {
     open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
     open STDOUT, ">>$_DaemonLog"
         or die "Can't write to $_DaemonLog: $!";
+    open STDERR, '>&STDOUT' or die "Can't dup stdout: $!";
 
     defined(my $pid = fork) or die "Can't fork: $!";
     exit 0 if ($pid);
     #else:  We're the (grand)child;
 
     setsid                  or die "Can't start a new session: $!";
-    open STDERR, '>&STDOUT' or die "Can't dup stdout: $!";
     return 1;
 }
 
