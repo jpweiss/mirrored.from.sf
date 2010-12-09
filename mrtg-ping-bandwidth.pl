@@ -110,13 +110,16 @@ sub bandwidth_ping($) {
     }
     my @pingLines = <PINGFH>;
     close(PINGFH);
+    #print STDERR ("#DBG#:  @pingLines\n");
 
     my $bytes = 0;
     my $msecs = 0;
     foreach (@pingLines) {
         if (m/(\d+) bytes from .* time=([[:digit:].]+) ms/) {
+            #print STDERR ("#DBG#:  ", $1, " bytes, ", $2, " ms\n");
             $bytes += $1;
             $msecs += $2;
+            #print STDERR ("#DBG# Sums: ", $bytes, " b, ", $msecs, " ms\n");
         }
     }
 
