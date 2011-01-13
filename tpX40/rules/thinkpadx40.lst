@@ -619,6 +619,7 @@
   hausa           ng: Hausa
   left_hand       braille: Left hand
   right_hand      braille: Right hand
+!'
 
 ! option
   grp                  Key(s) to change layout
@@ -759,15 +760,15 @@
 
 
 ! option
-  numlk				Fixing the Dain-Brammaged ThinkPad X40 <ScrLk>/<NumLk> key behavior.
+  numlk			Fixing the Dain-Brammaged ThinkPad X40 <ScrLk>/<NumLk> key behavior.
   numlk:invert		Invert ScrollLock/NumLock (Shift+<ScrLk>==ScrollLock; <ScrLk>==NumLock)
   numlk:un_altgr	AltGr+KeyPad produces the "normal" underlying letter key.
-  numlk:un_ctrl 	Control+KeyPad produces the "normal" underlying letter normal key.
-  mousekeys			What key combination activates Mousekeys?
+  numlk:un_ctrl 	Control+KeyPad produces the "normal" underlying letter key.
+  mousekeys		What key combination activates Mousekeys?
   mousekeys:default	Alt+Shift+<ScrLk> key activates Mousekeys
-  mousekeys:alt		Alt+<ScrLk> key activates Mousekeys
-  mousekeys:ctrl_shift	Control+Shift+<ScrLk> key activates Mousekeys
   mousekeys:ctrl	Control+<ScrLk> key activates Mousekeys
+  mousekeys:alt		Alt+<ScrLk> key activates Mousekeys
+  mousekeys:ctrl_alt	Control+Alt+<ScrLk> key activates Mousekeys
   altwin:fn_super	The Blue "Fn" key maps to Super
   altwin:fn_switch	The Blue "Fn" key maps to Mode_switch
   wheelButtons:norep	The two "scroll buttons" do not repeat.

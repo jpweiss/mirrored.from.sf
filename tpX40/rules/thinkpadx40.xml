@@ -5043,7 +5043,7 @@
       <option>
         <configItem>
           <name>numlk:un_ctrl</name>
-          <description>Control+KeyPad produces the "normal" underlying letter normal key.</description>
+          <description>Control+KeyPad produces the "normal" underlying letter key.</description>
        </configItem>
       </option>
     </group>
@@ -5060,20 +5060,20 @@
       </option>
       <option>
         <configItem>
+          <name>mousekeys:ctrl</name>
+          <description>Control+[ScrLk] key activates Mousekeys</description>
+       </configItem>
+      </option>
+      <option>
+        <configItem>
           <name>mousekeys:alt</name>
           <description>Alt+[ScrLk] key activates Mousekeys</description>
        </configItem>
       </option>
       <option>
         <configItem>
-          <name>mousekeys:ctrl_shift</name>
-          <description>Control+Shift+[ScrLk] key activates Mousekeys</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>mousekeys:ctrl</name>
-          <description>Control+[ScrLk] key activates Mousekeys</description>
+          <name>mousekeys:ctrl_alt</name>
+          <description>Control+Alt+[ScrLk] key activates Mousekeys</description>
        </configItem>
       </option>
     </group>

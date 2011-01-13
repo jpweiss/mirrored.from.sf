@@ -193,39 +193,7 @@ xkb_symbols "mousekeys" {
     // goes back to generating letters.
     //
     key <NMLK> { 
-        type="PC_SYSRQ", 
-        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
-    };
-};
-
-partial alphanumeric_keys modifier_keys
-xkb_symbols "mousekeys_ctrl_shift" {
-    // Make "Control+Shift+<NumLock>" enable the mousekeys.
-    //
-    // Note that "Control+<NumLock>" <==> "Control+Shift+<NumLock>" on a
-    // ThinkPad keyboard.
-    //
-    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
-    // only work when both Mousekeys and Num_Lock mode are turned on.
-    //
-    key <NMLK> { 
-        type="PC_BREAK", 
-        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
-    };
-};
-
-partial alphanumeric_keys modifier_keys
-xkb_symbols "mousekeys_alt" {
-    // Make "Alt+<ScrollLock>" enable the mousekeys.
-    //
-    // Note that "Alt+Shift+<ScrollLock>" doesn't exist on a ThinkPad
-    // keyboard.
-    //
-    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
-    // only work when both Mousekeys and Num_Lock mode are turned on.
-    //
-    key <SCLK> { 
-        type="PC_SYSRQ", 
+        type="SHIFT+ALT", 
         symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
     };
 };
@@ -241,7 +209,36 @@ xkb_symbols "mousekeys_ctrl" {
     // only work when both Mousekeys and Num_Lock mode are turned on.
     //
     key <SCLK> { 
-        type="PC_BREAK", 
+        type="PC_CONTROL_LEVEL2", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_alt" {
+    // Make "Alt+<ScrollLock>" enable the mousekeys.
+    //
+    // Note that "Alt+Shift+<ScrollLock>" doesn't exist on a ThinkPad
+    // keyboard.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="PC_ALT_LEVEL2", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_ctrl_alt" {
+    // Make "Control+Alt+<NumLock>" enable the mousekeys.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <NMLK> { 
+        type="CTRL+ALT", 
         symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
     };
 };
@@ -273,127 +270,127 @@ xkb_symbols "un_numlock" {
     // this case.
     // 
 
-    virtual_modifiers NumLock;
+    virtual_modifiers NumLock,AltGr;
 
     // IDEA: Create a VirtualMod called "numpad_overlay", which we
     //       then define however we want.
 
     key <KP7> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Home, KP_7 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Home, KP_7 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AE07>, clearMods=Control+AltGr),
                            RedirectKey(key=<AE07>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP8> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Up, KP_8 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Up, KP_8 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AE08>, clearMods=Control+AltGr),
                            RedirectKey(key=<AE08>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP9> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Prior, KP_9 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Prior, KP_9 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AE09>, clearMods=Control+AltGr),
                            RedirectKey(key=<AE09>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KPDV> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[group1]= [ KP_Divide, KP_Divide, XF86_Ungrab ],
-        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Divide, KP_Divide, XF86_Ungrab ],
+        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
                            RedirectKey(key=<AE10>, clearMods=Control+AltGr),
                            RedirectKey(key=<AE10>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP4> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Left, KP_4 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Left, KP_4 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AD07>, clearMods=Control+AltGr),
                            RedirectKey(key=<AD07>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP5> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Begin, KP_5 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Begin, KP_5 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AD08>, clearMods=Control+AltGr),
                            RedirectKey(key=<AD08>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP6> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Right, KP_6 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Right, KP_6 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AD09>, clearMods=Control+AltGr),
                            RedirectKey(key=<AD09>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KPMU> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[group1]= [ KP_Multiply, KP_Multiply, XF86_ClearGrab ],
-        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Multiply, KP_Multiply, XF86_ClearGrab ],
+        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
                            RedirectKey(key=<AD10>, clearMods=Control+AltGr),
                            RedirectKey(key=<AD10>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP1> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_End, KP_1 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_End, KP_1 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AC07>, clearMods=Control+AltGr),
                            RedirectKey(key=<AC07>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP2> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Down, KP_2 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Down, KP_2 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AC08>, clearMods=Control+AltGr),
                            RedirectKey(key=<AC08>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP3> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Next, KP_3 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Next, KP_3 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AC09>, clearMods=Control+AltGr),
                            RedirectKey(key=<AC09>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KPSU> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[group1]= [ KP_Subtract, KP_Subtract, XF86_Prev_VMode ],
-        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Subtract, KP_Subtract, XF86_Prev_VMode ],
+        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
                            RedirectKey(key=<AC10>, clearMods=Control+AltGr),
                            RedirectKey(key=<AC10>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KP0> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Insert, KP_0 ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Insert, KP_0 ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AB07>, clearMods=Control+AltGr),
                            RedirectKey(key=<AB07>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KPDL> {
         type="THINKPAD_KEYPAD",
-        symbols[group1]= [ KP_Delete, KP_Decimal ],
-        actions[group1]= [ NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Delete, KP_Decimal ],
+        actions[Group1]= [ NoAction(), NoAction(), 
                            RedirectKey(key=<AB09>, clearMods=Control+AltGr),
                            RedirectKey(key=<AB09>, 
                                        clearMods=Control+AltGr, mods=Shift) ]
     };
     key <KPAD> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[group1]= [ KP_Add, KP_Add, XF86_Next_VMode ],
-        actions[group1]= [ NoAction(), NoAction(), NoAction(), 
+        symbols[Group1]= [ KP_Add, KP_Add, XF86_Next_VMode ],
+        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
                            RedirectKey(key=<AB10>, clearMods=Control+AltGr),
                            RedirectKey(key=<AB10>, 
                                        clearMods=Control+AltGr, mods=Shift) ]

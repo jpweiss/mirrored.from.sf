@@ -87,7 +87,7 @@ partial default xkb_types "altgr_UnNumlock" {
 };
 
 partial xkb_types "ctrl_UnNumlock" {
-    virtual_modifiers NumLock,Alt,AltGr;
+    virtual_modifiers NumLock,Alt;
 
     type "THINKPAD_KEYPAD" {
         modifiers = Shift+NumLock+Control;
