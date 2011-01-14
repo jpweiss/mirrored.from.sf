@@ -41,6 +41,11 @@ default partial
 xkb_compatibility "default" {
     virtual_modifiers Alt,AltGr,NumLock,Super,Hyper;
 
+    // Enable repeat for the pointer-button keys.
+    //
+    interpret.repeat= True;
+
+
     // FIXME:  These don't work as-is because we need to enable mousekeys
     //    in order for the PointerButton() action to take place.
     //
@@ -48,26 +53,27 @@ xkb_compatibility "default" {
     //    mousekeys or not, if you enable
     //    Peripherals->Mouse->Mouse_Navigation. 
     interpret Pointer_Button4 {
-        repeat= True;
         action= PointerButton(button=4);
     };
     interpret Pointer_Button5 {
-        repeat= True;
         action= PointerButton(button=5);
     };
 
+
+    // Disnable repeat for the Super and NumLock keys
+    //
     interpret.repeat= False;
+
 
     // Attempt to stop the Super_* modifier keys from repeating.
     // FIXME:  Well, in theory, it should.  At the moment, it doesn't.  :P
     interpret Super_L {
-        repeat= False;
         action= LatchMods(modifiers=Super);
     };
     interpret Super_R {
-        repeat= False;
         action= SetMods(modifiers=Super);
     };
+
 
     // Fix NumLock so it can be disabled at X startup.
     //
@@ -83,6 +89,7 @@ xkb_compatibility "default" {
         whichModState= Locked;
         modifiers= NumLock;
     };
+
 
     // TEST SECTION:
     // Tmp blocks for testing purposes.  Remove at later date.
