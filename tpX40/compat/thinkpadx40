@@ -1,5 +1,5 @@
 // [jpw]  The keyboard mappings for the ThinkPad X40.
-//	  This file should be named "thinkpadx40"
+//    This file should be named "thinkpadx40"
 
 
 // The ThinkPad has no separate keypad keys.  By default, when NumLock
@@ -60,17 +60,17 @@ xkb_compatibility "default" {
     };
 
 
-    // Disnable repeat for the Super and NumLock keys
-    //
-    interpret.repeat= False;
-
-
     // Attempt to stop the Super_* modifier keys from repeating.
     // FIXME:  Well, in theory, it should.  At the moment, it doesn't.  :P
+    interpret.repeat= False;
+
+    // Define the Super_* modifier keys.
     interpret Super_L {
+        virtualModifier= Super;
         action= LatchMods(modifiers=Super);
     };
     interpret Super_R {
+        virtualModifier= Super;
         action= SetMods(modifiers=Super);
     };
 

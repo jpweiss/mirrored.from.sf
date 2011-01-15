@@ -1001,18 +1001,19 @@
 
 
 ! option		=  types
-  numlk:un_altgr   	=  +thinkpadx40(altgr_UnNumlock)
+  numlk:un_altgr	=  +thinkpadx40(altgr_UnNumlock)
   numlk:un_ctrl 	=  +thinkpadx40(ctrl_UnNumlock)
 
+! option		=  compat
+  wheelButton:norep =  +thinkpadx40(nonRepeatingWheelButtons)
 
 ! option		=  symbols
+  numlk:invert		=  +thinkpadx40(inv_numlock)
   numlk:un_altgr	=  +thinkpadx40(un_numlock)
   numlk:un_ctrl 	=  +thinkpadx40(un_numlock)
-  numlk:invert		=  +thinkpadx40(inv_numlock)
   mousekeys:default	=  +thinkpadx40(mousekeys)
   mousekeys:ctrl	=  +thinkpadx40(mousekeys_ctrl)
   mousekeys:alt		=  +thinkpadx40(mousekeys_alt)
-  mousekeys:ctrl_alt	=  +thinkpadx40(mousekeys_ctrl_alt)
+  mousekeys:ctrl_alt = +thinkpadx40(mousekeys_ctrl_alt)
   altwin:fn_switch	=  +thinkpadx40(fn_modesw)
   altwin:fn_super	=  +thinkpadx40(fn_super)
-  wheelButton:norep =  +thinkpadx40(nonRepeatingWheelButtons)
