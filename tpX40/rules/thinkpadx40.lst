@@ -771,7 +771,6 @@
   mousekeys:ctrl_alt	Control+Alt+<ScrLk> key activates Mousekeys
   altwin:fn_super	The Blue "Fn" key maps to Super
   altwin:fn_switch	The Blue "Fn" key maps to Mode_switch
-  wheelButtons:norep	The two "scroll buttons" do not repeat.
 
 // Note:  Anything in the list above without a ':' in it is the name of an
 // option-group, not an actual option.

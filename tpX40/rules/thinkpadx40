@@ -980,17 +980,17 @@
 // Commented out for now, since I'm not sure how to incorporate this
 // into the rules, or if I even should.
 
-//! model		=  keycodes
-//  thinkpadx40:X_series	=  +thinkpadx40(X_series)
+//! model                =  keycodes
+//  thinkpadx40:X_series =  +thinkpadx40(X_series)
 //
-//! model		=  keycodes
-//  thinkpadx40	=  +thinkpadx40(X_series)
+//! model       =  keycodes
+//  thinkpadx40 =  +thinkpadx40(X_series)
 
-! model			=  compat
-  thinkpadx40		=  +thinkpadx40(default)
+! model         =  compat
+  thinkpadx40   =  +thinkpadx40(default)
 
-! model		=  symbols
-  thinkpadx40	=  +thinkpadx40(fn_default)
+! model         =  symbols
+  thinkpadx40   =  +thinkpadx40(fn_default)
 
 //
 // The options:  Where most of the action takes place.
@@ -1000,20 +1000,23 @@
 // 
 
 
-! option		=  types
-  numlk:un_altgr	=  +thinkpadx40(altgr_UnNumlock)
-  numlk:un_ctrl 	=  +thinkpadx40(ctrl_UnNumlock)
+! option        =  types
+  numlk:un_altgr    =  +thinkpadx40(altgr_UnNumlock)
+  numlk:un_ctrl     =  +thinkpadx40(ctrl_UnNumlock)
 
-! option		=  compat
-  wheelButton:norep =  +thinkpadx40(nonRepeatingWheelButtons)
+! option        =  compat
+  mousekeys:default  =  +thinkpadx40(mousekeys)
+  mousekeys:ctrl     =  +thinkpadx40(mousekeys)
+  mousekeys:alt      =  +thinkpadx40(mousekeys)
+  mousekeys:ctrl_alt =  +thinkpadx40(mousekeys)
 
-! option		=  symbols
-  numlk:invert		=  +thinkpadx40(inv_numlock)
-  numlk:un_altgr	=  +thinkpadx40(un_numlock)
-  numlk:un_ctrl 	=  +thinkpadx40(un_numlock)
-  mousekeys:default	=  +thinkpadx40(mousekeys)
-  mousekeys:ctrl	=  +thinkpadx40(mousekeys_ctrl)
-  mousekeys:alt		=  +thinkpadx40(mousekeys_alt)
+! option        =  symbols
+  numlk:invert      =  +thinkpadx40(inv_numlock)
+  numlk:un_altgr    =  +thinkpadx40(un_numlock)
+  numlk:un_ctrl     =  +thinkpadx40(un_numlock)
+  mousekeys:default =  +thinkpadx40(mousekeys)
+  mousekeys:ctrl    =  +thinkpadx40(mousekeys_ctrl)
+  mousekeys:alt     =  +thinkpadx40(mousekeys_alt)
   mousekeys:ctrl_alt = +thinkpadx40(mousekeys_ctrl_alt)
-  altwin:fn_switch	=  +thinkpadx40(fn_modesw)
-  altwin:fn_super	=  +thinkpadx40(fn_super)
+  altwin:fn_switch  =  +thinkpadx40(fn_modesw)
+  altwin:fn_super   =  +thinkpadx40(fn_super)

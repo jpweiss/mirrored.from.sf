@@ -39,39 +39,23 @@
 
 default partial
 xkb_compatibility "default" {
-    virtual_modifiers Alt,AltGr,NumLock,Super,Hyper;
+    virtual_modifiers NumLock,Super;
 
-    // Enable repeat for the pointer-button keys.
+    // Disable repeat for the Super_* keys.
+    // FIXME:  Well, in theory, it should.  At the moment, it doesn't
+    //         (for some unknown reason).  :P
     //
-    interpret.repeat= True;
-
-
-    // FIXME:  These don't work as-is because we need to enable mousekeys
-    //    in order for the PointerButton() action to take place.
-    //
-    //    Note, however, that KDE recognizes the wheel-scroll buttons,
-    //    mousekeys or not, if you enable
-    //    Peripherals->Mouse->Mouse_Navigation. 
-    interpret Pointer_Button4 {
-        action= PointerButton(button=4);
-    };
-    interpret Pointer_Button5 {
-        action= PointerButton(button=5);
-    };
-
-
-    // Attempt to stop the Super_* modifier keys from repeating.
-    // FIXME:  Well, in theory, it should.  At the moment, it doesn't.  :P
-    interpret.repeat= False;
+    interpret.repeat = False;
 
     // Define the Super_* modifier keys.
     interpret Super_L {
-        virtualModifier= Super;
-        action= LatchMods(modifiers=Super);
+        virtualModifier = Super;
+        action = LatchMods(modifiers=Super);
     };
+
     interpret Super_R {
-        virtualModifier= Super;
-        action= SetMods(modifiers=Super);
+        virtualModifier = Super;
+        action = SetMods(modifiers=Super);
     };
 
 
@@ -86,27 +70,169 @@ xkb_compatibility "default" {
     indicator "Num Lock" {
         allowExplicit;
         drivesKeyboard;
-        whichModState= Locked;
-        modifiers= NumLock;
+        whichModState = Locked;
+        modifiers = NumLock;
     };
-
-
-    // TEST SECTION:
-    // Tmp blocks for testing purposes.  Remove at later date.
 };
 
 
+// Alter the Mousekeys so that the 'KP_<number>' symbols _do_ _not_
+// move the mouse or produce button events.  Similarly, 
+//
+
 partial
-xkb_compatibility "nonRepeatingWheelButtons" {
-    virtual_modifiers Alt,AltGr,NumLock,Super,Hyper;
+xkb_compatibility "mousekeys" {
+    interpret.repeat= True;
+
+    // Forcibly disable actions on the numbers and '.' keypad-mode keys.
+
+    interpret KP_0 { action = NoAction(); };
+    interpret KP_1 { action = NoAction(); };
+    interpret KP_2 { action = NoAction(); };
+    interpret KP_3 { action = NoAction(); };
+    interpret KP_4 { action = NoAction(); };
+    interpret KP_5 { action = NoAction(); };
+    interpret KP_6 { action = NoAction(); };
+    interpret KP_7 { action = NoAction(); };
+    interpret KP_8 { action = NoAction(); };
+    interpret KP_9 { action = NoAction(); };
+    interpret KP_Decimal { action = NoAction(); };
+
+
+    // Define the keypad-mode motion keys as usual
+
+
+    interpret KP_End { 
+        action = MovePtr(x=-1,y= +1); 
+    };
+
+    interpret KP_Down { 
+        action = MovePtr(x=+0,y= +1); 
+    };
+
+    interpret KP_Next { 
+        action = MovePtr(x=+1,y=+1); 
+    };
+
+    interpret KP_Left { 
+        action = MovePtr(x=-1,y=+0); 
+    };
+
+    interpret KP_Right { 
+        action = MovePtr(x=+1,y=+0); 
+    };
+
+    interpret KP_Home { 
+        action = MovePtr(x=-1,y=-1); 
+    };
+
+    interpret KP_Up { 
+        action = MovePtr(x=+0,y=-1); 
+    };
+
+    interpret KP_Prior { 
+        action = MovePtr(x=+1,y=-1); 
+    };
+
+    interpret KP_Begin { 
+        action = PointerButton(button=default); 
+    };
+
+    interpret KP_Divide { 
+        action = SetPtrDflt(affect=defaultButton,button=1); 
+    };
+
+    interpret KP_Multiply { 
+        action = SetPtrDflt(affect=defaultButton,button=2); 
+    };
+
+    interpret KP_Subtract { 
+        action = SetPtrDflt(affect=defaultButton,button=3); 
+    };
+
+    interpret KP_Add { 
+        action = PointerButton(button=default,count=2);
+    };
+
+    interpret KP_Insert { 
+        action = LockPointerButton(button=default,affect=lock); 
+    };
+
+    interpret KP_Delete { 
+        action = LockPointerButton(button=default,affect=unlock); 
+    };
 
     interpret.repeat= False;
 
-    // See notes in the "default" config regarding these two.
-    interpret Pointer_Button4 {
-        action= PointerButton(button=4);
+
+    // New Keysym Actions.
+    //
+    interpret Pointer_Button_Dflt {
+        action= PointerButton(button=default);
     };
-    interpret Pointer_Button5 {
-        action= PointerButton(button=5);
+    interpret Pointer_Button1 {
+        action= PointerButton(button=1);
+    };
+    interpret Pointer_Button2 {
+        action= PointerButton(button=2);
+    };
+    interpret Pointer_Button3 {
+        action= PointerButton(button=3);
+    };
+    interpret Pointer_DblClick_Dflt {
+        action= PointerButton(button=default,count=2);
+    };
+    interpret Pointer_DblClick1 {
+        action= PointerButton(button=1,count=2);
+    };
+    interpret Pointer_DblClick2 {
+        action= PointerButton(button=2,count=2);
+    };
+    interpret Pointer_DblClick3 {
+        action= PointerButton(button=3,count=2);
+    };
+    interpret Pointer_Drag_Dflt {
+        action= LockPointerButton(button=default);
+    };
+    interpret Pointer_Drag1 {
+        action= LockPointerButton(button=1);
+    };
+    interpret Pointer_Drag2 {
+        action= LockPointerButton(button=2);
+    };
+    interpret Pointer_Drag3 {
+        action= LockPointerButton(button=3);
+    };
+
+    interpret Pointer_EnableKeys {
+        action= LockControls(controls=MouseKeys);
+    };
+    interpret Pointer_Accelerate {
+        action= LockControls(controls=MouseKeysAccel);
+    };
+    interpret Pointer_DfltBtnNext {
+        action= SetPtrDflt(affect=defaultButton,button= +1);
+    };
+    interpret Pointer_DfltBtnPrev {
+        action= SetPtrDflt(affect=defaultButton,button= -1);
+    };
+
+    //
+    // Bind the ThinkPadX40 Page-Back & Page-Forward keys to the mouse
+    // wheel buttons.
+    //
+
+    interpret XF86ScrollUp {
+        action = PointerButton(button=4);
+    };
+    interpret XF86ScrollDown {
+        action = PointerButton(button=5);
+    };
+
+
+    // Allow an indicator for MouseKeys.
+    indicator "Mouse Keys" {
+        indicatorDrivesKeyboard;
+        controls= MouseKeys;
     };
 };

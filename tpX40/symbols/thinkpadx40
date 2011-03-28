@@ -41,6 +41,11 @@
 
 partial hidden alphanumeric_keys modifier_keys
 xkb_symbols "specialkeys_base" {
+    // FIXME:  Should I provide an alternative to this?  Something
+    //         that overrides it?  'cuz this block is included in all
+    //         of the <FN>-key definitions?
+    //         Check the svn-log for this file...
+
     // Assign <SBAK> key.
     // [keycode: 166]
     //
@@ -49,10 +54,10 @@ xkb_symbols "specialkeys_base" {
     //
     // Bind the Shifted key to <MENU>.
     //
-//    key <SBAK> { // NOTE:  keycodes aliases not working yet!
+    ////key <SBAK> { // NOTE:  keycodes aliases not working yet!
     key <I166> {
         repeat= no,
-        symbols[Group1] = [ Pointer_Button4, Menu ]
+        symbols[Group1] = [ XF86ScrollUp, Menu ]
     };
 
     // Assign <SFWD> key.
@@ -63,12 +68,13 @@ xkb_symbols "specialkeys_base" {
     //
     // Bind the Shifted key to <RWIN>.
     //
-//    key <SFWD>  { // NOTE:  keycodes aliases not working yet!
+    ////key <SFWD>  { // NOTE:  keycodes aliases not working yet!
     key <I167>  {
         repeat= no,
-        symbols[Group1] = [ Pointer_Button5, Super_R ]
+        symbols[Group1] = [ XF86ScrollDown, Super_R ]
     };
 };
+
 
 partial alphanumeric_keys modifier_keys
 default
@@ -83,7 +89,7 @@ xkb_symbols "fn_default" {
     // (like gettting used to hitting "Fn" regularly ... a dangerous
     // prospect if you accidentally hit F1-F12).
     //
-//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
         symbols[Group1] = [ NoSymbol, Super_L ]
@@ -99,7 +105,7 @@ xkb_symbols "fn_modesw" {
     //
     // Here, we simply redirect the blue "Fn" key, when unshifted, to AltGr.
     //
-//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
         symbols[Group1] = [ Mode_switch, Super_L ]
@@ -116,7 +122,7 @@ xkb_symbols "fn_super" {
     // This is the same as fn_modesw, but swapped; the unshifted "Fn"
     // key is Super_L, while the shifted version is Mode_switch.
     //
-//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
         symbols[Group1] = [ Super_L, Mode_switch  ]
@@ -139,7 +145,7 @@ xkb_symbols "fn_lctrl" {
     // machine-state when you merely intended to switch VT's or
     // perform some application-based operation.
     //
-//    key <FN>  { // NOTE:  keycodes aliases not working yet!
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
         symbols[Group1] = [ Control_L, Super_L ]
@@ -279,145 +285,67 @@ xkb_symbols "un_numlock" {
 
     virtual_modifiers NumLock,AltGr;
 
-    // IDEA: Create a VirtualMod called "numpad_overlay", which we
-    //       then define however we want.
-
     key <KP7> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Home, KP_7, 7, ampersand ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AE07>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AE07>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Home, KP_7, 7, ampersand ]
     };
     key <KP8> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Up, KP_8, 8, asterisk ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AE08>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AE08>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Up, KP_8, 8, asterisk ]
     };
     key <KP9> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Prior, KP_9, 9, parenleft ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AE09>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AE09>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Prior, KP_9, 9, parenleft ]
     };
     key <KPDV> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[Group1]= [ KP_Divide, KP_Divide, XF86_Ungrab, 0, parenright ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AE10>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AE10>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Divide, slash, XF86_Ungrab, 0, parenright ]
     };
     key <KP4> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Left, KP_4, u, U ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AD07>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AD07>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Left, KP_4, u, U ]
     };
     key <KP5> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Begin, KP_5, i, I ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AD08>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AD08>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Begin, KP_5, i, I ]
     };
     key <KP6> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Right, KP_6, o, O ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AD09>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AD09>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Right, KP_6, o, O ]
     };
     key <KPMU> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[Group1]= [ KP_Multiply, KP_Multiply, XF86_ClearGrab, p, P ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AD10>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AD10>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Multiply, asterisk, XF86_ClearGrab, p, P ]
     };
     key <KP1> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_End, KP_1, j, J ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AC07>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AC07>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_End, KP_1, j, J ]
     };
     key <KP2> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Down, KP_2, k, K ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AC08>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AC08>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Down, KP_2, k, K ]
     };
     key <KP3> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Next, KP_3, l, L ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AC09>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AC09>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Next, KP_3, l, L ]
     };
     key <KPSU> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[Group1]= [ KP_Subtract, KP_Subtract, XF86_Prev_VMode,
-                           colon, semicolon ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AC10>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AC10>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Subtract, minus, XF86_Prev_VMode,
+                           colon, semicolon ]
     };
     key <KP0> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Insert, KP_0, m, M ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AB07>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AB07>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Insert, KP_0, m, M ]
     };
     key <KPDL> {
         type="THINKPAD_KEYPAD",
-        symbols[Group1]= [ KP_Delete, KP_Decimal, period, greater ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AB09>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AB09>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Delete, KP_Decimal, period, greater ]
     };
     key <KPAD> {
         type="THINKPAD_KEYPAD+ALT",
-        symbols[Group1]= [ KP_Add, KP_Add, XF86_Next_VMode,
-                           slash, question ]//,
-//*/        actions[Group1]= [ NoAction(), NoAction(), NoAction(), 
-//*/                           RedirectKey(key=<AB10>, clearMods=Control+AltGr),
-//*/                           RedirectKey(key=<AB10>, 
-//*/                                       clearMods=Control+AltGr,
-//*/                                       modifiers=Shift) ]
+        symbols[Group1]= [ KP_Add, plus, XF86_Next_VMode,
+                           slash, question ]
     };
 };
 

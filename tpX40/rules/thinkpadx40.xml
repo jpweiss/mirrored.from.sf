@@ -5077,18 +5077,6 @@
        </configItem>
       </option>
     </group>
-    <group allowMultipleSelection="false">
-      <configItem>
-        <name>wheelButtons</name>
-        <description></description>
-      </configItem>
-      <option>
-        <configItem>
-          <name>wheelButtons:norep</name>
-          <description>The two "scroll buttons" do not repeat.</description>
-       </configItem>
-      </option>
-    </group>
     <!-- [jpw] End Addition -->
   </optionList>
 </xkbConfigRegistry>
