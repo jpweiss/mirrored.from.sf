@@ -14,9 +14,6 @@
 # Unused Filesystems
 vfat fat nls_cp437 nls_iso8859_1
 
-# Defunct module.
-#kqemu
-
 # No joysticks here...
 joydev
 
@@ -46,7 +43,6 @@ eth1000
 bridge stp 
 
 # Prune the cryptographic modules.  I doubt that we need all of them.
-aes_i586 aes_generic 
 deflate zlib_deflate twofish twofish_common
 ctr camellia serpent blowfish cast5 des_generic xcbc rmd160
 sha1_generic sha256_generic sha512_generic

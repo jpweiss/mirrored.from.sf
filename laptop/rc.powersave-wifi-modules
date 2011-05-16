@@ -14,17 +14,9 @@
 # Turn off wifi to save power
 # [2011/05] Note:  Don't remove 'libipw' or 'lib80211', since doing that 
 #           seems to cause the v2.6.35 kernel headaches.
-#tmp#ipw2200 libipw lib80211
 ipw2200
 lib80211_crypt_ccmp lib80211_crypt_tkip lib80211_crypt_wep
-# Old Modules:
-#ieee80211_crypt_ccmp ieee80211_crypt_tkip
-#ieee80211_crypt_wep ieee80211 ieee80211_crypt
 
-# Prune the cryptographic modules.  I doubt that we need all of them.
-##aes_i586 aes_generic 
-##deflate zlib_deflate twofish twofish_common
-##ctr camellia serpent blowfish cast5 des_generic xcbc rmd160
-##sha1_generic sha256_generic sha512_generic
-##crypto_null af_key
+# Prune the cryptographic modules used by the wifi.
+aes_i586 aes_generic 
 
