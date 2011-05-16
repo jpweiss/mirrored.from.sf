@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2004 by John P. Weiss
+# Copyright (C) 2004-2011 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -31,7 +31,8 @@
 ############
 
 
-IBM_ACPI=/proc/acpi/ibm
+IBM_ACPI=/sys/devices/platform/thinkpad_acpi/
+IBM_PROC_ACPI=/proc/acpi/ibm
 SYS_MOUSE=/sys/class/input/mouse0/device
 
 
@@ -64,7 +65,7 @@ activate_ThinkPad_keys() {
     # default behavior.  In some cases, the default behavior *is* ACPI
     # control, while in others, it's BIOS control.  Each bit, when set to 1,
     # forces ACPI control for the corresponding F[x] function key.
-    # E.g. 0x0010 would put only Fn+F5 under ACPI control.
+    # E.g. 0x10000 would put only Fn+F5 under ACPI control.
     #
     # The X40 does not recognize the following keys in combination with the
     # "Fn" key:
@@ -74,12 +75,33 @@ activate_ThinkPad_keys() {
     #     F10
     #     F11
     #
-    # The mask used below is equal to 100110011100, which preserves default
+    # The mask '0x099C' is equal to 100110011100, which preserves default
     # behavior for Fn+F7 only.
-    set_kernel ${IBM_ACPI}/hotkey 0x099C
+    #
+    # The mask '0x0FBF' put all keys except for Fn+F7 under ACPI control.
+    #
+    # The mask '0x8C7FBF' is the default value, with Fn+F7 removed
+    # from ACPI control.  '0x8C7EBF' also removes Fn+F9 from ACPI control.
+    ####set_kernel ${IBM_ACPI}/hotkey_mask 0x8C7FBF
+
+    # [jpw; 20110513]  '0x8C7EFF' leaves everything but Fn+F9 under ACPI
+    #                  control.  Turning off the LCD appears to be causing 
+    #                  problems for Ubuntu 10.10; it won't turn back on.  
+    #                  Fn+F9 is triggering some "acpid" doc/undock event,
+    #                  which turns off the LCD.  So this is a workaround.
+    set_kernel ${IBM_ACPI}/hotkey_mask 0x8C7EFF
 
     # Now we turn on the ThinkPad hotkeys.
-    set_kernel ${IBM_ACPI}/hotkey enable
+    # [jpw; 20091226]  Causes Errors - Hotkeys always enabled.
+    ####set_kernel ${IBM_ACPI}/hotkey_enable 1
+
+    # [jpw; 20110515]  Current kernels have all of the Fn+F[x] keys under
+    #                  ACPI control.  Fn+F7 should be properly translated into
+    #                  an XWin keysym and sent to X-RandR.
+    #
+    #                  So, hardware-based monitor-switching shouldn't be
+    #                  necessary anymore, making this function redundant.
+    return 0
 }
 
 
@@ -190,7 +212,7 @@ enableThinkPadLCD() {
 
     # Make sure the LCD is on.  Ran into trouble with blank screen in X after
     # a resume. 
-    set -- `cat ${IBM_ACPI}/video`
+    set -- `cat ${IBM_PROC_ACPI}/video`
     while [ -n "$1" ]; do
         case "$1" in
             lcd:)
@@ -209,7 +231,7 @@ enableThinkPadLCD() {
     done
 
     if [ -n "$lcdIsOff" ]; then
-        set_kernel ${IBM_ACPI}/video lcd_enable
+        set_kernel ${IBM_PROC_ACPI}/video lcd_enable
     fi
 }
 
@@ -229,9 +251,8 @@ activate_TrackPoint() {
     esac
 
     if [ "$1" = "resume" ]; then
-        for flag in 1 0; do 
-            set_kernel ${SYS_MOUSE}/power/state $flag
-        done
+        flag=0
+        set_kernel ${SYS_MOUSE}/power/state $flag
     fi
 
     set_kernel ${SYS_MOUSE}/press_to_select 1
@@ -268,7 +289,7 @@ else
 
     # Permit monitor switching via Fn.+F7
     # Use "auto_disable" to turn it off.
-    set_kernel ${IBM_ACPI}/video auto_enable
+    ##set_kernel ${IBM_PROC_ACPI}/video auto_enable
 
     # Use platform-based disk hibernation
     set_kernel /sys/power/disk platform
@@ -284,12 +305,6 @@ else
 
     # Set up the new (v2.6.14+) TrackPoint support
     activate_TrackPoint
-
-    # FIXME:  Kludge - udev should take care of this correctly.  But, it
-    # doesn't. 
-    if [ -e /dev/nvram ]; then
-        chmod a+r,+t /dev/nvram
-    fi
 fi
 
 
