@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2002 by John P. Weiss
+# Copyright (C) 2002-2011 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -31,6 +31,9 @@
 ############
 
 
+LOGFILE=/tmp/acpi-debug-event.log
+
+
 ############
 #
 # Functions
@@ -45,7 +48,27 @@
 ############
 
 
-echo "$@" >>/tmp/acpi-debug-event.log
+case "$0" in
+    *bash)
+        file_was_sourced='y'
+        ;;
+    *)
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
+        elif [ -n "$SOURCED" ]; then
+            file_was_sourced='y'
+        fi
+        ;;
+esac
+
+
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+else
+    echo "$@" >>$LOGFILE
+fi
 
 
 #################

@@ -1,5 +1,5 @@
 # ThinkPad X40 ACPI Event: Trap all other Fn+F* combinations and log.
 
 event=ibm/hotkey HKEY 00000080 .*
-action=/etc/acpi/jpw.actions/debug.sh "DBG(0debug):  " "%e"
+action=/etc/acpi/jpw.actions/fakekey.sh %e
 
