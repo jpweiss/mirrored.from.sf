@@ -1,0 +1,5 @@
+# ThinkPad X40 ACPI Event: Use Fn+F9 to ...
+
+event=ibm/hotkey HKEY 00000080 00001009
+action=/etc/acpi/jpw.actions/debug.sh "DBG(0debug):  " "%e"
+#action=/etc/acpi/jpw.actions/doSomething.sh

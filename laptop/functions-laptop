@@ -1,33 +1,42 @@
 # -*- shell-script -*-
 #
-# Copyright (C) 2005-2009 by John P. Weiss under the Artistic License
+# Copyright (C) 2005-2010 by John P. Weiss under the Artistic License
 #
 # RCS $Id: rc.kernel_cmdline 1439 2005-10-05 22:04:42Z candide $
 ############
 
 
-rmmodsAll()
-{
-    status=0
-    for m in "$@"; do
-        modprobe --syslog --quiet --remove $m || status=1
-    done
-    return $status
-}
+. /etc/LocalSys/init.d/functions
 
 
-getRunlevel()
+isInPowersaveMode()
 {
-    runlevel=2
-    for rltmp in `/sbin/runlevel`; do
-        if [ "$rl" != "N" ]; then
-            runlevel=$rltmp
+    # Return the envvar value if it was already set.
+    if [ -n "$POWERSAVE" ]; then
+	pstate=1
+        if [ "$POWERSAVE" = "y" ]; then
+            pstate=0
         fi
-    done
-    echo $runlevel
+        return $pstate
+    fi #else:
+
+    # Determine the runlevel (if it hasn't been done yet).
+    if [ -z "$RUNLEVEL" ]; then
+        RUNLEVEL=`getRunlevel`
+        export RUNLEVEL
+    fi
+
+    if [ "${RUNLEVEL:-2}" = "4" ]; then
+        POWERSAVE='y'
+	export POWERSAVE
+        return 0
+    fi #else:
+    return 1
 }
 
 
+# Stolen from 'toggleAllWireless()' in '/usr/share/acpi-support/state-funcs'
+# and modified.
 disableAllWireless()
 {
     status=0
@@ -37,8 +46,8 @@ disableAllWireless()
             # $DEVICE is a wireless device.
 
             FOUND=
-            # Yes, that's right... the new interface reverses the truth
-            # values.
+            # This particular form of the sysfs interface reverses
+            #the truth values.
             ON=1
             OFF=0
             for CONTROL in $DEVICE/device/rfkill/rfkill*/state; do
@@ -84,6 +93,39 @@ disableAllWireless()
     done
 
     return $status
+}
+
+
+removeWifiModules()
+{
+    # FIXME:  Not Ideal, but I want to think about how to redesign the
+    # whole rc.powersave-modules mechanism.  See "rc.powersave-modules" for
+    # the cannonical list of wifi modules to remove.
+    rmmodsAll ipw2200 \
+        lib80211_crypt_ccmp lib80211_crypt_tkip lib80211_crypt_wep \
+        aes_i586 aes_generic deflate zlib_deflate twofish twofish_common \
+        ctr camellia serpent blowfish cast5 des_generic xcbc rmd160 \
+        sha1_generic sha256_generic sha512_generic crypto_null af_key
+}
+
+
+killWifi()
+{
+    disableAllWireless
+    removeWifiModules
+}
+
+
+killBluetooth()
+{
+    local p
+
+    for p in bluez kblue blueman; do
+        /usr/bin/pkill $p
+    done
+
+    service bluetooth stop
+    rmmodsAll bridge stp bnep hidp input_polldev
 }
 
 

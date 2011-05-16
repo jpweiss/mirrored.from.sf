@@ -1,0 +1,5 @@
+# [jpw] The power button performs an unconditional shutdown.  I may call a
+#       script that provides a confirmation dialog, but not yet.
+
+event=button[ /]power.*
+action=/etc/acpi/jpw.actions/force-shutdown.sh

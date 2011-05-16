@@ -1,4 +1,5 @@
-#!/bin/sh -e
+#!/bin/sh
+#  (Don't use '-e'; it aborts on '[ ]'.)
 #
 # rc.local
 #
@@ -13,109 +14,48 @@
 #
 # [Contents (C) 2004-2009 by John P. Weiss under the Artistic License]
 #
-# $Id$
+# RCS $Id$
 ############
-
 
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 export PATH
 
 
+#############################################################################
 #
 # [jpw; 09/09] Custom Laptop Config Cmds.
 #
+#############################################################################
 
+
+#
 # Initialization
-set +e # Doesn't work with the '[...]' test command.
+#
+
 . /lib/lsb/init-functions
-. /etc/LocalSys/init.d/functions
-if [ -z "$RUNLEVEL" ]; then
-    RUNLEVEL=`getRunlevel`
-    export RUNLEVEL
-fi
+#. /etc/LocalSys/init.d/functions
+. /etc/LocalSys/init.d/functions-laptop
 
 
-# Keyboard Setup
-log_begin_msg "| Customizing Keybindings"
-# [jpw] The usual loadkeys database isn't installed by default under Ubuntu.
-# So check for it.
-stdCustomizations="backspace windowkeys linux-with-two-alt-keys"
-keymapdir=/usr/share/keymaps/i386/include/
-loadTheseMaps=""
-laststat=0
-for m in $stdCustomizations; do
-    if [ -f ${keymapdir}/${m}.inc.gz ]; then
-        loadTheseMaps="$loadTheseMaps $m"
-    fi
-done
-if [ -n "$loadTheseMaps" ]; then
-    loadkeys $loadTheseMaps 2>/dev/null
-    laststat=$?
-fi
-if [ -f /etc/LocalSys/kbd/custom-us.map.gz -a "$laststat" = 0 ]; then
-    loadkeys /etc/LocalSys/kbd/custom-us 2>/dev/null \
-        || laststat=1
-fi
-log_end_msg $laststat
+#
+# Functions
+#
 
 
-# ThinkPad-specific setup.
-log_begin_msg "| Setting Up ThinkPad"
-/etc/LocalSys/init.d/thinkpadSetup.sh 2>/dev/null
-log_end_msg $?
+# [jpw]  Not all of these tasks are needed in Ubuntu, but we'll leave
+#        the code.
 
 
-# Remove /etc/nologin on boot
-rm -f /etc/nologin 2>&1 >/dev/null
-
-# Touch Up the Console Fonts
-# [jpw; 09/09]  Not needed on Ubuntu (for now).
-if [ -x /bin/setfont -a -n "$notUbuntu" ]; then
-    /bin/setfont
-fi
+set_sysfs()
+{
+    [ -e $2 ] || return 1
+    echo $1 > $2
+}
 
 
-# Determine if we're in powersave mode [if the envvar wasn't set anywhere].
-if [ -z "$POWERSAVE" ]; then
-    if [ "${RUNLEVEL:-2}" = "4" ]; then
-        POWERSAVE='y'
-    fi
-fi
-export POWERSAVE
-
-
-# Powersaving tasks
-# [jpw]  Many aren't needed in Ubuntu, but we'll leave the code.
-if [ -n "${POWERSAVE}" ]; then
-    # Use as little disk as possible in powersave mode
-    if [ -n "$notUbuntu" ]; then
-        log_begin_msg "| Disabling swap space to save power : "
-        swapoff -a
-        log_end_msg $?
-    fi
-
-    # Disable the WiFi adapter.
-    touch /tmp/force-wifi-off
-    log_begin_msg "| Disabling WiFi antenna to save power : "
-    #/etc/acpi/actions/wifiPower.sh
-    disableAllWireless
-    log_end_msg $?
-
-    # Disable modules that we don't want running when power is a concern.
-    log_begin_msg "| Removing unneeded modules : "
-    rmmodsAll vfat fat nls_cp437 nls_iso8859_1 \
-        serio_raw kqemu \
-        nsc_ircc irda crc_ccitt \
-        tpm_atmel tpm tpm_bios \
-        iTCO_wdt iTCO_vendor_support \
-        i2c_i801 tpm_infineon snd-intel8x0m \
-        ipw2200 eth1000 \
-        ieee80211_crypt_ccmp ieee80211_crypt_tkip \
-        ieee80211_crypt_wep ieee80211 ieee80211_crypt \
-        pcmcia yenta_socket rsrc_nonstatic pcmcia_core
-    log_end_msg $?
-
+powersaveCommon()
+{
     # Set up some powersaving features
     log_begin_msg "| Enabling other powersaving features : "
     echo 1 > /sys/module/snd_ac97_codec/parameters/power_save
@@ -124,24 +64,190 @@ if [ -n "${POWERSAVE}" ]; then
         ethtool -s eth0 wol d || laststat=$?
     fi
     log_end_msg $laststat
+    unset laststat
+
+    # Recommended by PowerTOP:
+    sys_cpufreq=/sys/devices/system/cpu/cpu0/cpufreq/ondemand
+    set_sysfs ondemand $sys_cpufreq/scaling_governor
+    c0fod=${sys_cpufreq}/ondemand
+    if [ -e $c0fod/sampling_rate_max -a -e $c0fod/sampling_rate ]; then
+        cat $c0fod/sampling_rate_max > $c0fod/sampling_rate
+    fi
+
+    set_sysfs 5 /proc/sys/vm/laptop_mode
+    set_sysfs 0 /proc/sys/kernel/nmi_watchdog
+    set_sysfs 1 /sys/devices/system/cpu/sched_mc_power_savings
+
+    # Make sure we're using the full range of frequencies.
+    if [ -x /usr/local/bin/reset-cpufreq-limits.sh ]; then
+        /usr/local/bin/reset-cpufreq-limits.sh
+    else
+        for flim in min_freq max_freq; do
+            cpu_lim=$sys_cpufreq/cpuinfo_$flim
+            gov_lim=$sys_cpufreq/scaling_$flim
+            if [ -e $cpu_lim -a $gov_lim ]; then
+                cat $cpu_lim > $gov_lim 
+            fi
+        done
+    fi
+
+    # Also disable the PC speaker.
+    if [ -n "${POWERSAVE}${MUTE}" ]; then
+        disablePCSpeaker
+    fi
+}
+
+
+otherPowersaveStuff()
+{
+    # Move these into the wifi-enable script.
+    iwpriv eth1 set_power 5 # 1-5; higher==better powersave w/higher latency
+    # Also possibly increase the beacon interval from 100ms to ~1sec.
+
+    # USB Powersaving:
+##    for asf in /sys/bus/usb/devices/*/power/autosuspend; do
+##        set_sysfs 1 $asf
+##    done
+##    for asf in /sys/bus/usb/devices/*/power/level; do
+##        set_sysfs 'auto' $asf
+##    done
+    # ...or add usbcore.autosuspend=1 to the kernel args, or
+    # 'options usbcore autosuspend=1' if it's not.
+
+
+    set_sysfs 1500 /proc/sys/vm/dirty_writeback_centisecs
+
+    # These sysctl's are only available if you have an AHCI compatible SATA 
+    # controler.
+    for scf in /sys/class/scsi_host/host*/link_power_management_policy; do
+        set_sysfs 'min_power' $scf
+    done
+
+    # Find some way to perform this via the Fn-buttons.  It supposedly saves 
+    # battery power.
+    ##echo crt_disable > /proc/acpi/ibm/video
+}
+
+
+powersaveTasks()
+{
+    # Do the basic tasks, except for wireless and swap shutdown.
+    powersaveCommon
+
+    # Disable modules that we don't want running when power is a concern.
+    if [ -e /etc/LocalSys/init.d/rc.powersave-modules ]; then
+	modlist=`grep -v -e '^$' -e '^#.*' \
+		/etc/LocalSys/init.d/rc.powersave-modules`
+    fi
+    if [ -n "$modlist" ]; then
+        log_begin_msg "| Removing unneeded modules : "
+        rmmodsAll $modlist
+        laststat=$?
+        log_end_msg $laststat
+    fi
+    unset modlist
+
+    # Disable the WiFi adapter.
+    log_begin_msg "| Disabling WiFi antenna to save power : "
+    #touch /tmp/force-wifi-off
+    #/etc/acpi/actions/wifiPower.sh
+    disableAllWireless
+    log_end_msg $?
+
+    # Use as little disk as possible in powersave mode
+    for kernelArg in `cat /proc/cmdline`; do
+        if [ "$kernelArg" = "noswap" ]; then
+            log_begin_msg "| Disabling swap space to save power : "
+            swapoff -a
+            log_end_msg $?
+            break
+        fi
+    done
+    unset kernelArg
+}
+
+
+#
+# Main Operations
+#
+
+
+# Determine if this file was sourced or run.
+case "$0" in
+    *bash)
+        file_was_sourced='y'
+        ;;
+    *)
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
+        fi
+        ;;
+esac
+
+
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+else
+    # Was run as a script.  Run as normal.
+
+
+    # Determine if we're in powersave mode [if the envvar wasn't
+    # set anywhere].
+    if isInPowersaveMode; then
+        POWERSAVE='y'
+    fi
+    export POWERSAVE
+
+    # Keyboard Setup
+    customizeKeybindings
+
+    # ThinkPad-specific setup.
+    log_begin_msg "| Setting Up ThinkPad"
+    /etc/LocalSys/init.d/thinkpadSetup.sh 2>/dev/null
+    log_end_msg $?
+
+    # Remove /etc/nologin on boot
+    rm -f /etc/nologin 2>&1 >/dev/null
+
+    # Mount the 'usbfs' if it isn't there already.
+    ##mount_usbfs
+
+    # Touch Up the Console Fonts
+    # [jpw; 09/09]  Not needed on Ubuntu (for now).
+    if [ -x /bin/setfont -a -n "$notUbuntu" ]; then
+        /bin/setfont
+    fi
+
+    if [ -e /etc/sysconfig/modules/rc.modules ]; then
+        /etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
+    fi
+
+    # Some tasks should only be done if we don't perform the powersaving ones.
+    #
+    if [ -n "${POWERSAVE}" ]; then
+        # Do powersaving tasks (which includes 'disablePCSpeaker').
+        powersaveTasks
+    else
+        powersaveCommon
+
+        # Silence the PC Speaker (if needed).
+        if [ -n "${MUTE}" ]; then
+            disablePCSpeaker
+        else
+            # We are using sound
+            restore_alsa_settings
+        fi
+
+        # Remove defunct and/or unused modules.
+        rmmodsAll joydev serio_raw shpchp bridge stp tpm_infineon
+    fi
+
+    finish_terminal_msgs
+
+    exit 0
 fi
-
-
-if [ -e /etc/sysconfig/modules/rc.modules ]; then
-    /etc/sysconfig/modules/rc.modules rc.local ${POWERSAVE}
-fi
-
-
-# Silence the PC Speaker if needed.
-if [ -n "${MUTE}" -o  -n "${POWERSAVE}" ]; then
-    log_begin_msg "| Disabling Console Speaker : "
-    modprobe --quiet --remove pcspkr
-    laststat=$?
-    log_end_msg $laststat
-fi
-
-
-exit 0
 
 
 #################

@@ -1,0 +1,10 @@
+# /etc/acpi/events/ibmwireless
+# This is called when the user presses the wireless button and calls
+# /etc/acpi/wireless.sh for further processing.
+
+# [jpw] This file will override the default 'ibm-wireless' file, given its
+#       name, lexically.
+
+event=ibm/hotkey HKEY 00000080 00001005
+action=/etc/acpi/jpw.actions/ibm-wireless.sh
+

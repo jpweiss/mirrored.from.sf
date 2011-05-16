@@ -1,0 +1,4 @@
+# ThinkPad X40 ACPI Event: Use Fn+F4 to sleep to memory.
+
+event=ibm/hotkey.* 00001004
+action=/etc/acpi/jpw.actions/sleep.sh

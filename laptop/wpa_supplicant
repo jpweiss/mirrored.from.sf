@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# wpa_supplicant:   wpa_supplicant daemon
+#
+# chkconfig: - 98 02
+# description:  [jpw; 06/2006] Custom starup script for wpa_supplicant. \
+#               Remove when a better pkg for wpa_supplicant is released. \
+#
+# processname: 
+# pidfile: /var/run/wpa_supplicant.pid
+#
+
+prefix=/usr
+exec_prefix=$prefix
+sbindir=$exec_prefix/sbin
+
+WPA_SUPPLICANT=${sbindir}/wpa_supplicant
+
+# Sanity checks.
+[ -x $WPA_SUPPLICANT ] || exit 1
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Runtime options
+wlan_ifc=eth1
+driver=ipw
+
+# so we can rearrange this easily
+processname=wpa_supplicant
+servicename=wpa_supplicant
+cfgfilename=/etc/${servicename}.conf
+pidfile=/var/run/${servicename}.pid
+
+RETVAL=0
+
+start()
+{
+    echo -n $"Starting wpa_supplicant daemon: "
+    daemon --check $servicename \
+        $WPA_SUPPLICANT -B -w -D$driver -i$wlan_ifc -P$pidfile -c$cfgfilename
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$servicename
+}
+
+stop()
+{
+    echo -n $"Stopping wpa_supplicant daemon: "
+
+    killproc $servicename -TERM
+    RETVAL=$?
+    echo
+    if [ $RETVAL -eq 0 ]; then
+        rm -f /var/lock/subsys/$servicename
+        rm -f $pidfile
+    fi
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status $processname
+        RETVAL=$?
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    condrestart)
+        if [ -f /var/lock/subsys/$servicename ]; then
+            stop
+            start
+        fi
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+        ;;
+esac
+exit $RETVAL

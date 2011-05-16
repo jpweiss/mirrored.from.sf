@@ -1,0 +1,5 @@
+# [jpw] Opening & closing the lid does nothing at present.
+
+event=button[ /]lid
+action=/etc/acpi/jpw.actions/debug.sh "DBG(LidEvent):  " "%e"
+#action=/etc/acpi/jpw.actions/lidOpenClose.sh
