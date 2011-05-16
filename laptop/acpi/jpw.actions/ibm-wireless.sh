@@ -53,11 +53,8 @@ if isAnyWirelessPoweredOn; then
     killWifi >>$LOGFILE 2>&1
 else
     echo "Enabling WiFi..." >>$LOGFILE
-    local mod=ipw2200
-    if [ ! -d /sys/module/$mod ]; then
-        #modprobe --quiet $mod
-        modprobe --quiet $mod >>$LOGFILE 2>&1
-    fi
+    loadWifiModules >>$LOGFILE 2>&1
+
     local d
     for d in /sys/class/net/*; do
         if [ -w $d/device/rf_kill ]; then

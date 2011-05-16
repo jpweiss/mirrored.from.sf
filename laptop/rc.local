@@ -24,7 +24,7 @@ export PATH
 
 #############################################################################
 #
-# [jpw; 09/09] Custom Laptop Config Cmds.
+# [jpw] Custom Laptop Config Cmds.
 #
 #############################################################################
 
@@ -34,7 +34,6 @@ export PATH
 #
 
 . /lib/lsb/init-functions
-#. /etc/LocalSys/init.d/functions
 . /etc/LocalSys/init.d/functions-laptop
 
 
@@ -135,10 +134,8 @@ powersaveTasks()
     powersaveCommon
 
     # Disable modules that we don't want running when power is a concern.
-    if [ -e /etc/LocalSys/init.d/rc.powersave-modules ]; then
-	modlist=`grep -v -e '^$' -e '^#.*' \
-		/etc/LocalSys/init.d/rc.powersave-modules`
-    fi
+	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-modules \
+		/etc/LocalSys/init.d/rc.powersave-wifi-modules`
     if [ -n "$modlist" ]; then
         log_begin_msg "| Removing unneeded modules : "
         rmmodsAll $modlist

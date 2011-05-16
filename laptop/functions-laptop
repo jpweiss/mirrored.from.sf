@@ -98,14 +98,23 @@ disableAllWireless()
 
 removeWifiModules()
 {
-    # FIXME:  Not Ideal, but I want to think about how to redesign the
-    # whole rc.powersave-modules mechanism.  See "rc.powersave-modules" for
-    # the cannonical list of wifi modules to remove.
-    rmmodsAll ipw2200 \
-        lib80211_crypt_ccmp lib80211_crypt_tkip lib80211_crypt_wep \
-        aes_i586 aes_generic deflate zlib_deflate twofish twofish_common \
-        ctr camellia serpent blowfish cast5 des_generic xcbc rmd160 \
-        sha1_generic sha256_generic sha512_generic crypto_null af_key
+    local modlist
+	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-wifi-modules`
+
+    if [ -n "$modlist" ]; then
+        rmmodsAll $modlist
+    fi
+}
+
+
+loadWifiModules()
+{
+    local modlist
+	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-wifi-modules`
+
+    if [ -n "$modlist" ]; then
+        loadModules $modlist
+    fi
 }
 
 
