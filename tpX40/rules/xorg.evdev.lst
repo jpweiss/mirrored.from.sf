@@ -1,24 +1,3 @@
-//=============================================================================
-//  Rule Descriptions
-//=============================================================================
-
-
-//=============================================================================
-//
-// include "xorg.lst"
-//
-// Well, that's what I'd *like* to do, at least.  Unfortunately, no
-// such mechanism exists for rules descriptions.
-//
-// However, we don't need to include the entire rules/xorg.lst (or
-// rules/xfree86.lst), since we're not doing that in the custom
-// rules/thinkpadx40.  As for rules/thinkpadx40, we just want support for a
-// ThinkPad and any external keyboard that might reasonably be plugged
-// into it. 
-//
-//=============================================================================
-
-
 ! model
   pc101           Generic 101-key PC
   pc102           Generic 102-key (Intl) PC
@@ -195,7 +174,6 @@
   compalfl90      FL90
   creativedw7000  Creative Desktop Wireless 7000
   intelligent_keyboard_k04 Intelligent Keyboard K04
-  thinkpadx40	  ThinkPad X40
 
 ! layout
   us              USA
@@ -802,32 +780,3 @@
   esperanto:dvorak     To the corresponding key in a Dvorak keyboard.
   terminate            Key sequence to kill the X server
   terminate:ctrl_alt_bksp Control + Alt + Backspace
-
-
-//=============================================================================
-//
-// The ThinkPad-Specific Rules
-//
-//=============================================================================
-
-
-! option
-  numlk			Fixing the Dain-Brammaged ThinkPad X40 <ScrLk>/<NumLk> key behavior.
-  numlk:invert		Invert ScrollLock/NumLock (Shift+<ScrLk>==ScrollLock; <ScrLk>==NumLock)
-  numlk:un_altgr	AltGr+KeyPad produces the "normal" underlying letter key.
-  numlk:un_ctrl 	Control+KeyPad produces the "normal" underlying letter key.
-  mousekeys		What key combination activates Mousekeys?
-  mousekeys:default	Alt+Shift+<ScrLk> key activates Mousekeys
-  mousekeys:ctrl	Control+<ScrLk> key activates Mousekeys
-  mousekeys:alt		Alt+<ScrLk> key activates Mousekeys
-  mousekeys:ctrl_alt	Control+Alt+<ScrLk> key activates Mousekeys
-  fn			Map the Blue "Fn" Key
-  fn:fn_default		Leave the "Fn" key as-is
-  fn:fn_switch		Map the "Fn" key to Mode_switch
-  fn:fn_super		Map the "Fn" key to Super
-  fn:fn_hyper		Map the "Fn" key to Hyper
-  fn:fn_super_win	Map the "Fn" key to both Super and the Win keys
-  fn:fn_hyper_win	Map the "Fn" key to both Hyper and the Win keys
-
-// Note:  Anything in the list above without a ':' in it is the name of an
-// option-group, not an actual option.

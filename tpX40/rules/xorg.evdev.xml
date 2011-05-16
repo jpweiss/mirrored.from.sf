@@ -594,15 +594,6 @@
         <vendor>IBM</vendor>
       </configItem>
     </model>
-    <!-- [jpw] Added:  ThinkPad X40 -->
-    <model>
-      <configItem>
-        <name>thinkpadx40</name>
-        <description>IBM ThinkPad X40 (and similar)</description>
-        <vendor>IBM</vendor>
-      </configItem>
-    </model>
-    <!-- [jpw] End Addition -->
     <model>
       <configItem>
         <name>ibm_spacesaver</name>
@@ -5384,108 +5375,5 @@
         </configItem>
       </option>
     </group>
-
-    <!-- [jpw] Added:  ThinkPad X40 -->
-    <group allowMultipleSelection="true">
-
-      <configItem>
-        <name>numlk</name>
-        <description>Fixing the Dain-Brammaged ThinkPad X40 [ScrLk]/[NumLk] key behavior.</description>
-      </configItem>
-      <option>
-        <configItem>
-          <name>numlk:invert</name>
-          <description>Invert ScrollLock/NumLock (Shift+[ScrLk]==ScrollLock; [ScrLk]==NumLock)</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>numlk:un_altgr</name>
-          <description>AltGr+KeyPad produces the "normal" underlying letter key.</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>numlk:un_ctrl</name>
-          <description>Control+KeyPad produces the "normal" underlying letter key.</description>
-       </configItem>
-      </option>
-    </group>
-    <group allowMultipleSelection="false">
-
-      <configItem>
-        <name>fn</name>
-        <description>Map the Blue "Fn" Key</description>
-      </configItem>
-      <option>
-        <configItem>
-          <name>fn:fn_default</name>
-          <description>Leave the "Fn" key as-is</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>fn:fn_switch</name>
-          <description>Map the "Fn" key to Mode_switch</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>fn:fn_super</name>
-          <description>Map the "Fn" key to Super</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>fn:fn_hyper</name>
-          <description>Map the "Fn" key to Hyper</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>fn:fn_super_win</name>
-          <description>Map the "Fn" key to both Super and the Win keys</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>fn:fn_hyper_win</name>
-          <description>Map the "Fn" key to both Hyper and the Win keys</description>
-       </configItem>
-      </option>
-    </group>
-    <group allowMultipleSelection="false">
-
-      <configItem>
-        <name>mousekeys</name>
-        <description>What key combination activates Mousekeys?</description>
-      </configItem>
-      <option>
-        <configItem>
-          <name>mousekeys:default</name>
-          <description>Alt+Shift+[ScrLk] key activates Mousekeys</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>mousekeys:ctrl</name>
-          <description>Control+[ScrLk] key activates Mousekeys</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>mousekeys:alt</name>
-          <description>Alt+[ScrLk] key activates Mousekeys</description>
-       </configItem>
-      </option>
-      <option>
-        <configItem>
-          <name>terminate:ctrl_alt_bksp</name>
-          <description>Control + Alt + Backspace</description>
-        </configItem>
-      </option>
-    </group>
-    <!-- [jpw] End Addition -->
-
   </optionList>
 </xkbConfigRegistry>

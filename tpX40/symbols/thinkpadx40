@@ -92,7 +92,7 @@ xkb_symbols "fn_default" {
     ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
-        symbols[Group1] = [ NoSymbol, Super_L ]
+        symbols[Group1] = [ NoSymbol, XF86LaunchF ]
     };
 };
 
@@ -130,26 +130,38 @@ xkb_symbols "fn_super" {
 };
 
 partial alphanumeric_keys modifier_keys
-xkb_symbols "fn_lctrl" {
+xkb_symbols "fn_hyper" {
     include "thinkpadx40(specialkeys_base)"
 
     // Assign <FN> key.
     // [keycode: 151]
     //
-    // This variant redirects the unmodified blue "Fn" key to
-    // <LCTL>, assigning Shift-Fn to <LWIN>.
-    //
-    // I *STRONGLY* *DISCOURAGE* use of this binding!  It's best
-    // not to build up muscle-memory for hitting "Fn" in place of
-    // "Ctrl".  You could inadvertently change your ThinkPad's
-    // machine-state when you merely intended to switch VT's or
-    // perform some application-based operation.
+    // This is the same as fn_modesw, but swapped; the unshifted "Fn"
+    // key is Hyper_L, while the shifted version is Mode_switch.
     //
     ////key <FN>  { // NOTE:  keycodes aliases not working yet!
     key <I151>  {
         repeat= no,
-        symbols[Group1] = [ Control_L, Super_L ]
+        symbols[Group1] = [ Hyper_L, Mode_switch  ]
     };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_super_win" {
+    include "thinkpadx40(fn_super)"
+
+    // NOTE:  keycodes aliases not working yet!
+    ////modifier_map Mod4   { <FN>, Super_L, Super_R };
+    modifier_map Mod4   { <I151>, Super_L, Super_R };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_hyper_win" {
+    include "thinkpadx40(fn_hyper)"
+
+    // NOTE:  keycodes aliases not working yet!
+    ////modifier_map Mod4   { <FN>, Hyper_L };
+    modifier_map Mod4   { <I151>, Hyper_L };
 };
 
 

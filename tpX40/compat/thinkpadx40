@@ -39,7 +39,7 @@
 
 default partial
 xkb_compatibility "default" {
-    virtual_modifiers NumLock,Super;
+    virtual_modifiers NumLock,Super,Hyper;
 
     // Disable repeat for the Super_* keys.
     // FIXME:  Well, in theory, it should.  At the moment, it doesn't
@@ -48,14 +48,34 @@ xkb_compatibility "default" {
     interpret.repeat = False;
 
     // Define the Super_* modifier keys.
-    interpret Super_L {
+    interpret Super_L+Any {
         virtualModifier = Super;
-        action = LatchMods(modifiers=Super);
+        action = LatchMods(modifiers=modMapMods);
     };
 
-    interpret Super_R {
+    interpret Super_L {
         virtualModifier = Super;
+        action = LatchMods(modifiers=modMapMods);
+    };
+
+    interpret Super_R+AnyOfOrNone(Shift) {
         action = SetMods(modifiers=Super);
+    };
+
+    interpret Super_R+Any {
+        virtualModifier = Super;
+        action = SetMods(modifiers=modMapMods);
+    };
+
+    // Define the Hyper_L modifier key.
+    interpret Hyper_L+Any {
+        virtualModifier = Hyper;
+        action = LatchMods(modifiers=modMapMods);
+    };
+
+    interpret Hyper_L {
+        virtualModifier = Hyper;
+        action = LatchMods(modifiers=modMapMods);
     };
 
 
