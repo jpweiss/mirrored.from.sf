@@ -50,18 +50,20 @@ echo "" >>$LOGFILE
 
 if isAnyWirelessPoweredOn; then
     echo "Found active WiFi; disabling..." >>$LOGFILE
-    killWifi >>$LOGFILE 2>&1
+    iwconfig eth1 txpower off >>$LOGFILE 2>&1
+    #killWifi >>$LOGFILE 2>&1
 else
     echo "Enabling WiFi..." >>$LOGFILE
     loadWifiModules >>$LOGFILE 2>&1
 
-    local d
-    for d in /sys/class/net/*; do
-        if [ -w $d/device/rf_kill ]; then
-            # '1' means "turn it on," not kill the rf.
-            echo 1 >>$d/device/rf_kill
-        fi
-    done
+    iwconfig eth1 txpower on >>$LOGFILE 2>&1
+    #local d
+    #for d in /sys/class/net/*; do
+    #    if [ -w $d/device/rf_kill ]; then
+    #        # '1' means "turn it on," not kill the rf.
+    #        echo 1 >>$d/device/rf_kill
+    #    fi
+    #done
 fi
 toggleBluetooth
 

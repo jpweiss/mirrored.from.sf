@@ -24,7 +24,7 @@ export PATH
 
 #############################################################################
 #
-# [jpw] Custom Laptop Config Cmds.
+# [jpw; 09/09] Custom Laptop Config Cmds.
 #
 #############################################################################
 
@@ -104,12 +104,12 @@ otherPowersaveStuff()
     # Also possibly increase the beacon interval from 100ms to ~1sec.
 
     # USB Powersaving:
-##    for asf in /sys/bus/usb/devices/*/power/autosuspend; do
-##        set_sysfs 1 $asf
-##    done
-##    for asf in /sys/bus/usb/devices/*/power/level; do
-##        set_sysfs 'auto' $asf
-##    done
+    for asf in /sys/bus/usb/devices/*/power/autosuspend; do
+        set_sysfs 1 $asf
+    done
+    for asf in /sys/bus/usb/devices/*/power/level; do
+        set_sysfs 'auto' $asf
+    done
     # ...or add usbcore.autosuspend=1 to the kernel args, or
     # 'options usbcore autosuspend=1' if it's not.
 
@@ -134,8 +134,10 @@ powersaveTasks()
     powersaveCommon
 
     # Disable modules that we don't want running when power is a concern.
-	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-modules \
-		/etc/LocalSys/init.d/rc.powersave-wifi-modules`
+    if [ -e /etc/LocalSys/init.d/rc.powersave-modules ]; then
+        modlist=`grep -v -e '^$' -e '^#.*' \
+            /etc/LocalSys/init.d/rc.powersave-modules`
+    fi
     if [ -n "$modlist" ]; then
         log_begin_msg "| Removing unneeded modules : "
         rmmodsAll $modlist
