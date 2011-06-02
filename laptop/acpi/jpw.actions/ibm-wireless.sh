@@ -48,22 +48,44 @@ echo "" >>$LOGFILE
 # The upshot is:  we have a race-condition between this script and whatever
 # else is running.
 
+local iwconfig_failed
+iwconfig_failed='n'
 if isAnyWirelessPoweredOn; then
     echo "Found active WiFi; disabling..." >>$LOGFILE
-    iwconfig eth1 txpower off >>$LOGFILE 2>&1
-    #killWifi >>$LOGFILE 2>&1
+    iwconfig eth1 txpower off >>$LOGFILE 2>&1 || iwconfig_failed='y'
+    isAnyWirelessPoweredOn && iwconfig_failed='y'
+
+    if [ "$iwconfig_failed" = 'y' ]; then
+        echo "    'iwconfig' failed to disable TX power!" >>$LOGFILE 2>&1
+        echo "    Attempting direct kernel param manipulation" \
+            >>$LOGFILE 2>&1
+
+        killWifi >>$LOGFILE 2>&1
+    fi
 else
     echo "Enabling WiFi..." >>$LOGFILE
     loadWifiModules >>$LOGFILE 2>&1
 
-    iwconfig eth1 txpower on >>$LOGFILE 2>&1
-    #local d
-    #for d in /sys/class/net/*; do
-    #    if [ -w $d/device/rf_kill ]; then
-    #        # '1' means "turn it on," not kill the rf.
-    #        echo 1 >>$d/device/rf_kill
-    #    fi
-    #done
+    iwconfig eth1 txpower on >>$LOGFILE 2>&1 || iwconfig_failed='y'
+    isAnyWirelessPoweredOn || iwconfig_failed='y'
+
+    if [ "$iwconfig_failed" = 'y' ]; then
+        echo "    'iwconfig' failed to reenable TX power!" >>$LOGFILE 2>&1
+        echo "    Attempting direct kernel param manipulation" \
+            >>$LOGFILE 2>&1
+
+        local d rfk
+        for d in /sys/class/net/*; do
+            rfk=$d/device/rf_kill
+            if [ -w $rfk ]; then
+                # '1' means "turn it off"
+                if [ "`cat $rfk`" = "1" ]; then
+                    echo "    Disabling rf_kill..." >>$LOGFILE 2>&1
+                    echo 0 >>$rfk
+                fi
+            fi
+        done
+    fi
 fi
 toggleBluetooth
 
