@@ -55,7 +55,7 @@ if isAnyWirelessPoweredOn; then
     iwconfig eth1 txpower off >>$LOGFILE 2>&1 || iwconfig_failed='y'
     isAnyWirelessPoweredOn && iwconfig_failed='y'
 
-    if [ "$iwconfig_failed" = 'y' ]; then
+    if [ "$iwconfig_failed" = "y" ]; then
         echo "    'iwconfig' failed to disable TX power!" >>$LOGFILE 2>&1
         echo "    Attempting direct kernel param manipulation" \
             >>$LOGFILE 2>&1
@@ -69,7 +69,7 @@ else
     iwconfig eth1 txpower on >>$LOGFILE 2>&1 || iwconfig_failed='y'
     isAnyWirelessPoweredOn || iwconfig_failed='y'
 
-    if [ "$iwconfig_failed" = 'y' ]; then
+    if [ "$iwconfig_failed" = "y" ]; then
         echo "    'iwconfig' failed to reenable TX power!" >>$LOGFILE 2>&1
         echo "    Attempting direct kernel param manipulation" \
             >>$LOGFILE 2>&1
