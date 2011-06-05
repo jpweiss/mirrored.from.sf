@@ -2,4 +2,3 @@
 
 event=button[ /]lid
 action=/etc/acpi/jpw.actions/lidOpenClose.sh
-#action=/etc/acpi/jpw.actions/debug.sh "DBG(LidEvent):  " "%e"
