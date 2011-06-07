@@ -13,7 +13,7 @@ isInPowersaveMode()
 {
     # Return the envvar value if it was already set.
     if [ -n "$POWERSAVE" ]; then
-	pstate=1
+        pstate=1
         if [ "$POWERSAVE" = "y" ]; then
             pstate=0
         fi
@@ -28,7 +28,7 @@ isInPowersaveMode()
 
     if [ "${RUNLEVEL:-2}" = "4" ]; then
         POWERSAVE='y'
-	export POWERSAVE
+        export POWERSAVE
         return 0
     fi #else:
     return 1
@@ -54,7 +54,7 @@ disableAllWireless()
                 if [ -w "$CONTROL" ]; then
                     FOUND=1
 
-                    if [ "$(cat "$CONTROL")" = "$ON" ] ; then
+                    if [ "`cat "$CONTROL"`" = "$ON" ] ; then
                         # It's powered on. Switch it off.
                         echo -n "$OFF" > "$CONTROL" || status=1
                     fi # else
@@ -96,10 +96,33 @@ disableAllWireless()
 }
 
 
+getWifiModuleList()
+{
+    local oIFS
+    oIFS="$IFS"
+    IFS=".-_+$IFS"
+    set -- `uname -r`
+    IFS="$oIFS"
+
+    local kVer
+    kVer="${1}.${2}.${3}"
+
+    local f
+    for f in /etc/LocalSys/init.d/rc.powersave-wifi-modules_$kVer \
+        /etc/LocalSys/init.d/rc.powersave-wifi-modules
+    do
+        if [ -r $f ]; then
+            getModuleList $f
+            return
+        fi
+    done
+}
+
+
 removeWifiModules()
 {
     local modlist
-	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-wifi-modules`
+    modlist=`getWifiModuleList`
 
     if [ -n "$modlist" ]; then
         rmmodsAll $modlist
@@ -110,7 +133,7 @@ removeWifiModules()
 loadWifiModules()
 {
     local modlist
-	modlist=`getModuleList /etc/LocalSys/init.d/rc.powersave-wifi-modules`
+    modlist=`getWifiModuleList`
 
     if [ -n "$modlist" ]; then
         loadModules $modlist

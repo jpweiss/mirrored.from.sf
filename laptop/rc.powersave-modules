@@ -14,6 +14,9 @@
 # Unused Filesystems
 vfat fat nls_cp437 nls_iso8859_1
 
+# VirtualBox
+vboxnetadp vboxnetflt vboxdrv
+
 # No joysticks here...
 joydev
 
@@ -42,14 +45,8 @@ eth1000
 # Why the heck does KUbuntu load bridging modules?!?
 bridge stp 
 
-# Prune the cryptographic modules.  I doubt that we need all of them.
-deflate zlib_deflate twofish twofish_common
-ctr camellia serpent blowfish cast5 des_generic xcbc rmd160
-sha1_generic sha256_generic sha512_generic
-crypto_null af_key
-
 # I'm not using any pcmcia cards these days.
-pcmcia yenta_socket rsrc_nonstatic pcmcia_core
+pcmcia yenta_socket rsrc_nonstatic pcmcia_rsrc pcmcia_core
 
 # Disable Bluetooth while on the move, too.
 # Note:  Bluetooth support loads the 'bridge' and 'stp' modules.
