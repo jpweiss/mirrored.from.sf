@@ -108,7 +108,7 @@ xkb_compatibility "mousekeys" {
     // keys.  Or in other words:  keep generating the numbers and
     // '.' keysyms.
 
-    interpret KP_0 { action = RedirectKey(keyCode=<AE11>); };
+    interpret KP_0 { action = RedirectKey(keyCode=<AE10>); };
     interpret KP_1 { action = RedirectKey(keyCode=<AE01>); };
     interpret KP_2 { action = RedirectKey(keyCode=<AE02>); };
     interpret KP_3 { action = RedirectKey(keyCode=<AE03>); };
