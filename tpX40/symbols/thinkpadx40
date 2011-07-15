@@ -284,7 +284,7 @@ xkb_symbols "mousekeys_ctrl_alt" {
 // one of the other modifiers.  Would make this easier to customize.
 //
 // NOTE:  The 'actions' command no longer works here (or doesn't
-//        appear to).  So we're removing it.  See earlier versions to
+//        appear to).  So it's been removed.  See earlier versions to
 //        restore.
 //
 
@@ -294,6 +294,82 @@ xkb_symbols "un_numlock" {
     // Map the ThinkPad "numeric-keypad" so that it generates the symbols
     // it overlays when used in combination with Control or AltGr.
     // 
+    // Note:  If the keysyms aren't "flipped" w.r.t. the normal
+    //        Numeric Keypad bindings, then NumLock won't activate
+    //        numeric keypad keys.  It'll activate a "cursor-key
+    //        keypad", which is not how a ThinkPad X40 normally
+    //        behaves.
+
+    virtual_modifiers NumLock,AltGr;
+
+    key <KP7> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_7, KP_Home, 7, ampersand ]
+    };
+    key <KP8> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_8, KP_Up, 8, asterisk ]
+    };
+    key <KP9> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_9, KP_Prior, 9, parenleft ]
+    };
+    key <KPDV> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ slash, KP_Divide, XF86_Ungrab, 0, parenright ]
+    };
+    key <KP4> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_4, KP_Left, u, U ]
+    };
+    key <KP5> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_5, KP_Begin, i, I ]
+    };
+    key <KP6> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_6, KP_Right, o, O ]
+    };
+    key <KPMU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ asterisk, KP_Multiply, XF86_ClearGrab, p, P ]
+    };
+    key <KP1> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_1, KP_End, j, J ]
+    };
+    key <KP2> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_2, KP_Down, k, K ]
+    };
+    key <KP3> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_3, KP_Next, l, L ]
+    };
+    key <KPSU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ minus, KP_Subtract, XF86_Prev_VMode,
+                           colon, semicolon ]
+    };
+    key <KP0> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_0, KP_Insert, m, M ]
+    };
+    key <KPDL> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Decimal, KP_Delete, period, greater ]
+    };
+    key <KPAD> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ plus, KP_Add, XF86_Next_VMode,
+                           slash, question ]
+    };
+};
+
+
+partial alphanumeric_keys keypad_keys
+xkb_symbols "un_numlock_motionPad" {
+    // Like "un_numlock", but makes the motion keys the default.
 
     virtual_modifiers NumLock,AltGr;
 

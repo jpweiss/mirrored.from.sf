@@ -49,8 +49,8 @@ partial default xkb_types "altgr_UnNumlock" {
         map[Shift+AltGr] = Level4;
         // Here are the maps that actually do something:
         //
-        map[NumLock] = Level2;
-        map[Shift+NumLock] = Level1;
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
         map[NumLock+AltGr] = Level3;
         map[Shift+NumLock+AltGr] = Level4;
         level_name[Level1] = "Base";
@@ -73,8 +73,8 @@ partial default xkb_types "altgr_UnNumlock" {
         map[Shift+AltGr] = Level5;
         // Here are the maps that actually do something:
         //
-        map[NumLock] = Level2;
-        map[Shift+NumLock] = Level1;
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
         map[NumLock+Control+Alt] = Level3;
         map[NumLock+AltGr] = Level4;
         map[Shift+NumLock+AltGr] = Level5;
@@ -102,8 +102,8 @@ partial xkb_types "ctrl_UnNumlock" {
         map[Shift+Control] = Level4;
         // Here are the maps that actually do something:
         //
-        map[NumLock] = Level2;
-        map[Shift+NumLock] = Level1;
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
         map[NumLock+Control] = Level3;
         map[Shift+NumLock+Control] = Level4;
         level_name[Level1] = "Base";
@@ -126,8 +126,8 @@ partial xkb_types "ctrl_UnNumlock" {
         map[Shift+Control] = Level5;
         // Here are the maps that actually do something:
         //
-        map[NumLock] = Level2;
-        map[Shift+NumLock] = Level1;
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
         map[NumLock+Control+Alt] = Level3;
         map[NumLock+Control] = Level4;
         map[Shift+NumLock+Control] = Level5;

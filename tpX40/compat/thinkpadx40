@@ -97,26 +97,28 @@ xkb_compatibility "default" {
 
 
 // Alter the Mousekeys so that the 'KP_<number>' symbols _do_ _not_
-// move the mouse or produce button events.  Similarly, 
+// move the mouse or produce button events.
 //
 
 partial
 xkb_compatibility "mousekeys" {
     interpret.repeat= True;
 
-    // Forcibly disable actions on the numbers and '.' keypad-mode keys.
+    // Forcibly disable actions on the numbers and '.' keypad-mode
+    // keys.  Or in other words:  keep generating the numbers and
+    // '.' keysyms.
 
-    interpret KP_0 { action = NoAction(); };
-    interpret KP_1 { action = NoAction(); };
-    interpret KP_2 { action = NoAction(); };
-    interpret KP_3 { action = NoAction(); };
-    interpret KP_4 { action = NoAction(); };
-    interpret KP_5 { action = NoAction(); };
-    interpret KP_6 { action = NoAction(); };
-    interpret KP_7 { action = NoAction(); };
-    interpret KP_8 { action = NoAction(); };
-    interpret KP_9 { action = NoAction(); };
-    interpret KP_Decimal { action = NoAction(); };
+    interpret KP_0 { action = RedirectKey(keyCode=<AE11>); };
+    interpret KP_1 { action = RedirectKey(keyCode=<AE01>); };
+    interpret KP_2 { action = RedirectKey(keyCode=<AE02>); };
+    interpret KP_3 { action = RedirectKey(keyCode=<AE03>); };
+    interpret KP_4 { action = RedirectKey(keyCode=<AE04>); };
+    interpret KP_5 { action = RedirectKey(keyCode=<AE05>); };
+    interpret KP_6 { action = RedirectKey(keyCode=<AE06>); };
+    interpret KP_7 { action = RedirectKey(keyCode=<AE07>); };
+    interpret KP_8 { action = RedirectKey(keyCode=<AE08>); };
+    interpret KP_9 { action = RedirectKey(keyCode=<AE09>); };
+    interpret KP_Decimal { action = RedirectKey(keyCode=<AB09>); };
 
 
     // Define the keypad-mode motion keys as usual
