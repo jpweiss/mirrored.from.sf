@@ -1,0 +1,18 @@
+# If you want to unconditionally add parameters to the commandline,
+# add them here.
+ADD_PARAMETERS="--quirk-s3-bios"
+# [jpw] Due to recent boneheaded changes in Lucid, pm-utils is dropping all
+#       quirks when we run using "i915.modeset=1".  This is bad, as we need
+#       both chvt and the s3-bios quirk.  So, we'll do what we need to for
+#       the ThinkPad X40 by blocking the miscreant hook file and dropping
+#       the dangerous --quirk-* parameters here.
+HOOK_BLACKLIST="98video-quirk-db-handler"
+# ThinkPads do not support vbe operations, or posting the video mode.  Note
+# that the --quirk-dpms-* use vbe operations, so they must be dropped.
+# The only two parameters which might be safely left alone are
+# "--quirk-reset-brightness" and "--quirk-no-chvt".
+DROP_PARAMETERS="--quirk-vbe-post --quirk-vbemode-restore
+     --quirk-vbestate-restore --quirk-vga-mode-3
+     --quirk-dpms-on --quirk-dpms-suspend
+     --quirk-reset-brightness --quirk-no-chvt
+     --quirk-radeon-off --quirk-no-fb --quirk-save-pci"

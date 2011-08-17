@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# Turn the swapspace on/off as appropriate
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# [jpw]
+
+SWAPCMD=''
+
+case "$1" in
+	hibernate)
+		SWAPCMD=swapon
+		;;
+	thaw)
+		SWAPCMD=swapoff
+		;;
+	suspend|resume)
+		# Nothing to do on suspend to memory.
+		exit 0
+		;;
+	*)
+		exit $NA
+		;;
+esac
+
+if [ -z "$SWAPCMD" ]; then
+	exit $NA
+fi
+
+/sbin/$SWAPCMD -a
+

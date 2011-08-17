@@ -1,0 +1,4 @@
+# reload psmouse to reactivate trackpoint scrolling
+# [jpw; 2010/08/31] I think that this is now borking tp-scrolling, now that
+#                   I'm enabling it outside of xorg.conf...
+##SUSPEND_MODULES="psmouse"

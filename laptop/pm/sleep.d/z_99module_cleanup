@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Remove wifi-related modules.
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# [jpw]
+
+. /etc/LocalSys/init.d/functions-laptop
+
+case "$1" in
+	hibernate|thaw)
+		;;
+	suspend|resume)
+		# Remove Bluetooth on suspend-to-ram
+                if [ -d /sys/module/bnep ]; then
+                    killBluetooth
+                fi
+		exit 0
+		;;
+	*)
+		exit $NA
+		;;
+esac
+
+
+removeWifiModules
+if [ -d /sys/module/bnep ]; then
+    killBluetooth
+fi
+if isInPowersaveMode && [ -d /sys/module/e1000 ]; then
+    rmmod eth1000
+fi
+
+exit 0

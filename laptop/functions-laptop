@@ -152,7 +152,7 @@ killBluetooth()
 {
     local p
 
-    for p in bluez kblue blueman; do
+    for p in bluez kblue blueman bluedevil; do
         /usr/bin/pkill $p
     done
 

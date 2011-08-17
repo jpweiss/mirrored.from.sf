@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Fix the Cpufreq disobedience.
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# 
+# For the powersave scripts, use 'true' to handle powersaving-enabled events,
+# and 'false' when powersave is disabled.
+# [jpw]
+
+
+SYS_CPUFREQ=/sys/devices/system/cpu/cpu0/cpufreq/
+ONDEMAND_UP_THRESH=100
+
+
+fix_ondemand()
+{
+    [ -d ${SYS_CPUFREQ}/ondemand ] || return 0
+    [ -w ${SYS_CPUFREQ}/ondemand/up_threshold ] || return 1
+    echo $ONDEMAND_UP_THRESH >>${SYS_CPUFREQ}/ondemand/up_threshold
+}
+
+
+fix_freq_range()
+{
+    local min max
+    min=`cat ${SYS_CPUFREQ}/scaling_min_freq`
+    max=`cat ${SYS_CPUFREQ}/scaling_max_freq`
+    [ "$min" = "$max" ] || return 0
+    cat ${SYS_CPUFREQ}/cpuinfo_min_freq >>${SYS_CPUFREQ}/scaling_min_freq
+    cat ${SYS_CPUFREQ}/cpuinfo_max_freq >>${SYS_CPUFREQ}/scaling_max_freq
+}
+
+
+case "$1" in
+	hibernate|suspend)
+		# Nothing to do when stopping.
+		exit 0
+		;;
+	thaw|resume|true|false)
+		fix_freq_range
+		fix_ondemand
+		;;
+	*) exit $NA
+		;;
+esac
+
+
