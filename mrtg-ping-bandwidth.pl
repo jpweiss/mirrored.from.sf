@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2006-2010 by John P. Weiss
+# Copyright (C) 2006-2011 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -96,7 +96,7 @@ my $_refDataTieObj;
 # Ping/Traceroute
 #
 
-sub bandwidth_ping($) {
+sub ping_derived_stats($) {
     my $host = shift();
 
     my $pingcmd=$_PingCmd;
@@ -123,15 +123,17 @@ sub bandwidth_ping($) {
         }
     }
 
+    my $latency = -1;
     my $rate = $bytes;
     if ($msecs) {
+        $latency = $msecs / scalar(@pingLines);
         $rate /= $msecs;
         $rate *= 1000;
     } else {
         $rate = 0;
     }
 
-    return $rate;
+    return ($rate, $latency);
 }
 
 
@@ -154,7 +156,7 @@ sub get_hop_ips($\@) {
 
     close(TRTFH)
         or warn("Error closing pipe to command:\n\t", $cmd,
-                ($! ? "\nReason: \"".$!."\"\n" : "\n"));
+                (defined($!) ? "\nReason: \"".$!."\"\n" : "\n"));
 
     foreach (@traceroute_output) {
         chomp;
@@ -209,15 +211,22 @@ sub build_cfgfile_name() {
 }
 
 
-sub read_config(\$\@\@) {
+sub read_config(\$\@\@\@;$) {
     my $ref_remote_host = shift();
     my $ref_hop_numbers = shift();
     my $ref_measurement_targets = shift();
+    my $ref_show_latency = shift();
+    my $isRereading = (scalar(@_) ? shift() : 0);
+
 
     build_cfgfile_name();
 
     my %options=();
     my $array_option="";
+
+    if ($isRereading) {
+        print STDERR ("Rereading config file:  ", $_ConfigFile, "\n");
+    }
 
     open(IN_FS, "$_ConfigFile")
         or die("Unable to open file for reading: \"$_ConfigFile\"\n".
@@ -275,13 +284,18 @@ sub read_config(\$\@\@) {
     $$ref_remote_host = $options{"remote_host"};
     @$ref_hop_numbers = @{$options{"hop_numbers"}};
     @$ref_measurement_targets = @{$options{"measurement_targets"}};
-    if (defined($options{"_ProbeInterval"})) {
+    if (exists($options{"show_latency"})) {
+        @$ref_show_latency = @{$options{"show_latency"}};
+    } else {
+        @$ref_show_latency = (0) x scalar(@$ref_measurement_targets);
+    }
+    if (exists($options{"_ProbeInterval"})) {
         $_ProbeInterval = $options{"_ProbeInterval"};
     }
-   if (defined($options{"_ConfigUpdateInterval"})) {
+   if (exists($options{"_ConfigUpdateInterval"})) {
         $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
     }
-    if (defined($options{"_DaemonLog"})) {
+    if (exists($options{"_DaemonLog"})) {
         $_DaemonLog = $options{"_DaemonLog"};
     }
 
@@ -289,6 +303,21 @@ sub read_config(\$\@\@) {
     #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ",
     #              join("\n#DBG2# ", @$ref_hop_numbers), " )\n#DBG3# ( ",
     #              join("\n#DBG3# ", @$ref_measurement_targets), " )\n");
+
+    if ($isRereading) {
+        print STDERR ("\tFinished rereading configuration.\n");
+        print STDERR ("\tNew values:\n");
+        foreach my $k (keys(%options)) {
+            print STDERR ("\t\t", $k, " = ");
+            if (ref($options{$k})) {
+                print STDERR ("(\n\t\t\t",
+                              join("\n\t\t\t", @{$options{$k}}),
+                              "\n\t\t)\n");
+            } else {
+                print STDERR ("\"", $options{$k}, "\"\n");
+            }
+        }
+    }
     return 1;
 }
 
@@ -334,10 +363,11 @@ sub log_config_changes(\@\@) {
 }
 
 
-sub write_config($\@\@) {
+sub write_config($\@\@\@) {
     my $remote_host = shift();
     my $ref_hop_numbers = shift();
     my $ref_measurement_targets = shift();
+    my $ref_show_latency = shift();
 
     build_cfgfile_name();
 
@@ -354,6 +384,9 @@ sub write_config($\@\@) {
     print CFGFH ("measurement_targets = (\n\t",
                  join("\n\t", @$ref_measurement_targets),
                  "\n)\n");
+    print CFGFH ("show_latency = (\n\t",
+                 join("\n\t", @$ref_show_latency),
+                 "\n)\n");
     print CFGFH ("_ProbeInterval = ", $_ProbeInterval, "\n");
     print CFGFH ("_ConfigUpdateInterval = ", $_ConfigUpdateInterval, "\n");
     print CFGFH ("_DaemonLog = ", $_DaemonLog, "\n");
@@ -363,9 +396,10 @@ sub write_config($\@\@) {
 }
 
 
-sub update_config($\@;\@) {
+sub update_config($\@\@;\@) {
     my $remote_host = shift();
     my $ref_hop_numbers = shift();
+    my $ref_show_latency = shift();
     my $ref_orig_targets = (scalar(@_) ? shift() : undef());
 
     unless (($remote_host ne "") && are_numbers(@$ref_hop_numbers)) {
@@ -408,7 +442,8 @@ sub update_config($\@;\@) {
         if (defined($ref_orig_targets)) {
             log_config_changes(@$ref_orig_targets, @measurement_targets);
         }
-        write_config($remote_host, @$ref_hop_numbers, @measurement_targets);
+        write_config($remote_host, @$ref_hop_numbers,
+                     @measurement_targets, @$ref_show_latency);
     } else {
         print STDERR ($errmsg, "\n");
         if (defined($ref_orig_targets)) {
@@ -582,10 +617,11 @@ sub daemon_sig_cleanup {
 }
 
 
-sub daemon_main(\@$\@) {
+sub daemon_main(\@$\@\@) {
     my @measurement_targets = @{shift()};
     my $remote_host = shift();
     my @hop_numbers = @{shift()};
+    my @show_latency = @{shift()};
 
     # Print out something for the log file
     print "\n", "="x78, "\n\n";
@@ -610,6 +646,12 @@ sub daemon_main(\@$\@) {
         next if (($signame eq 'KILL' ) || ($signame eq 'STOP'));
         if ($signame =~ m/ALRM|CHLD|CLD|NUM/) {
             $SIG{$signame} = "IGNORE";
+        } elsif ($signame =~ m/USR1/) {
+            # Use a closure to define the "reload-the-configfile" handler.
+            $SIG{$signame} = sub {
+                read_config($remote_host, @hop_numbers,
+                            @measurement_targets, @show_latency, 1);
+            };
         } else {
             $SIG{$signame} = \&daemon_sig_cleanup;
         }
@@ -633,11 +675,14 @@ sub daemon_main(\@$\@) {
     #
     my $configUpdateInterval_secs = $_ConfigUpdateInterval * 24 * 3600;
     my $nextConfigUpdate = time() + $configUpdateInterval_secs;
+    my ($rate, $latency);
     while (1) {
         my $probe_duration = -time();
         my $network_state = 1;
         foreach my $idx (0 .. $#measurement_targets) {
-            $_Measurements[$idx] = bandwidth_ping($measurement_targets[$idx]);
+            ($rate,
+             $latency) = ping_derived_stats($measurement_targets[$idx]);
+            $_Measurements[$idx] = ($show_latency[$idx] ? $latency : $rate);
             $network_state *= $_Measurements[$idx];
         }
 
@@ -648,6 +693,7 @@ sub daemon_main(\@$\@) {
             print STDERR ("#DBG#  Trying to update config...\n");
             @measurement_targets = update_config($remote_host,
                                                  @hop_numbers,
+                                                 @show_latency,
                                                  @measurement_targets);
             $nextConfigUpdate += $configUpdateInterval_secs;
         }
@@ -662,18 +708,20 @@ sub daemon_main(\@$\@) {
 }
 
 
-sub start_daemon($\@$\@) {
+sub start_daemon($\@$\@\@) {
     my $keepParentRunning = shift();
     my $ref_measurement_targets = shift();
     my $remote_host = shift();
     my $ref_hop_numbers = shift();
+    my $ref_show_latency = shift();
 
     # daemonize() either exits the parent process or returns 0.
     daemonize($keepParentRunning) or return 1;
 
     # We're the child process if we reach this point.
     renice_self();
-    daemon_main(@$ref_measurement_targets, $remote_host, @$ref_hop_numbers);
+    daemon_main(@$ref_measurement_targets, $remote_host,
+                @$ref_hop_numbers, @$ref_show_latency);
     # Should never reach here.
     exit 127;
 }
@@ -700,13 +748,16 @@ sub usage() {
     print STDERR ("'-b':  Run in one-shot ping mode.  Checks one or two ",
                   "destination hosts,\n");
     print STDERR ("       as required by MRTG.\n");
+    print STDERR ("       The results (both throughput and latency)  are ",
+                  "returned in a");
+    print STDERR ("       human-readable format.\n");
     print STDERR ("<no-option>:\n");
     print STDERR ("       Returns the last throughput check from an ",
                   "instance of this script\n");
-    print STDERR ("       already running in '-d' mode.  Like '-b' mode, ",
-                  "returns the throughput \n");
-    print STDERR ("       for one or two targets, as required by MRTG.  The ",
-                  "<target#> is the\n");
+    print STDERR ("       already running in '-d' mode.  Returns the ",
+                  "throughput or latency\n");
+    print STDERR ("       for the specified targets.  The <target#> ",
+                  "is the\n");
     print STDERR ("       list index of the IPs/hosts being monitored.  ",
                   "So, if you ran '-c'\n");
     print STDERR ("       with the hop-list '3,5,6,11', then <target#>==3 ",
@@ -771,14 +822,14 @@ if (($ARGV[0] eq "") && !$daemonize) {
 # -b : Run single-shot.
 #
 if ($check_bandwidth) {
-    my $rate1 = bandwidth_ping(shift(@ARGV));
-    if ($rate1 < 0) { exit 1; }
-    my $rate2 = $rate1;
+    my @rate1 = ping_derived_stats(shift(@ARGV));
+    if ($rate1[0] < 0) { exit 1; }
+    my @rate2 = @rate1;
     if (scalar(@ARGV)) {
-        $rate2 = bandwidth_ping(shift(@ARGV));
-        if ($rate2 < 0) { exit 1; }
+        @rate2 = ping_derived_stats(shift(@ARGV));
+        if ($rate2[0] < 0) { exit 1; }
     }
-    printf "%d\n%d\n", $rate1, $rate2;
+    printf "(%d kB/s, %d ms)\n(%d kB/s, %d ms)\n", @rate1, @rate2;
     exit 0;
 }
 
@@ -789,13 +840,18 @@ if ($check_bandwidth) {
 my $remote_host;
 my @hop_numbers;
 my @measurement_targets;
+my @show_latency;
 if ($update_hop_ips) {
     @hop_numbers = split(/,/, shift(@ARGV));
     $remote_host = shift(@ARGV);
-    @measurement_targets = update_config($remote_host, @hop_numbers);
+    my @no_latency = (0) x (scalar(@hop_numbers) + 1);
+    @measurement_targets = update_config($remote_host,
+                                         @hop_numbers,
+                                         @no_latency);
     exit 0 unless ($daemonize);
 } else {
-    read_config($remote_host, @hop_numbers, @measurement_targets);
+    read_config($remote_host, @hop_numbers,
+                @measurement_targets, @show_latency);
 }
 
 #
@@ -808,7 +864,8 @@ my $noDaemonRunning = no_running_daemon();
 if ($daemonize) {
     if ($noDaemonRunning) {
         start_daemon($pingAfterDaemonizing,
-                     @measurement_targets, $remote_host, @hop_numbers);
+                     @measurement_targets, $remote_host,
+                     @hop_numbers, @show_latency);
 
         # If we return from start_daemon(), we're the parent.  Let's sleep for
         # a bit for the daemon to start up before going on (and getting the
