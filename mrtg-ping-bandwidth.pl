@@ -29,7 +29,6 @@ my $_DataFile = "/tmp/mrtg-ping-bandwidth.dat";
 my $_TieAttempts = 5;
 my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
-#my $_DaemonPIDFile = "/tmp/mrtg-ping-bandwidth.pid";
 my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
 my $_DaemonLog = "/tmp/mrtg-ping-bandwidth.log";
 my $_ProbeInterval = 5*60;
@@ -77,9 +76,12 @@ use POSIX qw(nice setsid);
 ############
 
 
-my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 ";
+# The '-U' option overrides the old, creaky method of hitting "unused" UDP
+# ports and instead hits the UDP-DNS port (which should always be an error).
+# We could also use the '-I' option to do ICMP, but '-U' will always work
+# through a firewall.
+my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 -U ";
 # WARMING:  A packet size above 1k will not work with all hosts.
-#my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 32768 ";
 my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 1024 ";
 my @_Measurements;
 my $_refDataTieObj;
@@ -110,16 +112,13 @@ sub ping_derived_stats($) {
     }
     my @pingLines = <PINGFH>;
     close(PINGFH);
-    #print STDERR ("#DBG#:  @pingLines\n");
 
     my $bytes = 0;
     my $msecs = 0;
     foreach (@pingLines) {
         if (m/(\d+) bytes from .* time=([[:digit:].]+) ms/) {
-            #print STDERR ("#DBG#:  ", $1, " bytes, ", $2, " ms\n");
             $bytes += $1;
             $msecs += $2;
-            #print STDERR ("#DBG# Sums: ", $bytes, " b, ", $msecs, " ms\n");
         }
     }
 
@@ -299,11 +298,6 @@ sub read_config(\$\@\@\@;$) {
         $_DaemonLog = $options{"_DaemonLog"};
     }
 
-    #print STDERR ("#DBG# @varnames\n");
-    #print STDERR ("#DBG1# ", $$ref_remote_host, "\n#DBG2# ( ",
-    #              join("\n#DBG2# ", @$ref_hop_numbers), " )\n#DBG3# ( ",
-    #              join("\n#DBG3# ", @$ref_measurement_targets), " )\n");
-
     if ($isRereading) {
         print STDERR ("\tFinished rereading configuration.\n");
         print STDERR ("\tNew values:\n");
@@ -341,24 +335,33 @@ sub log_config_changes(\@\@) {
         if ($#{$ref_new} != $max_n) {
             $targChangetypeMsg = "Removed   -  was";
         }
+        $targAdded = -1;
         $min_n = $#{$ref_new};
     }
 
+    my $noTargsChanged = 1;
     foreach my $targ_idx (0 .. $min_n) {
         if ($ref_old->[$targ_idx] ne $ref_new->[$targ_idx]) {
             print STDERR ("Target #", $targ_idx + 1, " Changed:\t",
                           $ref_old->[$targ_idx],
                           "   -->   ",
                           $ref_new->[$targ_idx], "\n");
+            $noTargsChanged = 0;
         }
     }
 
     foreach my $targ_idx (($min_n+1) .. $max_n) {
         print STDERR ("Target #", $targ_idx + 1, " ",
                       $targChangetypeMsg, ":\t",
-                      ( $targAdded ? $ref_new->[$targ_idx]
+                      ( ($targAdded > 0)
+                        ? $ref_new->[$targ_idx]
                         : $ref_old->[$targ_idx] ),
                       "\n");
+    }
+
+    if ($noTargsChanged && ($targAdded == 0)) {
+        print STDERR ("No Target hosts changed.  No configuration ",
+                      "update needed.\n");
     }
 }
 
@@ -405,26 +408,29 @@ sub update_config($\@\@;\@) {
     unless (($remote_host ne "") && are_numbers(@$ref_hop_numbers)) {
         usage();
     }
+
+    print STDERR ("Updating configuration file with route changes...\n");
     my @measurement_targets = get_hop_ips($remote_host, @$ref_hop_numbers);
-    #print STDERR ("#DBG# (\n#DBG# ", join("\n#DBG# ", @measurement_targets,
-    #                                      $remote_host), "\n#DBG# )\n");
 
     my $errmsg = "";
+    my $warnStart = 1;
     if (scalar(@measurement_targets)) {
         foreach my $idx (0 .. $#measurement_targets) {
             unless (defined($measurement_targets[$idx])) {
-                if ($errmsg eq "") {
-                    $errmsg .= "Failed to retrieve all hops from host: ";
-                    $errmsg .= $remote_host;
+                if ($warnStart) {
+                    print STDERR ("Failed to retrieve all hops from host: ",
+                                  $remote_host, "\n");
+                    $warnStart = 0;
                 }
-                $errmsg .= "\n\tMissing hop \#";
-                $errmsg .= $ref_hop_numbers->[$idx];
+                print STDERR ("\tMissing hop \#",
+                              $ref_hop_numbers->[$idx]);
                 if (defined($ref_orig_targets->[$idx])) {
-                    $errmsg .= ".  Reusing:  ";
-                    $errmsg .= $ref_orig_targets->[$idx];
+                    print STDERR (".  Reusing:  ",
+                                  $ref_orig_targets->[$idx]);
                 } else {
-                    $errmsg .= ".";
+                    print STDERR (".");
                 }
+                print STDERR ("\n");
                 $measurement_targets[$idx] .= $ref_orig_targets->[$idx];
             }
         }
@@ -444,6 +450,7 @@ sub update_config($\@\@;\@) {
         }
         write_config($remote_host, @$ref_hop_numbers,
                      @measurement_targets, @$ref_show_latency);
+        print STDERR ("Configuration update complete.\n");
     } else {
         print STDERR ($errmsg, "\n");
         if (defined($ref_orig_targets)) {
@@ -462,8 +469,6 @@ sub update_config($\@\@;\@) {
 sub retrieve_rates($$) {
     my $targ1=shift();
     my $targ2=shift();
-
-    #print STDERR ("#DBG# t_0: ", time(),"\n");
 
     # Process the args
     unless (are_numbers($targ1, $targ2)) {
@@ -488,11 +493,8 @@ sub retrieve_rates($$) {
             $failureReason .= $@;
         }
         ++$attempts;
-        #print STDERR ("#DBG# TieAttempts: ",$attempts,"\n");
     } while ((!defined($ref_tied) || !scalar(@measurements)) &&
              ($attempts < $_TieAttempts));
-
-    #print STDERR ("#DBG# t1: ", time(),"\n");
 
     # Handle failed tie-attempt.
     if (!defined($ref_tied) || !scalar(@measurements)) {
@@ -519,13 +521,9 @@ sub retrieve_rates($$) {
     if ($targ2 < 0) { $targ2 = 0; }
     my @result = ($measurements[$targ1], $measurements[$targ2]);
 
-    #print STDERR ("#DBG# t2: ", time(),"\n");
-
     # Cleanup
     undef($ref_tied);
     untie(@measurements);
-
-    #print STDERR ("#DBG# t_f: ", time(),"\n");
 
     # //Now// we can return.
     return @result;
@@ -671,8 +669,10 @@ sub daemon_main(\@$\@\@) {
                       "Reason: \"", $failureReason, "\"\n");
     }
 
+    #
     # The Main Loop
     #
+
     my $configUpdateInterval_secs = $_ConfigUpdateInterval * 24 * 3600;
     my $nextConfigUpdate = time() + $configUpdateInterval_secs;
     my ($rate, $latency);
@@ -689,8 +689,6 @@ sub daemon_main(\@$\@\@) {
         # Rebuild the config from time to time.
         #
         if (($network_state != 0) && (time() > $nextConfigUpdate)) {
-#FIXME:  This isn't running.
-            print STDERR ("#DBG#  Trying to update config...\n");
             @measurement_targets = update_config($remote_host,
                                                  @hop_numbers,
                                                  @show_latency,
@@ -749,22 +747,23 @@ sub usage() {
                   "destination hosts,\n");
     print STDERR ("       as required by MRTG.\n");
     print STDERR ("       The results (both throughput and latency)  are ",
-                  "returned in a");
+                  "returned in a\n");
     print STDERR ("       human-readable format.\n");
     print STDERR ("<no-option>:\n");
-    print STDERR ("       Returns the last throughput check from an ",
-                  "instance of this script\n");
-    print STDERR ("       already running in '-d' mode.  Returns the ",
-                  "throughput or latency\n");
-    print STDERR ("       for the specified targets.  The <target#> ",
-                  "is the\n");
+    print STDERR ("       Returns the last throughput/latency check from an ",
+                  "instance of this\n");
+    print STDERR ("       script already running in '-d' mode.  Returns the ",
+                  "throughput or\n");
+    print STDERR ("       latency for the specified targets.  The ",
+                  "<target#> is the\n");
     print STDERR ("       list index of the IPs/hosts being monitored.  ",
                   "So, if you ran '-c'\n");
     print STDERR ("       with the hop-list '3,5,6,11', then <target#>==3 ",
                   "would return the\n");
-    print STDERR ("       throughput of hop-#6, while <target#>==5 would ",
-                  "return the\n");
-    print STDERR ("       throughput of the target host.\n");
+    print STDERR ("       throughput (or latency) of hop-#6, while ",
+                  "<target#>==5 would\n");
+    print STDERR ("       return the throughput (or latency) of the target",
+                  "host.\n");
     print STDERR ("'-r':  Identical to the previous mode, but will start a ",
                   "daemon if one\n");
     print STDERR ("       isn't already running.\n");
@@ -842,6 +841,8 @@ my @hop_numbers;
 my @measurement_targets;
 my @show_latency;
 if ($update_hop_ips) {
+    # Note:  If run with the '-d' option, we'll only reach here if there were
+    # other args following the '-d'.
     @hop_numbers = split(/,/, shift(@ARGV));
     $remote_host = shift(@ARGV);
     my @no_latency = (0) x (scalar(@hop_numbers) + 1);
