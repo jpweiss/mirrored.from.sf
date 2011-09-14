@@ -26,12 +26,18 @@
 
 my $_ConfigFile = undef();
 my $_DataFile = "/dev/shm/mrtg-dsl-log.dat";
+my $_GetURLVia = 'curl';
 my $_TieAttempts = 5;
 my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
 my $_DaemonPIDFile = "/var/run/mrtg-dsl-log.pid";
 my $_UpdateInterval = 5*60;
 my $_DaemonLog = "/tmp/mrtg-dsl-log.log";
+my $_DropCountInterval = 3600;
+# FIXME:  #DBG#  For Debugging Purposes Only:
+$_DataFile = "/home/candide/tmp/mrtg-tst/mrtg-dsl-log.dat";
+$_DaemonPIDFile = "/home/candide/tmp/mrtg-tst/mrtg-dsl-log.pid";
+$_DaemonLog = "/home/candide/tmp/mrtg-tst/mrtg-dsl-log.log";
 
 
 ############
@@ -66,7 +72,7 @@ use bytes;           # Overrides Unicode support
 use Data::Dumper;
 use Date::Parse;
 use Tie::File;
-use Fcntl qw(O_RDONLY);  # For readonly 'tie'
+use Fcntl qw(O_RDONLY O_APPEND O_CREAT);  # For use with 'tie'
 use POSIX qw(nice setsid);
 
 
@@ -91,73 +97,17 @@ my %_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
 my @_Measurements;
 my $_refDataTieObj;
 
+my $c_tsIdx = 0;
+my $c_HRT_Idx = 1;
+my $c_UpDownIdx = 2;
+my $c_nDropsIdx = 3;
+
 
 ############
 #
 # Functions
 #
 ############
-
-
-#
-# Retrieve and parse the log
-#
-
-sub parse_log($$$$$$$\@) {
-    my $how = shift();
-    my $url = shift();
-    my $user = shift();
-    my $passwd = shift();
-    my $dslUp_re = shift();
-    my $dslDown_re = shift();
-    my $time_re = shift();
-    my $ref_dslState = shift();
-
-    # Build the command string separately from the authorization credentials.
-    my $auth = "";
-    if ( ($user ne "") && ($passwd ne "") ) {
-        $auth = $_WebGet{$how}{'user_arg'};
-        $auth .= $user;
-        $auth .= $_WebGet{$how}{'passwd_arg'};
-        $auth .= $passwd;
-        $auth .= " ";
-    }
-
-    my $getUrl_cmd = $_WebGet{$how}{'cmd'};
-    $getUrl_cmd .= $_WebGet{$how}{'args'};
-    my $http_fh;
-    unless (open($http_fh, '-|', $getUrl_cmd . $auth . $url)) {
-        print STDERR ("FATAL: Can't run command: ", $getUrl_cmd, $url,
-                      "\nReason: \"", $!, "\"\n");
-        return 0;
-    }
-    my @logLines = <$http_fh>;
-    close($http_fh);
-    #print STDERR ("#DBG#:\n@logLines\n");
-
-    @$ref_dslState = ();
-    my %n_dropped = ();
-    foreach (@logLines) {
-        s/\r$//;
-        chomp;
-        study;
-        m/$time_re/o or next;
-        my $timestamp = $1;
-        my $time_sec = str2time($timestamp);
-        my $timeUptdInterval = $time_sec / $_UpdateInterval;
-        unless (exists($n_dropped{$timeUptdInterval})) {
-            $n_dropped{$timeUptdInterval} = 0;
-        }
-        if (m/$dslUp_re/o) {
-            push(@$ref_dslState, [$time_sec, $timestamp,
-                                  1, $n_dropped{$timeUptdInterval}]);
-        } elsif (m/$dslDown_re/o) {
-            ++$n_dropped{$timeUptdInterval};
-            push(@$ref_dslState, [$time_sec, $timestamp,
-                                  0, $n_dropped{$timeUptdInterval}]);
-        }
-    }
-}
 
 
 #
@@ -173,9 +123,11 @@ sub checkForErrors_tie($$$$) {
 
     if (!defined($ref_tied) && (($errnoName ne "") || ($reason ne ""))) {
         my $failMessage = "Failed to tie array to file: \"";
+        $failMessage .= $datafile;
         $failMessage .= "\".\nReason: \"";
         $failMessage .= $errnoName;
-        if (($failMessage ne "") && ($reason ne "")) {
+        $failMessage .= "\"";
+        if ($reason ne "") {
             $failMessage .= "\n";
         }
         $failMessage .= $reason;
@@ -349,15 +301,20 @@ sub read_config(\%;$) {
 
     #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
 
-    if (exists($ref_options->{"UpdateInterval_min"})) {
-        $_UpdateInterval = $ref_options->{"UpdateInterval_min"};
+    if (exists($ref_options->{"UpdateInterval"})) {
+        $_UpdateInterval = $ref_options->{"UpdateInterval"};
         # Process any units-suffix:
-        if ($_UpdateInterval =~ m/^(.*)\s*([mh])$/) {
+        if ($_UpdateInterval =~ m/^(.*)\s*s$/) {
+            # Units of seconds.  Nothing to do to the number.
+            $_UpdateInterval = $1;
+        } elsif ($_UpdateInterval =~ m/^(.*)\s*([mh])$/) {
             $_UpdateInterval = $1;
             if ($2 eq "h") {
                 $_UpdateInterval *= 60;
             }
         }
+        # Convert min. to sec.
+        $_UpdateInterval *= 60;
     }
 
     if (exists($ref_options->{"DaemonLog"})) {
@@ -388,6 +345,107 @@ sub read_config(\%;$) {
 
 
 #
+# Parsing & Processing the DSL Modem Log
+#
+
+
+sub parse_log($$$$$$$\@) {
+    my $how = shift();
+    my $url = shift();
+    my $user = shift();
+    my $passwd = shift();
+    my $dslUp_re = shift();
+    my $dslDown_re = shift();
+    my $time_re = shift();
+    my $ref_dslState = shift();
+
+    # Build the command string separately from the authorization credentials.
+    my $auth = "";
+    if ( ($user ne "") && ($passwd ne "") ) {
+        $auth = $_WebGet{$how}{'user_arg'};
+        $auth .= $user;
+        $auth .= $_WebGet{$how}{'passwd_arg'};
+        $auth .= $passwd;
+        $auth .= " ";
+    }
+
+    my $getUrl_cmd = $_WebGet{$how}{'cmd'};
+    $getUrl_cmd .= $_WebGet{$how}{'args'};
+    my $http_fh;
+    unless (open($http_fh, '-|', $getUrl_cmd . $auth . $url)) {
+        print STDERR ("FATAL: Can't run command: ", $getUrl_cmd, $url,
+                      "\nReason: \"", $!, "\"\n");
+        return 0;
+    }
+    my @logLines = <$http_fh>;
+    close($http_fh);
+
+    my %n_dropped = ();
+    my @parsedData = ();
+    foreach (@logLines) {
+        s/\r$//;
+        chomp;
+        study;
+
+        m/$time_re/o or next;
+        my $timestamp = $1;
+        my $time_sec = str2time($timestamp);
+        my $timeUptdInterval = $time_sec - ($time_sec % $_DropCountInterval);
+
+        unless (exists($n_dropped{$timeUptdInterval})) {
+            $n_dropped{$timeUptdInterval} = 0;
+        }
+
+        if (m/$dslUp_re/o) {
+            push(@parsedData, [$time_sec, $timestamp,
+                               1, $n_dropped{$timeUptdInterval}]);
+        } elsif (m/$dslDown_re/o) {
+            ++$n_dropped{$timeUptdInterval};
+            push(@parsedData, [$time_sec, $timestamp,
+                               0, $n_dropped{$timeUptdInterval}]);
+        }
+    }
+
+    # Sort the new data, in ascending order.
+    #
+    @$ref_dslState = sort({ $a->[0] <=> $b->[0] } @parsedData);
+}
+
+
+sub removeDuplicatesAndAdjust(\@$$) {
+    my $ref_events = shift();
+    my $t_lastEvent = shift();
+    my $nDropped_last = shift();
+
+    # 'parse_log()' may have been called in the middle of the
+    # '$_DropCountInterval'.  If the first new event is still in that
+    # interval, we need to start the drop count with whatever it was at the
+    # end of the last call to 'parse_log()'.
+    my $lastEvent_UptdInterval_end = ($t_lastEvent
+                                      - ($t_lastEvent % $_DropCountInterval)
+                                      + $_DropCountInterval);
+
+    my @duplicates = ();
+    foreach my $idx (0 .. $#$ref_events) {
+        # The last update time == $ref_events->[$idx][$c_tsIdx]
+        my $t_event = $ref_events->[$idx][$c_tsIdx];
+        if ($t_event <= $t_lastEvent) {
+            push(@duplicates, $idx);
+        } elsif ($t_event < $lastEvent_UptdInterval_end) {
+            # This event is in the '$_DropCountInterval' from last time.
+            # Update the event with the correct offset.
+            $ref_events->[$idx][$c_nDropsIdx] += $nDropped_last;
+        }
+    }
+
+    # Last, prune the duplicates.
+    if (scalar(@duplicates)) {
+        delete @$ref_events->[@duplicates];
+    }
+}
+
+
+#
 # Functions for handling event data
 #
 
@@ -396,11 +454,11 @@ sub printEvent($\@) {
     my $fh = shift();
     my $ref_event = shift();
 
-    my $hrt = $ref_event->[1];
+    my $hrt = $ref_event->[$c_HRT_Idx];
     $hrt =~ s/\s+/ /g;
     print $fh ($hrt, ":    DSL connection ");
-    print $fh ($ref_event->[2] ? "came back up" : "went down");
-    printf $fh ("\t    (%10ds)\n", $ref_event->[0]);
+    print $fh ($ref_event->[$c_UpDownIdx] ? "came back up" : "went down");
+    printf $fh ("\t    (%10ds)\n", $ref_event->[$c_tsIdx]);
 }
 
 
@@ -408,17 +466,39 @@ sub eventArray2tieArrayElement(\@) {
     my $ref_event = shift();
 
     my $element = '[[';
-    $element .= $ref_event->[2];
+    $element .= $ref_event->[$c_UpDownIdx];
     $element .= ';|;';
-    $element .= $ref_event->[3];
+    $element .= $ref_event->[$c_nDropsIdx];
     $element .= ';|;';
     # Time gets stored at the end.
-    $element .= $ref_event->[1];
+    $element .= $ref_event->[$c_HRT_Idx];
     $element .= ';|;';
-    $element .= $ref_event->[0];
+    $element .= $ref_event->[$c_tsIdx];
     $element .= ']]';
 
     return $element;
+}
+
+
+sub event2MRTGData_arrayref(\@) {
+    my $ref_event = shift();
+
+    ## The @MRTG_Data elements are arrayrefs with 5 elements:
+    ## 0 :== timestamp
+    ## 1 :== avg "in" value since the last measurement.
+    ## 2 :== avg "out" value since the last measurement.
+    ## 3 :== max "in" value since the last measurement.
+    ## 4 :== max "out" value since the last measurement.
+    ##
+    ## We want to make the max & avg the same.
+
+    my @elements = ($ref_event->[$c_tsIdx],
+                    $ref_event->[$c_UpDownIdx],
+                    $ref_event->[$c_nDropsIdx],
+                    $ref_event->[$c_UpDownIdx],
+                    $ref_event->[$c_nDropsIdx]);
+
+    return \@elements;
 }
 
 
@@ -426,7 +506,7 @@ sub tieArrayElement2eventArray($) {
     my $tieElement = shift();
     study $tieElement;
 
-    my @eventArray = (undef) x 3;
+    my @eventArray = (undef) x 4;
     if ( ($tieElement =~ m/^\[\[/) && ($tieElement =~ m/\]\]$/) ) {
         $tieElement =~ s/^\[\[//;
         $tieElement =~ s/\]\]$//;
@@ -440,8 +520,6 @@ sub tieArrayElement2eventArray($) {
 sub retrieve_rates($$) {
     my $targ1 = (defined($_[0]) ? shift() : 0);
     my $targ2 = (defined($_[0]) ? shift() : 0);
-
-    #print STDERR ("#DBG# t_0: ", time(),"\n");
 
     # Process the args
     unless (are_numbers($targ1, $targ2)) {
@@ -459,14 +537,12 @@ sub retrieve_rates($$) {
             sleep($_TieWait);
         }
         $ref_tied = tie(@measurements, 'Tie::File', $_DataFile,
-                        mode => 'O_RDONLY');
+                        'mode' => O_RDONLY);
         $failure = checkForErrors_tie($!, $@, $ref_tied, $_DataFile);
         ++$attempts;
         #print STDERR ("#DBG# TieAttempts: ",$attempts,"\n");
     } while ((!defined($ref_tied) || !scalar(@measurements)) &&
              ($attempts < $_TieAttempts));
-
-    #print STDERR ("#DBG# t1: ", time(),"\n");
 
     # Handle failed tie-attempt.
     if (defined($failure) || !scalar(@measurements)) {
@@ -484,22 +560,64 @@ sub retrieve_rates($$) {
     my @result = tieArrayElement2eventArray($measurements[$#measurements]);
     my $nMeasures = scalar(@result);
     if (($targ1 < 0) || ($targ1 > $nMeasures)) {
-        $targ1 = 0;
+        $targ1 = $c_UpDownIdx;
     }
     if (($targ1 < 0) || ($targ2 > $nMeasures)) {
-        $targ2 = 0;
+        $targ2 = $c_UpDownIdx;
     }
-
-    #print STDERR ("#DBG# t2: ", time(),"\n");
 
     # Cleanup
     undef($ref_tied);
     untie(@measurements);
 
-    #print STDERR ("#DBG# t_f: ", time(),"\n");
-
     # //Now// we can return.
     return ($result[$targ1], $result[$targ2]);
+}
+
+
+# Utility for post-processing a log file into tied-array elements.
+sub myLogfile2tieArrayElement($) {
+    my $logfile = shift();
+
+    my %ndn = ();
+    my %seen = ();
+    open(LFH, "$logfile")
+        or die("Unable to open file for reading: \"$logfile\"\n".
+               "Reason: \"$!\"\n");
+
+    while (<LFH>) {
+        study;
+        if ( m/^(.+[AP]M):.+DSL connection ([^(]+)\((\d+)s/ ||
+             m/^(.+):[^:]+DSL connection ([^(]+)\((\d+)s/ )
+        {
+            my $hrt = $1;
+            my $isUp = $2;
+            my $ts = $3;
+            my $tsh = ($ts - ($ts%3600));
+
+            unless (exists($ndn{$tsh})) {
+                $ndn{$tsh} = 0;
+            }
+            $seen{$tsh} = 1;
+
+            if ($isUp =~ m/back up/) {
+                $isUp = 1;
+            } else {
+                $isUp = 0;
+                ++$ndn{$tsh} unless($seen{$ts});
+            }
+
+            $seen{$ts} = 1;
+            $seen{$tsh} = 1;
+
+            print ("[[", $isUp, ";|;", $ndn{$tsh}, ";|;", $hrt,
+                   ";|;", $ts, "]]\n");
+            print;
+        }
+    }
+    close(LFH);
+
+    exit 0;
 }
 
 
@@ -509,23 +627,118 @@ sub retrieve_rates($$) {
 
 
 sub findRecordsInRange(\@$$) {
-    my $ref_Array = shift();
+    my $ref_data = shift();
     my $minTime = shift();
     my $maxTime = shift();
 
+    # Guard check:
+    return (0, 0) unless (scalar(@$ref_data));
+
     # The times in the MRTG data file are in descending order.
 
-    my $maxIdx = 0;
-    while ($ref_Array->[$maxIdx] > $maxTime) {
+    my @record;
+    # Unfortunately, the loop-variable is _always_ local to the
+    # 'foreach'-loop.  So, we have to resort to while-loops.
+    #
+    # Note:  Starting at -1 so that we can increment at the start of the
+    #        loop.  Otherwise, we have to "de-increment" $maxIdx after the
+    #        loop finishes.
+    my $maxIdx = -1;
+    do {
         ++$maxIdx;
+        @record = split(/\s/, $ref_data->[$maxIdx]);
+    } while (($record[0] > $maxTime) && ($maxIdx <= $#$ref_data));
+
+    # Begin the search for the $minIdx where the last one ended.
+    #
+    # Note:  Again, start the loop at 1 less than the desired position, so
+    #        that the loop's first statement is the increment.  Again, this is
+    #        to prevent a post-loop "de-increment".
+    my $nextLoopStart = $maxIdx - 1;
+
+    # Point $maxIdx to the record in $ref_data that bounds $maxTime "from
+    # above".
+    if (($record[0] < $maxTime) && ($maxIdx > 0)) {
+        --$maxIdx;
     }
 
-    my $minIdx = $maxIdx;
-    while ($ref_Array->[$minIdx] > $minTime) {
+    my $minIdx = $nextLoopStart;
+    do {
         ++$minIdx;
+        @record = split(/\s/, $ref_data->[$minIdx]);
+    } while (($record[0] > $minTime) && ($minIdx <= $#$ref_data));
+    # "$minIdx" already points to the record in $ref_data that bounds $minTime
+    # "from below".  No adjustment needed.
+
+    # Again, the MRTG data is in descending chronological order, so
+    # $maxIdx <= $minIdx.
+    return ($maxIdx, $minIdx);
+}
+
+
+sub mergeEventsWithMRTG(\@$$\@\@) {
+    my $ref_data = shift();
+    my $startIdx = shift();
+    my $endIdx = shift();
+    my $ref_newEvents = shift();
+    my $ref_merged = shift();
+
+    # Remember:  @$ref_newEvents is in ascending-order, while @$ref_data is in
+    # descending-order.  We have to iterate accordingly, and store the results
+    # in descending-order.
+    my $eventIdx = $#$ref_newEvents;
+    my $dataIdx = $startIdx;
+    ++$endIdx;
+
+    while (($dataIdx < $endIdx) && ($eventIdx >= 0)) {
+        my @record = split(/\s/, $ref_data->[$dataIdx]);
+        my $ref_curEvent_record
+            = event2MRTGData_arrayref(@{$ref_newEvents->[$eventIdx]});
+
+        if ($ref_curEvent_record->[0] > $record[0]) {
+            push(@$ref_merged, $ref_curEvent_record);
+            --$eventIdx;
+        } elsif ($ref_curEvent_record->[0] < $record[0]) {
+            push(@$ref_merged, \@record);
+            ++$dataIdx;
+        } else {
+            # They're equal.  Keep drop-events.
+            if ($record[1] <= $ref_curEvent_record->[1]) {
+                push(@$ref_merged, \@record);
+                ++$dataIdx;
+            } else {
+                push(@$ref_merged, $ref_curEvent_record);
+                --$eventIdx;
+            }
+        }
     }
 
-    return ($minIdx, $maxIdx);
+}
+
+
+sub projectDropCountsForward(\@) {
+    my $ref_data = shift();
+
+    # Project forward, but only within the same '$_DropCountInterval'.
+    my %seen_UptdInterval = ();
+    # *sigh*  You can't use the range operator on a descending list.
+    foreach my $idx (reverse(0.. ($#$ref_data - 1))) {
+        my $timeUptdInterval = $ref_data->[$idx][0]
+            - ($ref_data->[$idx][0] % $_DropCountInterval);
+
+        if (exists($seen_UptdInterval{$timeUptdInterval})) {
+            # Still in the same '$_DropCountInterval'
+            if ($ref_data->[$idx][2] == 0) {
+                $ref_data->[$idx][2] = $ref_data->[$idx+1][2];
+            }
+            if ($ref_data->[$idx][4] == 0) {
+                $ref_data->[$idx][4] = $ref_data->[$idx+1][4];
+            }
+        } else {
+            $seen_UptdInterval{$timeUptdInterval} = 1;
+        }
+
+    }
 }
 
 
@@ -534,71 +747,113 @@ sub updateMRTGdata(\@$$) {
     my $mrtgDatafile = shift();
     my $mrtgNewDatafile = shift();
 
-    # Sort the new data.
-    #
-    my @newData = sort({ $a->[0] <=> $b->[0] } @$ref_newData);
-
     # FIXME:  Until we have this function working 100% correctly, print the
     # new data to the log, in "tieable" form.
     print STDERR (join("\n", map({ eventArray2tieArrayElement(@$_)
-                                 } @newData)), "\n");
-    return 0; # Temp - comment out during debugging.
+                                 } @$ref_newData)), "\n");
 
-    ## Note:  @{$MRTG_Data[0]} will always have only 3 elements.
-    ## $MRTG_Data[0][0] is the time when MRTG last updated this information.
-    ## Use this to determine when to write the data.
-    ##
-    ## The rest of the @MRTG_Data elements are arrayrefs with 5 elements:
-    ## 0 :== timestamp
-    ## 1 :== avg "in" value since the last measurement.
-    ## 2 :== avg "out" value since the last measurement.
-    ## 3 :== max "in" value since the last measurement.
-    ## 4 :== max "out" value since the last measurement.
-    ##
-    ## We want to make the max & avg the same.
+    # Empty-case check
+    return 0 unless (scalar(@$ref_newData));
+
+    # For error messages.
+    my $now = localtime();
+    # Time bounds of the new data.
+    my $t_firstNewEvent = $ref_newData->[0][0];
+    my $t_lastNewEvent = $ref_newData->[$#$ref_newData][0];
 
     # Open the MRTG data log file, using 'tie'
     #
     my @MRTG_Data;
     my $ref_tied = tie(@MRTG_Data, 'Tie::File', $mrtgDatafile,
-                       mode => 'O_RDONLY');
+                       'mode' => O_RDONLY);
     my $failure = checkForErrors_tie($!, $@, $ref_tied, $mrtgDatafile);
     if (defined($failure)) {
-        print STDERR ($failure,
+        print STDERR ($now, ":  ", $failure,
                      "Cannot update MRTG data in \"", $mrtgDatafile, "\"\n",
-                     "DSL State information between ", $newData[0][0],
-                      " and ", $newData[$#newData][0], "\n",
+                     "DSL State information between ", $t_firstNewEvent,
+                      " and ", $t_lastNewEvent, "\n",
                       "will be lost.\n");
         return 1;
     }
 
     # Find where the new data should go.
     my ($mergeStartIdx,
-        $mergeEndIdx) = findRecordsInRange(@MRTG_Data,
-                                           $newData[0][0],
-                                           $newData[$#newData][0]);
+        $mergeEndIdx) = findRecordsInRange(@MRTG_Data, $t_firstNewEvent,
+                                           $t_lastNewEvent);
+    # Note:  @{$MRTG_Data[0]} will always have only 3 elements, so don't use
+    # it as the merge start.
+    if ($mergeStartIdx < 1) {
+        $mergeStartIdx = 1;
+    }
 
+    # Merge
+    my @mergedData = ();
+    mergeEventsWithMRTG(@MRTG_Data, $mergeStartIdx, $mergeEndIdx,
+                        @$ref_newData, @mergedData);
+    projectDropCountsForward(@mergedData);
+
+    #
     # Open the file for the updated data:
+    #
+
+    unless (open(OUT_FS, ">$mrtgNewDatafile")) {
+        print STDERR ($now, ":  ",
+                      "Unable to open file for writing: \"",
+                      $mrtgNewDatafile, "\"\n", "Reason: \"$!\"\n",
+                     "Cowwardly refusing to update the MRTG data.\n");
+        return 1;
+    }
 
     # Write out the records preceding the merge region.
+    #
+    # Note:  We need to project the drop count from the most-recent record in
+    #        '@mergedData' forward in time, into every MRTG record before the
+    #        merge interval.
+    #        This isn't _entirely_ correct, since the drop count is really the
+    #        of connection-drops in one '$_DropCountInterval'.  However, if
+    #        you think about it, the data preceding '$mergeStartIdx' has to be
+    #        in a single '$_DropCountInterval'.
 
-    # Merge and write.
+    # The first record requires special handling:
+    my @record = split(/\s/, $MRTG_Data[0]);
+    if ($mergeStartIdx == 1) {
+        # The first record always matches the first 3 elements of the next
+        # record.  If we merge in data at the top, we need to mimic this.
+        @record = @{$mergedData[0]}[(0 .. 2)];
+    } else {
+        # Just copy the drop count from the first merge record.
+        $record[2] = $mergedData[0][2];
+    }
+    print OUT_FS (join(' ', @record), "\n");
+
+    # Handle the subsequent records
+    foreach my $entry (@MRTG_Data[1 .. ($mergeStartIdx - 1)]) {
+        @record = split(/\s/, $entry);
+        $record[2] = $mergedData[0][2];
+        $record[4] = $mergedData[0][4];
+        print OUT_FS (join(' ', @record), "\n");
+    }
+
+    # Write Merged.
+    foreach my $ref_record (@mergedData) {
+        print OUT_FS (join(' ', @$ref_record), "\n");
+    }
 
     # Write out the remaining records.
+    foreach my $entry (@MRTG_Data[($mergeEndIdx + 1) .. $#MRTG_Data]) {
+        print OUT_FS ($entry, "\n");
+    }
+    close(OUT_FS);
 
     # Now overwrite MRTG's file with our update file.
+    unless (rename($mrtgNewDatafile, $mrtgDatafile)) {
+        print STDERR ($now, ":  ",
+                      "Failed to update the MRTG data (could not rename\n",
+                      "the updated file).\n");
+        return 1;
+    }
 
-    # FIXME:  Examine the MRTG source - see if it holds the data files open.
-    #
-    #         See if it will update the 5-minute averages.
-    #         => Ans:  Yes, it does.  But, check the source and find out
-    #                  exactly what it's doing.
-    #
-    #         And, we'll also need to read the !#@%%!#@$!@ MRTG configfile.
-    #         Or do something else as far as "knowing" MRTG's update rate.
-    #
-    #         The graphs *will* update with the changes, given what I've seen
-    #         from previous attempts at fixing borked MRTG data.
+    return 0;
 }
 
 
@@ -610,13 +865,17 @@ sub updateMRTGdata(\@$$) {
 sub daemonize(;$) {
     my $keepParentRunning = (scalar(@_) ? shift() : 0);
 
-    if ($keepParentRunning) {
-        defined(my $pid = fork) or die "Can't fork: $!";
-        return 0 if ($pid);
-        # else:  We're the child, which we'll use to create the daemon.
+    defined(my $pid = fork) or die "Can't fork: $!";
+    if ($pid) {
+        if ($keepParentRunning) {
+            return 0;
+        } else {
+            exit 0;
+        }
     }
+    # else:  We're the child, which we'll use to create the daemon.
 
-    chdir "/tmp"      or die "Can't chdir to /tmp: $!";
+    chdir "/tmp"            or die "Can't chdir to /tmp: $!";
     open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
     open STDOUT, ">>$_DaemonLog"
         or die "Can't write to $_DaemonLog: $!";
@@ -666,7 +925,7 @@ sub no_running_daemon() {
     #return !scalar(@match);
     ## Don't use "system()", as it discards the output.
 
-    print STDERR ("Process '", $daemonPid, "'not found.\n");
+    print STDERR ("Process '", $daemonPid, "' not found.\n");
     print STDERR ("Check for dead/stale PID file:  \"", $_DaemonPIDFile,
                   "\"\n");
     return 1;
@@ -723,12 +982,18 @@ sub daemon_main(\%) {
         }
     }
 
-    # Tie an array to the data file, retrying as needed.
+    # Tie an array to the data file, keeping any existing one.
     #
-    $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile);
+    if ( -f $_DataFile) {
+        $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile,
+                              'mode' => O_APPEND);
+    } else {
+        $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile);
+    }
     my $failure = checkForErrors_tie($!, $@, $_refDataTieObj, $_DataFile);
     if (defined($failure)) {
-        print STDERR ($failure);
+        print STDERR ($failure,
+                     "\nCowardly refusing to continue running.\n");
         exit 1;
     }
 
@@ -737,39 +1002,47 @@ sub daemon_main(\%) {
     #
 
     my @updatedDslState = ();
-    my $lastUpdate_time = 0;
+    my $probe_duration;
+    my $ref_lastEvent = [];
+    if (scalar(@_Measurements)) {
+        $ref_lastEvent
+            = tieArrayElement2eventArray($_Measurements[$#_Measurements]);
+    }
+
     while (1) {
         my $probe_duration = -time();
 
-        parse_log('curl', $options{'LogUrl'},
+        print STDERR ("###DBG### ", time(), " Reading DSL modem log.\n");
+
+        parse_log($_GetURLVia, $options{'LogUrl'},
                   $options{'userid'}, $options{'passwd'},
                   $options{'DslUp_regexp'}, $options{'DslDown_regexp'},
                   $options{'Time_regexp'}, @updatedDslState);
 
-        my @duplicates = ();
-        foreach my $idx (0 .. $#updatedDslState) {
-            if ($updatedDslState[$idx][0] <= $lastUpdate_time) {
-                push(@duplicates, $idx);
-                next;
-            }
-            # else:
-            $lastUpdate_time = $updatedDslState[$idx][0];
+        print STDERR ("####DBG#### ", time(), " Removing duplicates...\n");
+        removeDuplicatesAndAdjust(@updatedDslState,
+                                  $ref_lastEvent->[$c_tsIdx],
+                                  $ref_lastEvent->[$c_nDropsIdx]);
+        print STDERR ("####DBG#### ", time(), " Storing...\n");
+
+        # Output:
+        foreach my $ref_event (@updatedDslState) {
             # 'push' on a tied-array always flushes.
             push(@_Measurements,
-                 eventArray2tieArrayElement(@{$updatedDslState[$idx]}));
+                 eventArray2tieArrayElement(@$ref_event));
             # Log the event, as well (at least for now).
-            printEvent(\*STDERR, @{$updatedDslState[$idx]});
+            printEvent(\*STDERR, @$ref_event);
+            # Update the last-event holder.
+            $ref_lastEvent = $ref_event;
         }
+        print STDERR ("####DBG#### ", time(), " updateMRTGdata()...\n");
 
-        # Prune the duplicates.
-        if (scalar(@duplicates)) {
-            delete @updatedDslState[@duplicates];
-        }
         # Build the new MRTG data log file & rotate it in.
         updateMRTGdata(@updatedDslState,
                        $options{'_MRTG_Data_'},
                        $options{'_MRTG_Updated_Data_'});
 
+        print STDERR ("####DBG#### ", time(), " Done.  Sleeping.\n");
         $probe_duration += time();
         if ($_UpdateInterval < $probe_duration) {
             sleep($_UpdateInterval);
@@ -864,7 +1137,21 @@ if ($ARGV[0] eq "-d") {
 } elsif ($ARGV[0] eq "-n") {
     shift(@ARGV);
     $checkNow=1;
+} elsif ($ARGV[0] eq "-l2t") {
+    # For recovery only.
+    shift(@ARGV);
+    myLogfile2tieArrayElement($ARGV[0]); # This fn. exits.
+} elsif ($ARGV[0] eq "--keep-in-foreground") {
+    # For Debugging Purposes Only:
+    my %dbgO;
+    print STDERR ("Ignore the 'Rereading' bit in the next message.  We're\n",
+                  "using the sighanlder to read the configuration and\n",
+                  "validate in one go, and that's what it spits out.\n");
+    read_config(%dbgO, 1);
+    daemon_main(%dbgO);
+    exit 127;  #Should never reach here.
 } elsif ($ARGV[0] =~ m/^-/) {
+    print STDERR ("Unknown option:  \"", $ARGV[0], "\"\n");
     usage();
 }
 
@@ -887,7 +1174,7 @@ read_config(%options);
 
 if ($checkNow) {
     my @recentState = ();
-    parse_log('curl', $options{'LogUrl'},
+    parse_log($_GetURLVia, $options{'LogUrl'},
               $options{'userid'}, $options{'passwd'},
               $options{'DslUp_regexp'}, $options{'DslDown_regexp'},
               $options{'Time_regexp'}, @recentState);
@@ -944,8 +1231,8 @@ if (scalar(@ARGV)) {
 # FIXME:  These aren't rates anymore.  Rename everything accordingly.
 #         We don't need a printf anymore, either.
 my @rates = retrieve_rates($statistic1, $statistic2);
-#printf ("%.0f\n%.0f\n", $rates[0], $rates[1]);
-#print "\nFIXME:  Print out a count of the number of connects/disconnects in the past 5 minutes as the 2nd number.  Make it signed, perhaps, if possible?  Or, print out the # of connects & disconnects separately?\n";
+printf ("%.0f\n%.0f\n", $rates[0], $rates[1]);
+
 # FIXME:  The initial design of this tool was based on the assumption that
 #         we could somehow backtrack the client and allow the daemon to update
 #         at its own, separate rate.  I don't see how we can do that, short
