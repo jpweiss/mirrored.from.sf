@@ -168,7 +168,7 @@ use Date::Parse;
 use Term::ReadKey;
 use Tie::File;
 use Fcntl qw(O_RDONLY O_APPEND O_CREAT);  # For use with 'tie'
-use POSIX qw(nice setsid);
+use POSIX qw(nice setsid strftime);
 use Data::Dumper;
 
 
@@ -184,7 +184,8 @@ my $c_HRT_Idx = 1;
 my $c_UpDownIdx = 2;
 my $c_nDropsIdx = 3;
 
-my $c_printDbgTs = '{;[;DebugTimestamp;];}';
+my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
+my $c_myTimeFmt = '%Y/%m/%d_%T';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
 my $c_VerifyShhhh='768b38a0bb140aa1f306ca21797a89708cf7223cdb7aa9859c2a614'.
@@ -290,8 +291,9 @@ sub printDbg(@) {
     return 1 unless ($_DebugLoggingIsActive);
 
     my $first = shift();
-    if ($first eq $c_printDbgTs) {
-        print STDERR ("#DBG# [", time(), "s]  ", @_);
+    if ($first eq $c_dbgTsHdr) {
+        print STDERR ("#DBG# [",
+                      strftime($c_myTimeFmt, localtime()), "]  ", @_);
     } else {
         print STDERR ($first, @_);
     }
@@ -930,7 +932,7 @@ sub resetStaleDropCounts(\@$\@) {
                 ($event[$c_nDropsIdx] == 0) );
 
     $event[$c_tsIdx] = $currentTime;
-    $event[$c_HRT_Idx] = localtime();
+    $event[$c_HRT_Idx] = strftime($c_myTimeFmt, localtime());
     $event[$c_nDropsIdx] = 0;
     push(@$ref_newEvents, \@event);
 }
@@ -957,7 +959,7 @@ sub startup_eventDefaultValue() {
     my @defaultInitialEvent = ();
     $defaultInitialEvent[$c_UpDownIdx] = 1;
     $defaultInitialEvent[$c_nDropsIdx] = 0;
-    $defaultInitialEvent[$c_HRT_Idx] = localtime();
+    $defaultInitialEvent[$c_HRT_Idx] = strftime($c_myTimeFmt, localtime());
     $defaultInitialEvent[$c_tsIdx] = time();
     return \@defaultInitialEvent;
 }
@@ -1353,7 +1355,7 @@ sub updateMRTGdata(\@$$) {
     return 1 unless (scalar(@$ref_newData));
 
     # For error messages.
-    my $now = localtime();
+    my $now = strftime($c_myTimeFmt, localtime());
     # Time bounds of the new data.
     my $t_firstNewEvent = $ref_newData->[0][0];
     my $t_lastNewEvent = $ref_newData->[$#$ref_newData][0];
@@ -1555,7 +1557,7 @@ sub daemon_housekeeping() {
             my @keep = @_Measurements[($threeQuarters .. $#_Measurements)];
             @_Measurements = @keep;
         } else {
-            print STDERR (localtime(),
+            print STDERR (strftime($c_myTimeFmt, localtime()),
                           ":  Failed to open file for writing:\n\t\"",
                           $_DataFile, "-old\"\n  ", $!,
                           "\nThe original file, \"", $_DataFile,
@@ -1570,7 +1572,7 @@ sub daemon_housekeeping() {
     if ($logSize > $_MaxSize_Log) {
         if (rename($_DaemonLog, $_DaemonLog.'-old')) {
             unless (open STDOUT, ">$_DaemonLog") {
-                my $errmsg = localtime();
+                my $errmsg = strftime($c_myTimeFmt, localtime());
                 $errmsg .= ":  Logfile Rotation Failed!";
                 $errmsg .= "Could not reopen $_DaemonLog:\n  $!\n";
                 $errmsg .= "This will cause the original file, now named\n\"";
@@ -1582,7 +1584,8 @@ sub daemon_housekeeping() {
                         and close(EFH);
             }
         } else {
-            print STDERR (localtime(), ":  Could not rotate ",
+            print STDERR (strftime($c_myTimeFmt, localtime()),
+                          ":  Could not rotate ",
                           $_DaemonLog, ":\n  ", $!,
                           "\nThe log file will keep growing.\n");
         }
@@ -1596,7 +1599,7 @@ sub daemon_main(\%) {
     # Print out something for the log file
     print "\n", "="x78, "\n\n";
     print "#  Starting $_MyName in Daemon Mode\n";
-    my $date = localtime();
+    my $date = strftime($c_myTimeFmt, localtime());
     print "#  ", $date, "\n\n";
 
     # Write our PID to the PID file.
@@ -1669,7 +1672,7 @@ sub daemon_main(\%) {
         my $probe_duration = -$now;
 
         printDbg("\n\n");
-        printDbg($c_printDbgTs, "Reading DSL modem log.\n");
+        printDbg($c_dbgTsHdr, "Reading DSL modem log.\n");
 
         parse_syslog($_GetURLVia, $options{'SyslogUrl'},
                      $options{'userid'}, $options{'passwd'},
@@ -1681,7 +1684,7 @@ sub daemon_main(\%) {
                                   $ref_lastEvent->[$c_nDropsIdx]);
         resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent);
 
-        printDbg($c_printDbgTs, "Storing...\n");
+        printDbg($c_dbgTsHdr, "Storing...\n");
 
         # Output:
         foreach my $ref_event (@updatedDslState) {
@@ -1703,7 +1706,7 @@ sub daemon_main(\%) {
 
         daemon_housekeeping();
 
-        printDbg($c_printDbgTs, "Done.  Sleeping.\n");
+        printDbg($c_dbgTsHdr, "Done.  Sleeping.\n");
 
         $probe_duration += time();
         if ($_UpdateInterval < $probe_duration) {
