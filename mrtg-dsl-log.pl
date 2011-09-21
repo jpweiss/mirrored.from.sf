@@ -28,8 +28,11 @@ my $_ConfigFile = undef();
 my $_UpdateInterval = 5*60;
 my $_DaemonLog = "/tmp/mrtg-dsl-log.log";
 my $_DataFile = "/dev/shm/mrtg-dsl-log.dat";
+my $_MaxSize_DataFile = 8*1024*1024;
+my $_MaxSize_Log = 64*1024*1024;
 my $_DaemonPIDFile = "/var/run/mrtg-dsl-log.pid";
 my $_GetURLVia = 'curl';
+my $_DebugLoggingIsActive = 0;
 my $_DropCountInterval = 3600;
 my $_TieAttempts = 5;
 my $_TieWait = 1;
@@ -55,12 +58,108 @@ BEGIN {
 }
 
 
+#=============================================================================
+#
+# Begin:  Inlined Crypt::CipherSaber package.
+#
+# All code below, up until the "End" header, is based on code Copyright (C)
+# 2001 - 2002 by chromatic <chromatic@wgz.org>; all rights reserved.  The
+# original Crypt::CipherSaber library was released under the same license as
+# Perl itself.
+#
+# The inlined version of Crypt::CipherSaber has been modified to crunch it
+# into less space and eliminate features not used by this program.
+#
+############
+package Crypt::CipherSaber;
+
+use strict; use Carp; use vars qw($VERSION); $VERSION = '0.61';
+sub new {
+    my $class = shift; my $key = shift;
+    my $N = shift;
+    if (!(defined $N) or ($N < 1)) { $N = 1; }
+    my $self = [ $key, [ 0 .. 255 ], $N ];
+    bless($self, $class);
+}
+sub crypt {
+    my $self = shift; my $iv = shift;
+    $self->_setup_key($iv);
+#Begin::IL#
+    my @key = map { ord } split(//, ($self->[0] . $iv));
+    my $state = $self->[1]; my $j = 0; my $length = @key;
+    for (1 .. $self->[2]) {
+        for my $i (0 .. 255) {
+            $j += ($state->[$i] + ($key[$i % $length]));
+            $j %= 256; (@$state[$i, $j]) = (@$state[$j, $i]);
+        }
+    }
+#End::IL#
+    my $message = shift; my $state = $self->[1];
+    my $output = _do_crypt($state, $message);
+#Begin::IL#
+#    my $output;
+#    for (0 .. (length($message) - 1 )) {
+#        $i++; $i %= 256; $j += $state->[$i]; $j %= 256;
+#        @$state[$i, $j] = @$state[$j, $i];
+#        $n = $state->[$i] + $state->[$j]; $n %= 256;
+#        $output .= chr( $state->[$n] ^ ord(substr($message, $_, 1)) );
+#    }
+#End::IL#
+    $self->[1] = [ 0 .. 255 ];
+    return $output;
+}
+sub encrypt {
+    my $self = shift;
+    my $iv = $self->_gen_iv();
+#IL#    my $iv; for (1 .. 10) { $iv .= chr(int(rand(256))); }
+    return $iv . $self->crypt($iv, @_);
+}
+sub decrypt {
+    my $self = shift; my ($iv, $message) = unpack("a10a*", +shift);
+    return $self->crypt($iv, $message);
+}
+# Begin:  Remove After Inlining
+sub _gen_iv {
+    my $iv; for (1 .. 10) { $iv .= chr(int(rand(256))); }
+    return $iv;
+}
+sub _setup_key {
+    my $self = shift;
+    my $key = $self->[0] . shift; my @key = map { ord } split(//, $key);
+    my $state = $self->[1]; my $j = 0; my $length = @key;
+    for (1 .. $self->[2]) {
+        for my $i (0 .. 255) {
+            $j += ($state->[$i] + ($key[$i % $length]));
+            $j %= 256; (@$state[$i, $j]) = (@$state[$j, $i]);
+        }
+    }
+}
+sub _do_crypt {
+    my ($state, $message, $i, $j, $n) = @_;
+    my $output;
+    for (0 .. (length($message) - 1 )) {
+        $i++; $i %= 256; $j += $state->[$i]; $j %= 256;
+        @$state[$i, $j] = @$state[$j, $i];
+        $n = $state->[$i] + $state->[$j]; $n %= 256;
+        $output .= chr( $state->[$n] ^ ord(substr($message, $_, 1)) );
+    }
+    return wantarray ? ($output, $state, $i, $j, $n) : $output;
+}
+# End:  Remove After Inlining
+
+############
+#
+# End:  Inlined Crypt::CipherSaber
+#
+#=============================================================================
+package main;
+
+
 ############
 #
 # Includes/Packages
 #
 ############
-
 
 require 5;
 use strict;
@@ -80,6 +179,33 @@ use Data::Dumper;
 ############
 
 
+my $c_tsIdx = 0;
+my $c_HRT_Idx = 1;
+my $c_UpDownIdx = 2;
+my $c_nDropsIdx = 3;
+
+my $c_printDbgTs = '{;[;DebugTimestamp;];}';
+
+# Used to warn the user when they need to rerun this script in '-p'-mode.
+my $c_VerifyShhhh='768b38a0bb140aa1f306ca21797a89708cf7223cdb7aa9859c2a614'.
+    '013fbfbeff711780dd805c4e297637e4af4748216317eb07eee1f1341fa92a014f782'.
+    '10aefcf287b714cc75f1';
+my $c_ExpectedShhhh='sub shhhhh($$); my $c_ExpectedShhhh="@th350und0fth3"';
+my $c_VersionShhhh="# 1.0 #";
+
+
+# Constants used in the time-format hash.  Prevents inconsistencies due to
+# typos.
+my $c__tfmt_common_ddmmyyyyAMPM
+    = '(\d\d.\d\d.\d\d\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
+my $c__tfmt_common_yyyymmdd = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d)';
+my $c__tfmt_common_yyyymmddAMPM
+     = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
+
+
+my @c_Hex = ('0', '1', '2', '3', '4', '5', '6', '7',
+             '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+
 my %_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
                             'args' => " -4 -s ",
                             'user_arg' => " -u ",
@@ -92,13 +218,6 @@ my %_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
                           }
               );
 
-# Constants used in the time-format hash.  Prevents inconsistencies due to
-# typos.
-my $c__tfmt_common_ddmmyyyyAMPM
-    = '(\d\d.\d\d.\d\d\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
-my $c__tfmt_common_yyyymmdd = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d)';
-my $c__tfmt_common_yyyymmddAMPM
-     = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
 my %_TimeFormats = ( 'yyyy-mm-dd HH:MM:SS' => $c__tfmt_common_yyyymmdd,
                      'yyyy/mm/dd HH:MM:SS' => $c__tfmt_common_yyyymmdd,
                      'yyyy-mm-dd HH:MM:SS AM' => $c__tfmt_common_yyyymmddAMPM,
@@ -113,11 +232,6 @@ my %_TimeFormats = ( 'yyyy-mm-dd HH:MM:SS' => $c__tfmt_common_yyyymmdd,
 
 my @_Measurements;
 my $_refDataTieObj;
-
-my $c_tsIdx = 0;
-my $c_HRT_Idx = 1;
-my $c_UpDownIdx = 2;
-my $c_nDropsIdx = 3;
 
 
 ############
@@ -172,10 +286,23 @@ sub are_numbers(;@) {
 }
 
 
-sub convert2secs($) {
-    my $timeStr = shift();
+sub printDbg(@) {
+    return 1 unless ($_DebugLoggingIsActive);
 
-    my $secs = 0;
+    my $first = shift();
+    if ($first eq $c_printDbgTs) {
+        print STDERR ("#DBG# [", time(), "s]  ", @_);
+    } else {
+        print STDERR ($first, @_);
+    }
+}
+
+
+sub convert2secs(\$) {
+    my $ref_var = shift();
+
+    my $timeStr = $$ref_var;
+    my $secs = undef;
 
     # Process any units-suffix:
     if ($timeStr =~ m/^(.*)\s*s$/) {
@@ -187,11 +314,42 @@ sub convert2secs($) {
         if ($2 eq "h") {
             $secs *= 60;
         }
+    } else {
+        # Don't modify $$ref_var.
+        return undef;
     }
+
     # Convert min. to sec.
     $secs *= 60;
 
+    $$ref_var = $secs;
     return $secs;
+}
+
+
+sub convert2bytes(\$) {
+    my $ref_var = shift();
+
+    my $valStr = $$ref_var;
+    my $bytes = undef;
+
+    # Process any units-suffix:
+    if ($valStr =~ m/^(\d+)\s*([BbKkMm])$/) {
+        $bytes = $1;
+        my $unit = lc($2);
+        if ($unit eq "m") {
+            $bytes *= 1024;
+        }
+        if ($unit ne "b") {
+            # ==> units are either 'k' or 'm'.
+            $bytes *= 1024;
+        }
+        $$ref_var = $bytes;
+        return $bytes;
+    } #else
+
+    # Don't modify $$ref_var.
+    return undef;
 }
 
 
@@ -232,8 +390,169 @@ sub build_cfgfile_name() {
 }
 
 
+sub readSilent($)
+{
+    my $msg = shift();
+
+    print $msg, "> ";
+    ReadMode('cbreak');
+    my $val1='';
+    my $c = ReadKey(0);
+    while ($c ne "\n") {
+        print "*";
+        $val1 .= $c;
+        $c = ReadKey(0);
+    }
+    print "\n";
+
+    print "Verify:  re-enter what you just typed> ";
+    my $val2='';
+    $c = ReadKey(0);
+    while ($c ne "\n") {
+        print "*";
+        $val2 .= $c;
+        $c = ReadKey(0);
+    }
+    print "\n";
+
+    ReadMode('normal');
+
+    if ($val1 eq $val2) {
+        return $val1;
+    } #else:  Error
+    print "Typo:  Values do not match.\n";
+    return undef;
+}
+
+
+sub shhhhh($$) {
+    my $thing = shift();
+    my $fwd = shift();
+
+    return undef unless ($thing);
+
+    open(IN_FH, '<', $0) or die("Unable to open file for reading.\n".
+                                "Reason: \"$!\"\n");
+    my @octets = ();
+    my $nc = 0;
+    my $iVal = 0;
+    my $hVal = 0;
+    while (my $line = <IN_FH>) {
+        foreach (split(//, $line)) {
+            if (($nc % 4) == 0) {
+                $hVal ^= $iVal; $iVal = ord;
+            }
+            else {
+                $iVal <<= 8; $iVal |= ord;
+            }
+            # Increment now so that the first iteration isn't caught by the use
+            # of the '%' operator below.
+            ++$nc;
+            if (($nc % 0x10) == 0) { $hVal %= 0x2AAAAAAB; }
+            if (($nc % 0xAAB) == 0) {
+                while ($hVal) {
+                    push(@octets, chr($hVal & 0xFF)); $hVal >>= 8;
+                }
+            $hVal = ( ($#octets > 73) ? shift(@octets) : 0);
+            }
+        }
+    }
+    close(IN_FH);
+
+    # FIXME:  Remove once this script has stabilized.
+    @octets = ("Ó<@æyVO<8^T(.ÓÂåLôGizÏAþ2efB½Ê&(u-=È)Bb ¼¯ã*)nU1:µÌi");
+    my $cs = Crypt::CipherSaber->new(join('', @octets));
+    my $retval = "";
+    if ($fwd) {
+        $thing .= '|;|'; $thing .= $c_VersionShhhh;
+        foreach my $octet (map(ord, split(//, $cs->encrypt($thing)))) {
+            $retval .= $c_Hex[((0xF0 & $octet) >> 4)];
+            $retval .= $c_Hex[(0x0F & $octet)];
+        }
+    } else {
+        die("Invalid input passed for decryption:\n\t\"".$thing."\"\n")
+            unless ( ((length($thing) % 2) == 0) &&
+                     ($thing =~ m/^[0-9a-fA-F]+$/) );
+        my @nibbles = map( { (($_ < 10) ? $_ : ($_ - 0x27) ) }
+                           map( { (ord() & 0xFF) - 0x30 }
+                                split(//, lc($thing)) ) );
+        my $octets = '';
+        do {
+            $octets .= chr( (shift(@nibbles) << 4) | shift(@nibbles) );
+        } while (scalar(@nibbles));
+        my @parts = split(/\|;\|/, $cs->decrypt($octets));
+        $retval = ($parts[1] eq $c_VersionShhhh ? $parts[0] : undef);
+    }
+    return $retval;
+}
+
+
+sub set_or_warn(\$$$$@) {
+    my $ref_var = shift();
+    my $newVal = shift();
+    my $what = shift();
+    my $why = shift();
+
+    if (defined($newVal) && $newVal) {
+        $$ref_var = $newVal;
+        return;
+    } # else:  Error
+
+    print STDERR("Error:  ", $why, " in setting:  \"", $what, "\"\n", @_);
+}
+
+
+sub validate_auth_only(\%) {
+    my $ref_options = shift();
+
+    return 1 unless (exists($ref_options->{"passwd"}));
+
+    my $perms = (stat($_ConfigFile))[2] & 07077;
+    die("\nFATAL ERROR:\n\n".
+        "Incorrect file permissions on configuration file:\n\t\"".
+        $_ConfigFile."\"\n".
+        "It should have no 'group' or 'other' permissions and not special ".
+        "flags set.\n\n".
+        "Cowardly refusing to continue with an insecure configuration file.".
+        "\n\n"
+       ) unless ($perms == 0);
+
+    my $test = shhhhh($c_VerifyShhhh, 0);
+    die ("\nFATAL ERROR:\n\n".
+         "Someone or something has changed this script!  All authentication".
+         "\n".
+         "information created with the \"-p\" option is now invalid and will".
+         "\n".
+         "no longer be used.\n\n".
+         "You should change the authentication information on your DSL modem".
+         "\n".
+         "and delete this copy of \"".$_MyName."\".  (Replace it".
+         "\n".
+         "with a known valid copy from a reliable site.)".
+         "\n\n".
+         "Cannot continue.".
+         "\n\n"
+        ) unless ($test eq $c_ExpectedShhhh);
+
+    my $raw = $ref_options->{"passwd"};
+    $ref_options->{"passwd"} = shhhhh($raw, 0);
+    unless (defined($ref_options->{"passwd"})) {
+        print STDERR ("\nFatal Error:\n\n",
+                      "This script has been upgraded, invalidating all ",
+                      "authentication information\n",
+                      "in your configuration file.\n",
+                      "You must rerun:\n\t\"", $_MyName, " -p\"\n",
+                      "to update your configuration file.\n\n",
+                      "Cannot continue.", "\n\n");
+        exit 3;
+    }
+}
+
+
 sub validate_options(\%) {
     my $ref_options = shift();
+
+    validate_auth_only(%$ref_options);
 
     if (exists($ref_options->{"MRTG_LogDir"})) {
         unless ((-d $ref_options->{"MRTG_LogDir"}) &&
@@ -296,11 +615,11 @@ sub read_config(\%;$) {
         print STDERR ("Rereading config file:  ", $_ConfigFile, "\n");
     }
 
-    open(IN_FS, "$_ConfigFile")
+    open(IN_FH, "$_ConfigFile")
         or die("Unable to open file for reading: \"$_ConfigFile\"\n".
                "Reason: \"$!\"\n");
 
-    while (<IN_FS>) {
+    while (<IN_FH>) {
         my $line = $_;
         chomp $line; # Remove newline
         study $line;
@@ -353,16 +672,22 @@ sub read_config(\%;$) {
         # Regular option processing
         $ref_options->{$optname} = $val;
     }
-    close IN_FS;
+    close IN_FH;
 
     #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
 
     #
-    # Process Options & Compute Params (not requiring validation) 
+    # Process Options & Compute Params (not requiring validation)
     #
 
     if (exists($ref_options->{"UpdateInterval"})) {
-        $_UpdateInterval = convert2secs($ref_options->{"UpdateInterval"});
+        convert2secs($ref_options->{"UpdateInterval"});
+        set_or_warn($_UpdateInterval, $ref_options->{"UpdateInterval"},
+                    "UpdateInterval",
+                    "Invalid time value",
+                    "It must be a time value with the one of the optional ",
+                    "unit markers\n'h', 'm' or 's'.  The default units are ",
+                    "minutes.");
     }
 
     unless (exists($_TimeFormats{$ref_options->{"TimeFormat"}})) {
@@ -383,11 +708,37 @@ sub read_config(\%;$) {
     }
 
     # Advanced Config Options:
+    if (exists($ref_options->{"_DebugLoggingIsActive"})) {
+        $_DebugLoggingIsActive = $ref_options->{"_DebugLoggingIsActive"};
+        if ($_DebugLoggingIsActive =~ m/(?:y(?:es)?|t(?:rue)?)/i) {
+            $_DebugLoggingIsActive = 1;
+        } elsif ($_DebugLoggingIsActive =~ m/(?:n(?:o)?|f(?:alse)?)/i) {
+            $_DebugLoggingIsActive = 0;
+        }
+    }
     if (exists($ref_options->{"_DataFile"})) {
         $_DataFile = $ref_options->{"_DataFile"};
     }
     if (exists($ref_options->{"_DaemonPIDFile"})) {
         $_DaemonPIDFile = $ref_options->{"_DaemonPIDFile"};
+    }
+    if (exists($ref_options->{"_MaxSize_DataFile"})) {
+        convert2bytes($ref_options->{"_MaxSize_DataFile"});
+        set_or_warn($_MaxSize_DataFile, $ref_options->{"_MaxSize_DataFile"},
+                    "_MaxSize_DataFile",
+                    "Invalid size value",
+                    "It must be a size with the one of the required ",
+                    "unit-suffixes \"B\", \"K\",\n",
+                    " or \"M\".  (There are no units for gigabytes.)");
+    }
+    if (exists($ref_options->{"_MaxSize_Log"})) {
+        convert2bytes($ref_options->{"_MaxSize_Log"});
+        set_or_warn($_MaxSize_Log, $ref_options->{"_MaxSize_Log"},
+                    "_MaxSize_Log",
+                    "Invalid size value",
+                    "It must be a size with the one of the required ",
+                    "unit-suffixes \"B\", \"K\",\n",
+                    " or \"M\".  (There are no units for gigabytes.)");
     }
     if (exists($ref_options->{"_GetURLVia"})) {
         $_GetURLVia = $ref_options->{"_GetURLVia"};
@@ -426,38 +777,28 @@ sub read_config(\%;$) {
 }
 
 
-sub readSilent($)
-{
-    my $msg = shift();
+sub appendSecret2ConfigFile() {
+    build_cfgfile_name();
 
-    print $msg, "> ";
-    ReadMode('cbreak');
-    my $val1='';
-    my $c = ReadKey(0);
-    while ($c ne "\n") {
-        print "*";
-        $val1 .= $c;
-        $c = ReadKey(0);
+    my $val = shhhhh(readSilent("Enter the DSL Modem's ".
+                                "status-access password"), 1);
+
+    unless ($val) {
+        print STDERR ("Unable to continue.\n\n");
+        exit 1;
     }
-    print "\n";
 
-    print "Verify:  re-enter what you just typed> ";
-    my $val2='';
-    $c = ReadKey(0);
-    while ($c ne "\n") {
-        print "*";
-        $val2 .= $c;
-        $c = ReadKey(0);
-    }
-    print "\n";
+    open(OUT_FH, ">>$_ConfigFile")
+        or die("Unable to open file for writing: \"$_ConfigFile\"\n".
+               "Reason: \"$!\"\n");
+    print OUT_FH ("passwd = ", $val, "\n");
+    close(OUT_FH);
+    chmod(0600, $_ConfigFile);
 
-    ReadMode('normal');
-
-    if ($val1 eq $val2) {
-        return $val1;
-    } #else:  Error
-    print "Typo:  Values do not match.\n";
-    return undef;
+    print ("Secret appended to configuration file:\n\t\"", $_ConfigFile,
+           "\"\n",
+           "Be sure to edit this file to clean it up to your liking.\n\n");
+    exit 0;
 }
 
 
@@ -503,16 +844,22 @@ sub parse_syslog($$$$$$$\@) {
         s/\r$//;
         chomp;
         study;
+        # Skip empty lines.
+        next if (m/^\s*$/);
 
-        m/$time_re/o or next;
+        # The '$time_re' expression contains parens.
+        next unless (m/$time_re/o);
+
         my $timestamp = $1;
         my $time_sec = str2time($timestamp);
-        if ($time_sec == 0) {
-            # Some DSL modems have their clocks set to epoch on boot.  For
-            # those log entries, use the current time.
-            $time_sec = time();
-        }
+        # Skip if the time stamp wasn't parsed correctly.
+        next unless($time_sec);
+
         my $timeUptdInterval = t2DropCountInterval($time_sec);
+
+        # Some DSL modems have their clocks set to Epoch on boot.  Ignore
+        # those log entries, i.e. any within the first year of Epoch.
+        next if ($time_sec <= 31556736);
 
         unless (exists($n_dropped{$timeUptdInterval})) {
             $n_dropped{$timeUptdInterval} = 0;
@@ -639,7 +986,7 @@ sub tieArrayElement2eventArray($;$) {
     my $keepTieArrayOrder = (scalar(@_) ? shift() : 0);
     study $tieElement;
 
-    my @eventArray = (undef) x 4;
+    my @eventArray = ();
     if ( ($tieElement =~ m/^\[\[/) && ($tieElement =~ m/\]\]$/) ) {
         $tieElement =~ s/^\[\[//;
         $tieElement =~ s/\]\]$//;
@@ -681,7 +1028,7 @@ sub event2MRTGData_arrayref(\@) {
 }
 
 
-sub retrieve_rates($$) {
+sub retrieve_statistics($$) {
     my $targ1 = (defined($_[0]) ? shift() : 0);
     my $targ2 = (defined($_[0]) ? shift() : 0);
 
@@ -717,24 +1064,28 @@ sub retrieve_rates($$) {
                           $_DataFile, "\".\n",
                           "(Is the daemon running?)\n");
         }
-        return (0, 0);
+        return (-1, -1);
     }
 
     # We're ready!  Retrieve the two measurements.
     my @result = tieArrayElement2eventArray($measurements[$#measurements], 1);
-    my $nMeasures = scalar(@result);
-    if (($targ1 < 0) || ($targ1 > $nMeasures)) {
-        $targ1 = $c_UpDownIdx;
-    }
-    if (($targ1 < 0) || ($targ2 > $nMeasures)) {
-        $targ2 = $c_UpDownIdx;
-    }
 
     # Cleanup
     undef($ref_tied);
     untie(@measurements);
 
     # Postprocessing
+
+    my $nMeasures = scalar(@result);
+    if ($nMeasures < 1) {
+        return (-1, -1);
+    }
+    if (($targ1 < 0) || ($targ1 > $nMeasures)) {
+        $targ1 = 0;
+    }
+    if (($targ1 < 0) || ($targ2 > $nMeasures)) {
+        $targ2 = 0;
+    }
 
     foreach my $t ($targ1, $targ2) {
         # FIXME:  I should really make a set of constants for the
@@ -750,7 +1101,7 @@ sub retrieve_rates($$) {
         }
     }
 
-    # //Now// we can return.
+    # *Now* we can return.
     return ($result[$targ1], $result[$targ2]);
 }
 
@@ -995,11 +1346,8 @@ sub updateMRTGdata(\@$$) {
     my $mrtgDatafile = shift();
     my $mrtgNewDatafile = shift();
 
-    # FIXME:  Until we have this function working 100% correctly, print the
-    # new data to the log, in "tieable" form.  Later, make this part of the
-    # body of the unless-statement, below.
-    print STDERR (join("\n", map({ eventArray2tieArrayElement(@{$_})
-                                 } @$ref_newData)), "\n");
+    printDbg(join("\n", map({ eventArray2tieArrayElement(@{$_})
+                            } @$ref_newData)), "\n");
 
     # Empty-case check
     return 1 unless (scalar(@$ref_newData));
@@ -1045,7 +1393,7 @@ sub updateMRTGdata(\@$$) {
     # Open the file for the updated data:
     #
 
-    unless (open(OUT_FS, ">$mrtgNewDatafile")) {
+    unless (open(OUT_FH, ">$mrtgNewDatafile")) {
         print STDERR ($now, ":  ",
                       "Unable to open file for writing: \"",
                       $mrtgNewDatafile, "\"\n", "Reason: \"$!\"\n",
@@ -1072,26 +1420,26 @@ sub updateMRTGdata(\@$$) {
         # Just copy the drop count from the first merge record.
         $ref_firstRecord->[2] = $mergedData[0][2];
     }
-    print OUT_FS (join(' ', @$ref_firstRecord), "\n");
+    print OUT_FH (join(' ', @$ref_firstRecord), "\n");
 
     # Write the subsequent pre-merge records, if any.
     if (scalar(@preMergeData)) {
         projectDropCountsForward(@preMergeData, @$ref_newData);
         foreach my $ref_record (@preMergeData) {
-            print OUT_FS (join(' ', @$ref_record), "\n");
+            print OUT_FH (join(' ', @$ref_record), "\n");
         }
     }
 
     # Write Merged.
     foreach my $ref_record (@mergedData) {
-        print OUT_FS (join(' ', @$ref_record), "\n");
+        print OUT_FH (join(' ', @$ref_record), "\n");
     }
 
     # Write out the remaining records.
     foreach my $entry (@MRTG_Data[($mergeEndIdx + 1) .. $#MRTG_Data]) {
-        print OUT_FS ($entry, "\n");
+        print OUT_FH ($entry, "\n");
     }
-    close(OUT_FS);
+    close(OUT_FH);
 
     # Now overwrite MRTG's file with our update file.
     unless (rename($mrtgNewDatafile, $mrtgDatafile)) {
@@ -1194,6 +1542,54 @@ sub daemon_sig_cleanup {
 }
 
 
+sub daemon_housekeeping() {
+    my $datafileSize = (stat($_DataFile))[7];
+    if ($datafileSize > $_MaxSize_DataFile) {
+        my $errmsg;
+        if (open ROT_FH, ">", $_DataFile.'-old') {
+            foreach (@_Measurements) {
+                print ROT_FH ($_, "\n");
+            }
+            close(ROT_FH);
+            my $threeQuarters = scalar(@_Measurements) * 3 / 4;
+            my @keep = @_Measurements[($threeQuarters .. $#_Measurements)];
+            @_Measurements = @keep;
+        } else {
+            print STDERR (localtime(),
+                          ":  Failed to open file for writing:\n\t\"",
+                          $_DataFile, "-old\"\n  ", $!,
+                          "\nThe original file, \"", $_DataFile,
+                          "\" will keep growing.\n",
+                         "Data file rotation failed.\n");
+        }
+    }
+
+    # Rotate the log file after any other housekeeping, in case rotation
+    # fails.
+    my $logSize = (stat(STDOUT))[7];
+    if ($logSize > $_MaxSize_Log) {
+        if (rename($_DaemonLog, $_DaemonLog.'-old')) {
+            unless (open STDOUT, ">$_DaemonLog") {
+                my $errmsg = localtime();
+                $errmsg .= ":  Logfile Rotation Failed!";
+                $errmsg .= "Could not reopen $_DaemonLog:\n  $!\n";
+                $errmsg .= "This will cause the original file, now named\n\"";
+                $errmsg .= $_DaemonLog;
+                $errmsg .= "-old\"to keep growing.\nRestarting the daemon ";
+                $errmsg .= "is recommended.\n";
+                open(EFH, ">$_DaemonLog")
+                    and print EFH ($errmsg)
+                        and close(EFH);
+            }
+        } else {
+            print STDERR (localtime(), ":  Could not rotate ",
+                          $_DaemonLog, ":\n  ", $!,
+                          "\nThe log file will keep growing.\n");
+        }
+    }
+}
+
+
 sub daemon_main(\%) {
     my %options = %{shift()};
 
@@ -1253,11 +1649,17 @@ sub daemon_main(\%) {
     my $probe_duration;
     my $ref_lastEvent = startup_eventDefaultValue();
     if (scalar(@_Measurements)) {
-        $ref_lastEvent
+        my $ref_tmpArr
             = tieArrayElement2eventArray($_Measurements[$#_Measurements]);
+        # If there was an error retrieving the last measurement, stick to the
+        # default (which we don't need to add to @_Measurements, since we know
+        # that it has data).
+        if (scalar(@$ref_tmpArr)) {
+            $ref_lastEvent = $ref_tmpArr;
+        }
     } else {
         # We must have some initial event in case parse_syslog returns
-        # nothing.
+        # nothing for a while.
         push(@_Measurements,
              eventArray2tieArrayElement(@$ref_lastEvent));
     }
@@ -1266,22 +1668,25 @@ sub daemon_main(\%) {
         my $now = time();
         my $probe_duration = -$now;
 
-print STDERR ("\n\n###DBG### ", $now, " Reading DSL modem log.\n");
+        printDbg("\n\n");
+        printDbg($c_printDbgTs, "Reading DSL modem log.\n");
 
         parse_syslog($_GetURLVia, $options{'SyslogUrl'},
                      $options{'userid'}, $options{'passwd'},
                      $options{'DslUp_expr'}, $options{'DslDown_expr'},
                      $options{'_Time_Regexp_'}, @updatedDslState);
 
-print STDERR ("####DBG#### ", time(), " Removing duplicates...\n");
         removeDuplicatesAndAdjust(@updatedDslState,
                                   $ref_lastEvent->[$c_tsIdx],
                                   $ref_lastEvent->[$c_nDropsIdx]);
         resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent);
-print STDERR ("####DBG#### ", time(), " Storing...\n");
+
+        printDbg($c_printDbgTs, "Storing...\n");
 
         # Output:
         foreach my $ref_event (@updatedDslState) {
+            # Skip empty data.
+            next unless(defined($ref_event) && scalar(@$ref_event));
             # 'push' on a tied-array always flushes.
             push(@_Measurements,
                  eventArray2tieArrayElement(@$ref_event));
@@ -1290,14 +1695,16 @@ print STDERR ("####DBG#### ", time(), " Storing...\n");
             # Update the last-event holder.
             $ref_lastEvent = $ref_event;
         }
-print STDERR ("####DBG#### ", time(), " updateMRTGdata()...\n");
 
         # Build the new MRTG data log file & rotate it in.
         updateMRTGdata(@updatedDslState,
                        $options{'_MRTG_Data_'},
                        $options{'_MRTG_Updated_Data_'});
 
-print STDERR ("####DBG#### ", time(), " Done.  Sleeping.\n");
+        daemon_housekeeping();
+
+        printDbg($c_printDbgTs, "Done.  Sleeping.\n");
+
         $probe_duration += time();
         if ($_UpdateInterval < $probe_duration) {
             sleep($_UpdateInterval);
@@ -1392,6 +1799,8 @@ if ($ARGV[0] eq "-d") {
 } elsif ($ARGV[0] eq "-n") {
     shift(@ARGV);
     $checkNow=1;
+} elsif ($ARGV[0] eq "-p") {
+    appendSecret2ConfigFile(); # This fn. exits.
 } elsif ($ARGV[0] eq "--l2t") {
     # For recovery only.
     shift(@ARGV);
@@ -1432,6 +1841,9 @@ my %options;
 read_config(%options);
 
 if ($checkNow) {
+    # We don't need to validate the various pieces-parts needed for
+    # daemon-mode, but we do need to validate any web page password.
+    validate_auth_only(%options);
     my @recentState = ();
     print "===== Current DSL Modem Syslog: =====\n\n";
     parse_syslog($_GetURLVia, $options{'SyslogUrl'},
@@ -1488,68 +1900,14 @@ my $statistic2 = undef;
 if (scalar(@ARGV)) {
     $statistic2 = shift(@ARGV);
 }
-# FIXME:  These aren't rates anymore.  Rename everything accordingly.
-#         We don't need a printf anymore, either.
-my @rates = retrieve_rates($statistic1, $statistic2);
+my @rates = retrieve_statistics($statistic1, $statistic2);
 printf ("%.0f\n%.0f\n", $rates[0], $rates[1]);
 
 # TODO:
 #
-# Need to make sure that there's no collission between MRTG and the data file
+# Need to make sure that there's no collision between MRTG and the data file
 # update.  Whether this goes in the client-mode or the daemon, I don't know
 # yet.
-#
-# Password "encryption" ... or at least creative obfuscation.
-# - Should also include a '-p' mode for entering the password.
-#   + Should also Echo '*' for each char.
-#   + Would append the encrypted passwd to the configfile, and print it out.
-#   + {
-#      use Term::Readkey;
-#      ReadMode('noecho');
-#      my $passwd='';
-#      my $c = ReadKey(0);
-#      while ($c != "\n") {
-#          print '*';
-#          $passwd .= $c;
-#      }
-#      print "\n";
-#      ReadMode('normal');
-#     }
-#   + The code above might not quite work; the ReadKey() call may expect a
-#     <Return> before it reads the char (like the Perl 'getc' fn. does).  If
-#     this is the case, ditch the entire while-loop and just call
-#     'ReadLine(0)' to get the password, Unix-style.  You won't get '*'
-#     echoed, but Oh Well.
-#   + An alternative would be the following:
-#     {
-#      use Term::Readkey;
-#      ReadMode('cbreak');
-#      my $passwd='';
-#      my $c = ReadKey(0);
-#      while ($c != "\n") {
-#          print "\b*";
-#          $passwd .= $c;
-#      }
-#      print "\n";
-#      ReadMode('normal');
-#     }
-#     But, there's no guarantee that Perl will flush immediately, or even fast
-#     enough, to keep the characters truly invisible.
-#   + Ask for the password twice.
-#
-# Logfile size and *.dat file size.
-# - I'm not even so sure that I /need/ to keep everything in the *.dat file.
-#   The client, right now, is only reading the last entry in the file.  That's
-#   probably all that I need.
-#   + If I do this, then *always* preserve the *.dat file between runs.
-#   + But this will require some kinda algo to determine whether or to use it,
-#     given how long this script hasn't been running.
-#
-# Carrying forward the connection state:
-#
-# The basic idea - if an MRTG record falls in-between two new events, the MRTG
-# record's connection-state values should match that of the preceding
-# record. So, we may have to perform this operation at merge time.
 
 
 #################
