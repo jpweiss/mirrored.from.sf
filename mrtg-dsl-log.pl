@@ -75,16 +75,13 @@ package Crypt::CipherSaber;
 
 use strict; use Carp; use vars qw($VERSION); $VERSION = '0.61';
 sub new {
-    my $class = shift; my $key = shift;
-    my $N = shift;
+    my $class = shift; my $key = shift; my $N = shift;
     if (!(defined $N) or ($N < 1)) { $N = 1; }
     my $self = [ $key, [ 0 .. 255 ], $N ];
     bless($self, $class);
 }
 sub crypt {
     my $self = shift; my $iv = shift;
-    $self->_setup_key($iv);
-#Begin::IL#
     my @key = map { ord } split(//, ($self->[0] . $iv));
     my $state = $self->[1]; my $j = 0; my $length = @key;
     for (1 .. $self->[2]) {
@@ -93,59 +90,25 @@ sub crypt {
             $j %= 256; (@$state[$i, $j]) = (@$state[$j, $i]);
         }
     }
-#End::IL#
-    my $message = shift; my $state = $self->[1];
-    my $output = _do_crypt($state, $message);
-#Begin::IL#
-#    my $output;
-#    for (0 .. (length($message) - 1 )) {
-#        $i++; $i %= 256; $j += $state->[$i]; $j %= 256;
-#        @$state[$i, $j] = @$state[$j, $i];
-#        $n = $state->[$i] + $state->[$j]; $n %= 256;
-#        $output .= chr( $state->[$n] ^ ord(substr($message, $_, 1)) );
-#    }
-#End::IL#
-    $self->[1] = [ 0 .. 255 ];
-    return $output;
-}
-sub encrypt {
-    my $self = shift;
-    my $iv = $self->_gen_iv();
-#IL#    my $iv; for (1 .. 10) { $iv .= chr(int(rand(256))); }
-    return $iv . $self->crypt($iv, @_);
-}
-sub decrypt {
-    my $self = shift; my ($iv, $message) = unpack("a10a*", +shift);
-    return $self->crypt($iv, $message);
-}
-# Begin:  Remove After Inlining
-sub _gen_iv {
-    my $iv; for (1 .. 10) { $iv .= chr(int(rand(256))); }
-    return $iv;
-}
-sub _setup_key {
-    my $self = shift;
-    my $key = $self->[0] . shift; my @key = map { ord } split(//, $key);
-    my $state = $self->[1]; my $j = 0; my $length = @key;
-    for (1 .. $self->[2]) {
-        for my $i (0 .. 255) {
-            $j += ($state->[$i] + ($key[$i % $length]));
-            $j %= 256; (@$state[$i, $j]) = (@$state[$j, $i]);
-        }
-    }
-}
-sub _do_crypt {
-    my ($state, $message, $i, $j, $n) = @_;
-    my $output;
+    my $message = shift; my $state = $self->[1]; my $output; my ($i, $j, $n);
     for (0 .. (length($message) - 1 )) {
         $i++; $i %= 256; $j += $state->[$i]; $j %= 256;
         @$state[$i, $j] = @$state[$j, $i];
         $n = $state->[$i] + $state->[$j]; $n %= 256;
         $output .= chr( $state->[$n] ^ ord(substr($message, $_, 1)) );
     }
-    return wantarray ? ($output, $state, $i, $j, $n) : $output;
+    $self->[1] = [ 0 .. 255 ];
+    return $output;
 }
-# End:  Remove After Inlining
+sub encrypt {
+    my $self = shift;
+    my $iv; for (1 .. 10) { $iv .= chr(int(rand(256))); }
+    return $iv . $self->crypt($iv, @_);
+}
+sub decrypt {
+    my $self = shift; my ($iv, $message) = unpack("a10a*", +shift);
+    return $self->crypt($iv, $message);
+}
 
 ############
 #
@@ -188,9 +151,9 @@ my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
-my $c_VerifyShhhh='768b38a0bb140aa1f306ca21797a89708cf7223cdb7aa9859c2a614'.
-    '013fbfbeff711780dd805c4e297637e4af4748216317eb07eee1f1341fa92a014f782'.
-    '10aefcf287b714cc75f1';
+my $c_VerifyShhhh='9a892c8b9c83496e52591e133cc36112ac3db12d0bdee6273ea961'.
+    '0fb12048bded4bfdfd4384d3fee3c57f02c07055d876ca58da0b538a889d113baefb'.
+    '8161e3e64068f914bdfd5e';
 my $c_ExpectedShhhh='sub shhhhh($$); my $c_ExpectedShhhh="@th350und0fth3"';
 my $c_VersionShhhh="# 1.0 #";
 
@@ -427,43 +390,53 @@ sub readSilent($)
 }
 
 
-sub shhhhh($$) {
-    my $thing = shift();
-    my $fwd = shift();
-
-    return undef unless ($thing);
-
+sub my_codeval() {
     open(IN_FH, '<', $0) or die("Unable to open file for reading.\n".
                                 "Reason: \"$!\"\n");
     my @octets = ();
     my $nc = 0;
     my $iVal = 0;
     my $hVal = 0;
-    while (my $line = <IN_FH>) {
+    while (my $line=<IN_FH>) {
+        next if ($line =~ m/^#\s+\$Id:.+\s+\$/);
         foreach (split(//, $line)) {
-            if (($nc % 4) == 0) {
-                $hVal ^= $iVal; $iVal = ord;
-            }
-            else {
-                $iVal <<= 8; $iVal |= ord;
-            }
-            # Increment now so that the first iteration isn't caught by the use
-            # of the '%' operator below.
+            if (($nc % 4) == 0) { $hVal ^= $iVal; $iVal = ord; }
+            else { $iVal <<= 8; $iVal |= ord; }
+            # Increment now so that the first iteration isn't caught by the
+            # use of the '%' operator below.
             ++$nc;
             if (($nc % 0x10) == 0) { $hVal %= 0x2AAAAAAB; }
             if (($nc % 0xAAB) == 0) {
                 while ($hVal) {
                     push(@octets, chr($hVal & 0xFF)); $hVal >>= 8;
                 }
-            $hVal = ( ($#octets > 73) ? shift(@octets) : 0);
+                $hVal = ( ($#octets > 73) ? shift(@octets) : 0);
             }
         }
     }
     close(IN_FH);
 
     # FIXME:  Remove once this script has stabilized.
-    @octets = ("Ó<@æyVO<8^T(.ÓÂåLôGizÏAþ2efB½Ê&(u-=È)Bb ¼¯ã*)nU1:µÌi");
-    my $cs = Crypt::CipherSaber->new(join('', @octets));
+    #print (join('', map({ my $v=ord;
+    #                      if (($v < 0x20) || ((0x7E < $v) && ($v < 0xA0)))
+    #                      { $v += 0x40; '^'.chr($v); } else { $_; }
+    #                    } @octets)), "\n");
+    @octets = ('n<Õ¾L^ßé^Æ^¿ÿ^X^Í-ê^O^Þ)Ë§ö1 ^Û^ZY¶Þµ%',
+               'i=p1Ùzµ^X^\êåkÌYf>^Þº~/§(h7÷^Ô^Î^S^^IÖ^R^Q½^@-^@^H^J^Mç',
+               'Î¾2^PóV^ZÖÿØ^R');
+
+    return join('', @octets);
+}
+
+
+sub shhhhh($$$) {
+    my $thing = shift();
+    my $prghsh = shift();
+    my $fwd = shift();
+
+    return undef unless ($thing);
+
+    my $cs = Crypt::CipherSaber->new($prghsh);
     my $retval = "";
     if ($fwd) {
         $thing .= '|;|'; $thing .= $c_VersionShhhh;
@@ -519,7 +492,8 @@ sub validate_auth_only(\%) {
         "\n\n"
        ) unless ($perms == 0);
 
-    my $test = shhhhh($c_VerifyShhhh, 0);
+    my $prghsh = my_codeval();
+    my $test = shhhhh($c_VerifyShhhh, $prghsh, 0);
     die ("\nFATAL ERROR:\n\n".
          "Someone or something has changed this script!  All authentication".
          "\n".
@@ -537,7 +511,7 @@ sub validate_auth_only(\%) {
         ) unless ($test eq $c_ExpectedShhhh);
 
     my $raw = $ref_options->{"passwd"};
-    $ref_options->{"passwd"} = shhhhh($raw, 0);
+    $ref_options->{"passwd"} = shhhhh($raw, $prghsh, 0);
     unless (defined($ref_options->{"passwd"})) {
         print STDERR ("\nFatal Error:\n\n",
                       "This script has been upgraded, invalidating all ",
@@ -783,7 +757,7 @@ sub appendSecret2ConfigFile() {
     build_cfgfile_name();
 
     my $val = shhhhh(readSilent("Enter the DSL Modem's ".
-                                "status-access password"), 1);
+                                "status-access password"), my_codeval(), 1);
 
     unless ($val) {
         print STDERR ("Unable to continue.\n\n");
