@@ -24,8 +24,10 @@
 ############
 
 
-my $_ConfigFile = undef();
-my $_UpdateInterval = 5*60;
+# Configurable Internals - They can also be changed from the configuration
+# file, but are not standard settings.  These are their default values.
+#
+
 my $_DaemonLog = "/tmp/mrtg-dsl-log.log";
 my $_DataFile = "/dev/shm/mrtg-dsl-log.dat";
 my $_MaxSize_DataFile = 8*1024*1024;
@@ -34,9 +36,20 @@ my $_DaemonPIDFile = "/var/run/mrtg-dsl-log.pid";
 my $_GetURLVia = 'curl';
 my $_DebugLoggingIsActive = 0;
 my $_DropCountInterval = 3600;
+
+
+# Internal Variables.
+#
+# They're meant to be tuned for local conditions, but not designed to be set
+# from a configuration file.
+#
+
+my $_ConfigFile = undef();
+my $_UpdateInterval_Default = 5*60;
 my $_TieAttempts = 5;
 my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
+my @_GPG2_Binaries = ('/bin/gpg2', '/usr/bin/gpg2', '/usr/local/bin/gpg2');
 
 
 ############
@@ -90,7 +103,7 @@ sub crypt {
             $j %= 256; (@$state[$i, $j]) = (@$state[$j, $i]);
         }
     }
-    my $message = shift; my $state = $self->[1]; my $output; my ($i, $j, $n);
+    my $message = shift; my $output; my ($i, $n); $state = $self->[1]; $j=0;
     for (0 .. (length($message) - 1 )) {
         $i++; $i %= 256; $j += $state->[$i]; $j %= 256;
         @$state[$i, $j] = @$state[$j, $i];
@@ -130,7 +143,7 @@ use bytes;           # Overrides Unicode support
 use Date::Parse;
 use Term::ReadKey;
 use Tie::File;
-use Fcntl qw(O_RDONLY O_APPEND O_CREAT);  # For use with 'tie'
+use Fcntl qw(O_RDONLY O_RDWR O_APPEND O_CREAT);  # For use with 'tie'
 use POSIX qw(nice setsid strftime);
 use Data::Dumper;
 
@@ -147,6 +160,8 @@ my $c_HRT_Idx = 1;
 my $c_UpDownIdx = 2;
 my $c_nDropsIdx = 3;
 
+my $c_Week_Secs = 7*24*3600;
+
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
@@ -158,44 +173,77 @@ my $c_ExpectedShhhh='sub shhhhh($$); my $c_ExpectedShhhh="@th350und0fth3"';
 my $c_VersionShhhh="# 1.0 #";
 
 
-# Constants used in the time-format hash.  Prevents inconsistencies due to
+# Constants used in the time-format hashes.  Prevents inconsistencies due to
 # typos.
-my $c__tfmt_common_ddmmyyyyAMPM
+my $c__common_tRe_mmddyyyy12
     = '(\d\d.\d\d.\d\d\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
-my $c__tfmt_common_yyyymmdd = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d)';
-my $c__tfmt_common_yyyymmddAMPM
+my $c__common_tRe_ddmmyyyy = '(\d\d.\d\d.\d\d\d\d\s+\d\d:\d\d:\d\d)';
+my $c__common_tRe_yyyymmdd = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d)';
+my $c__common_tRe_yyyymmdd12
      = '(\d\d\d\d.\d\d.\d\d\s+\d\d:\d\d:\d\d\s+[AP]M)';
 
+my $c__common_tFmt_USslash12 = '%m/%d/%Y %r';
+my $c__common_tFmt_USdash12 = '%m-%d-%Y %r';
+my $c__common_tFmt_F_r = '%F %r';
+my $c__common_tFmt_slash_r = '%Y/%m/%d %r';
+
+
+#
+# "Constant" Arrays & Hashes
+#
 
 my @c_Hex = ('0', '1', '2', '3', '4', '5', '6', '7',
              '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
 
-my %_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
-                            'args' => " -4 -s ",
-                            'user_arg' => " -u ",
-                            'passwd_arg' => ":"
-                          },
-                'wget' => { 'cmd' => "/usr/bin/wget",
-                            'args' => " -4 -q -O - ",
-                            'user_arg' => " -user ",
-                            'passwd_arg' => " -passwd "
-                          }
-              );
+my %c_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
+                             'args' => " -4 -s -m 300 ",
+                             'user_arg' => " -u ",
+                             'passwd_arg' => ":"
+                           },
+                 'wget' => { 'cmd' => "/usr/bin/wget",
+                             'args' => " -4 -q --connect-timeout 120 -O - ",
+                             'user_arg' => " -user ",
+                             'passwd_arg' => " -passwd "
+                           }
+               );
 
-my %_TimeFormats = ( 'yyyy-mm-dd HH:MM:SS' => $c__tfmt_common_yyyymmdd,
-                     'yyyy/mm/dd HH:MM:SS' => $c__tfmt_common_yyyymmdd,
-                     'yyyy-mm-dd HH:MM:SS AM' => $c__tfmt_common_yyyymmddAMPM,
-                     'yyyy-mm-dd HH:MM:SS PM' => $c__tfmt_common_yyyymmddAMPM,
-                     'yyyy/mm/dd HH:MM:SS AM' => $c__tfmt_common_yyyymmddAMPM,
-                     'yyyy/mm/dd HH:MM:SS PM' => $c__tfmt_common_yyyymmddAMPM,
-                     'dd/mm/yyyy HH:MM:SS AM' => $c__tfmt_common_ddmmyyyyAMPM,
-                     'dd/mm/yyyy HH:MM:SS PM' => $c__tfmt_common_ddmmyyyyAMPM,
-                     'dd-mm-yyyy HH:MM:SS AM' => $c__tfmt_common_ddmmyyyyAMPM,
-                     'dd-mm-yyyy HH:MM:SS PM' => $c__tfmt_common_ddmmyyyyAMPM,
-                   );
+my %c_TimeRegexps = ( 'yyyy-mm-dd HH:MM:SS' => $c__common_tRe_yyyymmdd,
+                      'yyyy/mm/dd HH:MM:SS' => $c__common_tRe_yyyymmdd,
+                      'yyyy-mm-dd HH:MM:SS AM' => $c__common_tRe_yyyymmdd12,
+                      'yyyy-mm-dd HH:MM:SS PM' => $c__common_tRe_yyyymmdd12,
+                      'yyyy/mm/dd HH:MM:SS AM' => $c__common_tRe_yyyymmdd12,
+                      'yyyy/mm/dd HH:MM:SS PM' => $c__common_tRe_yyyymmdd12,
+                      'mm/dd/yyyy HH:MM:SS AM' => $c__common_tRe_mmddyyyy12,
+                      'mm/dd/yyyy HH:MM:SS PM' => $c__common_tRe_mmddyyyy12,
+                      'mm-dd-yyyy HH:MM:SS AM' => $c__common_tRe_mmddyyyy12,
+                      'mm-dd-yyyy HH:MM:SS PM' => $c__common_tRe_mmddyyyy12,
+                      'dd/mm/yyyy HH:MM:SS' => $c__common_tRe_ddmmyyyy,
+                      'dd-mm-yyyy HH:MM:SS' => $c__common_tRe_ddmmyyyy,
+                      'dd.mm.yyyy HH:MM:SS' => $c__common_tRe_ddmmyyyy,
+                    );
 
-my @_Measurements;
-my $_refDataTieObj;
+my %c_TimeFormatStr = ( 'yyyy-mm-dd HH:MM:SS' => '%F %T',
+                        'yyyy/mm/dd HH:MM:SS' => '%Y/%m/%d %T',
+                        'yyyy-mm-dd HH:MM:SS AM' => $c__common_tFmt_F_r,
+                        'yyyy-mm-dd HH:MM:SS PM' => $c__common_tFmt_F_r,
+                        'yyyy/mm/dd HH:MM:SS AM' => $c__common_tFmt_slash_r,
+                        'yyyy/mm/dd HH:MM:SS PM' => $c__common_tFmt_slash_r,
+                        'mm/dd/yyyy HH:MM:SS AM' => $c__common_tFmt_USslash12,
+                        'mm/dd/yyyy HH:MM:SS PM' => $c__common_tFmt_USslash12,
+                        'mm-dd-yyyy HH:MM:SS AM' => $c__common_tFmt_USdash12,
+                        'mm-dd-yyyy HH:MM:SS PM' => $c__common_tFmt_USdash12,
+                        'dd/mm/yyyy HH:MM:SS' => '%d/%m/%Y %T',
+                        'dd-mm-yyyy HH:MM:SS' => '%d-%m-%Y %T',
+                        'dd.mm.yyyy HH:MM:SS' => '%d.%m.%Y %T',
+                      );
+
+#
+# Globals
+# (These must be global because they're used by the sighandlers.)
+#
+
+my @g_Measurements;
+my $g_refDataTieObj;
 
 
 ############
@@ -247,6 +295,11 @@ sub are_numbers(;@) {
         }
     }
     return 1;
+}
+
+
+sub printLog(@) {
+    print STDERR (strftime($c_myTimeFmt, localtime()), " --  ", @_);
 }
 
 
@@ -330,6 +383,33 @@ sub t2DropCountInterval($;$) {
 }
 
 
+sub init_DST_vars(\$\$) {
+    my $ref_inDST = shift();
+    my $ref_currentWeek_endTs = shift();
+
+    my @timeParts = localtime();
+
+    # The week counter will start on Sunday, 4:00:00am.  This way, it will
+    # reset each week at about this time, letting us capture DST changes
+    # (almost) immediately.
+    my $thisWeek_start = time();
+    $thisWeek_start -= $thisWeek_start % 3600;
+    my $hr = $timeParts[2];
+    if ($hr != 4) {
+        $thisWeek_start -= ($hr - 4)*3600;
+    }
+    my $dayNumber = $timeParts[6];
+    if ($dayNumber) {
+        $thisWeek_start -= $dayNumber*24*3600;
+    }
+
+    $$ref_currentWeek_endTs = $thisWeek_start + $c_Week_Secs;
+
+    # Now check and see if we're in DST.
+    $$ref_inDST = $timeParts[8];
+}
+
+
 #
 # Configfile Processing
 #
@@ -355,8 +435,128 @@ sub build_cfgfile_name() {
 }
 
 
-sub readSilent($)
-{
+sub read_config(\%$) {
+    my $ref_options = shift();
+    my $isRereading = shift();
+
+    build_cfgfile_name();
+
+    %$ref_options = ();
+    my $array_option = "";
+
+    if ($isRereading) {
+        print STDERR ("Rereading config file:  ", $_ConfigFile, "\n");
+    }
+
+    open(IN_FH, "$_ConfigFile")
+        or die("Unable to open file for reading: \"$_ConfigFile\"\n".
+               "Reason: \"$!\"\n");
+
+    while (<IN_FH>) {
+        my $line = $_;
+        chomp $line; # Remove newline
+        study $line;
+
+        # Trim whitespaces from either end of the line
+        # (This is faster than the obvious single-regexp way.)
+        for ($line) {
+            s/^\s+//;
+            s/\s+$//;
+        }
+
+        # Skip comment or blank lines (using optimizer-friendly Perl idiom).
+        next if ($line eq "");
+        next if ($line =~ m/^\#/);
+
+        # Special handling:
+        # This is the end of an array parameter.  Must come before the
+        # array processing block.
+        if ($line eq ")") {
+            $array_option = "";
+            next;
+        }
+
+        # Special handling:
+        # We are in the middle of processing an array option.
+        if ($array_option) {
+            push @{$ref_options->{$array_option}}, $line;
+            next;
+        }
+
+        # Get the option name and value, trimming whitespace on either side of
+        # the delimiter characters.  Also trim any quotes that are around the
+        # value.
+        $line =~ m/^(\S+)\s*[:=]\s*(.*)$/;
+        my $optname = $1;
+        my $val = $2;
+        for ($val) {
+            s/^['"]//;
+            s/['"]$//;
+        }
+
+        # Special handling:
+        # This is the start of an array parameter.
+        if ($val eq "(") {
+            $array_option = $optname;
+            $ref_options->{$array_option} = [ ];
+            next;
+        }
+
+        # Regular option processing
+        $ref_options->{$optname} = $val;
+    }
+    close IN_FH;
+
+    #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
+}
+
+
+sub read_fromGPG(\%) {
+    my $ref_options = shift();
+
+    # Must be able to read this files.
+    return 0 unless (-r $ref_options->{"GPG_SettingsFile"});
+
+    # Search for the GPG-2 binary, and prefer it if found.
+    my $gpgCmd = 'gpg';
+    foreach my $binfile (@_GPG2_Binaries) {
+        if (-x $binfile) {
+            $gpgCmd = $binfile;
+            last;
+        }
+    }
+    $gpgCmd .= " --batch -d ";
+    $gpgCmd .= $ref_options->{"GPG_SettingsFile"};
+
+    open(C_FH, '-|', $gpgCmd)
+        or die("Unable to read \"" . $ref_options->{"GPG_SettingsFile"} .
+               "\".\n" . "Reason:\"$!\"\n");
+    my @lines = <C_FH>;
+    close(C_FH)
+        or die("Unable to process \"" . $ref_options->{"GPG_SettingsFile"} .
+               "\".\n" . "Reason:\"$!\"\n");
+
+    my %nuOpts = ();
+    foreach (@lines) {
+        chomp; study;
+        next if (m/^\s*$/); next if (m/^\#/);
+        next unless m/^\s*(\S+)\s*[:=]\s*(.*)\s*$/;
+        my $o = $1; my $v = $2;
+        if ($v =~ m/^['"](.*)['"]/) { $v = $1; }
+        $nuOpts{$o} = $v;
+    }
+
+    foreach my $o ('user', 'passwd') {
+        next unless (exists($nuOpts{$o}));
+        next unless ($nuOpts{$o});
+        $ref_options->{$o} = $nuOpts{$o};
+    }
+
+    return 1;
+}
+
+
+sub readSilent($) {
     my $msg = shift();
 
     print $msg, "> ";
@@ -482,6 +682,10 @@ sub validate_auth_only(\%) {
 
     return 1 unless (exists($ref_options->{"passwd"}));
 
+    if (exists($ref_options->{"GPG_SettingsFile"})) {
+        return read_fromGPG(%$ref_options);
+    }
+
     my $perms = (stat($_ConfigFile))[2] & 07077;
     die("\nFATAL ERROR:\n\n".
         "Incorrect file permissions on configuration file:\n\t\"".
@@ -577,113 +781,64 @@ sub validate_options(\%) {
 }
 
 
-sub read_config(\%;$) {
+sub processConfigFile(\%;$) {
     my $ref_options = shift();
     my $isRereading = (scalar(@_) ? shift() : 0);
 
-
-    build_cfgfile_name();
-
-    %$ref_options = ();
-    my $array_option = "";
-
-    if ($isRereading) {
-        print STDERR ("Rereading config file:  ", $_ConfigFile, "\n");
-    }
-
-    open(IN_FH, "$_ConfigFile")
-        or die("Unable to open file for reading: \"$_ConfigFile\"\n".
-               "Reason: \"$!\"\n");
-
-    while (<IN_FH>) {
-        my $line = $_;
-        chomp $line; # Remove newline
-        study $line;
-
-        # Trim whitespaces from either end of the line
-        # (This is faster than the obvious single-regexp way.)
-        for ($line) {
-            s/^\s+//;
-            s/\s+$//;
-        }
-
-        # Skip comment or blank lines (using optimizer-friendly Perl idiom).
-        next if ($line eq "");
-        next if ($line =~ m/^\#/);
-
-        # Special handling:
-        # This is the end of an array parameter.  Must come before the
-        # array processing block.
-        if ($line eq ")") {
-            $array_option = "";
-            next;
-        }
-
-        # Special handling:
-        # We are in the middle of processing an array option.
-        if ($array_option) {
-            push @{$ref_options->{$array_option}}, $line;
-            next;
-        }
-
-        # Get the option name and value, trimming whitespace on either side of
-        # the delimiter characters.  Also trim any quotes that are around the
-        # value.
-        $line =~ m/^(\S+)\s*[:=]\s*(.*)$/;
-        my $optname = $1;
-        my $val = $2;
-        for ($val) {
-            s/^['"]//;
-            s/['"]$//;
-        }
-
-        # Special handling:
-        # This is the start of an array parameter.
-        if ($val eq "(") {
-            $array_option = $optname;
-            $ref_options->{$array_option} = [ ];
-            next;
-        }
-
-        # Regular option processing
-        $ref_options->{$optname} = $val;
-    }
-    close IN_FH;
-
-    #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
+    read_config(%$ref_options, $isRereading);
 
     #
-    # Process Options & Compute Params (not requiring validation)
+    # Process/Compute Options Not Requiring Validation
     #
 
+    # 'UpdateInterval' and '_UpdateInterval_sec_'
+    #
     if (exists($ref_options->{"UpdateInterval"})) {
-        convert2secs($ref_options->{"UpdateInterval"});
-        set_or_warn($_UpdateInterval, $ref_options->{"UpdateInterval"},
+        my $rawUI = $ref_options->{"UpdateInterval"};
+        convert2secs($rawUI);
+        set_or_warn($ref_options->{"_UpdateInterval_sec_"}, $rawUI,
                     "UpdateInterval",
                     "Invalid time value",
                     "It must be a time value with the one of the optional ",
                     "unit markers\n'h', 'm' or 's'.  The default units are ",
                     "minutes.");
+    } else {
+        $ref_options->{"_UpdateInterval_sec_"} = $_UpdateInterval_Default;
     }
 
-    unless (exists($_TimeFormats{$ref_options->{"TimeFormat"}})) {
+    # 'TimeFormat' and '_Time_Regexp_'
+    #
+    unless (exists($c_TimeRegexps{$ref_options->{"TimeFormat"}})) {
         print STDERR ("ERROR:  Bad value:  \"",
                       $ref_options->{"TimeFormat"}, "\"\n",
                       "Parameter 'TimeFormat' must be set to ",
                       "one of the following:\n",
-                      "\t\"", join("\"\n\t\"", keys(%_TimeFormats)),
+                      "\t\"", join("\"\n\t\"", keys(%c_TimeRegexps)),
                       "\"\n\n",
                       "Cowardly refusing to continue.\n");
         exit 2;
     }
     $ref_options->{"_Time_Regexp_"}
-        = $_TimeFormats{$ref_options->{"TimeFormat"}};
+        = $c_TimeRegexps{$ref_options->{"TimeFormat"}};
+    $ref_options->{"_strftime_Format_"}
+        = $c_TimeFormatStr{$ref_options->{"TimeFormat"}};
 
-    if (exists($ref_options->{"_DaemonLog"})) {
-        $_DaemonLog = $ref_options->{"_DaemonLog"};
+    #
+    # Set some sane defaults:
+    #
+
+    unless (exists($ref_options->{'ModemAdjustsForDST'})) {
+        $ref_options->{'ModemAdjustsForDST'} = 1;
     }
 
+    unless (exists($ref_options->{'ExtraTimeOffset'})) {
+        $ref_options->{'ExtraTimeOffset'} = 0;
+    }
+
+    #
     # Advanced Config Options:
+    #
+
     if (exists($ref_options->{"_DebugLoggingIsActive"})) {
         $_DebugLoggingIsActive = $ref_options->{"_DebugLoggingIsActive"};
         if ($_DebugLoggingIsActive =~ m/(?:y(?:es)?|t(?:rue)?)/i) {
@@ -691,6 +846,9 @@ sub read_config(\%;$) {
         } elsif ($_DebugLoggingIsActive =~ m/(?:n(?:o)?|f(?:alse)?)/i) {
             $_DebugLoggingIsActive = 0;
         }
+    }
+    if (exists($ref_options->{"_DaemonLog"})) {
+        $_DaemonLog = $ref_options->{"_DaemonLog"};
     }
     if (exists($ref_options->{"_DataFile"})) {
         $_DataFile = $ref_options->{"_DataFile"};
@@ -718,10 +876,10 @@ sub read_config(\%;$) {
     }
     if (exists($ref_options->{"_GetURLVia"})) {
         $_GetURLVia = $ref_options->{"_GetURLVia"};
-        unless (exists($_WebGet{$_GetURLVia})) {
+        unless (exists($c_WebGet{$_GetURLVia})) {
             print STDERR ("ERROR:  Parameter '_GetURLVia' must be set to ",
                           "one of the following:\n",
-                          "\t", join("\n\t", keys(%_WebGet)),
+                          "\t", join("\n\t", keys(%c_WebGet)),
                           "\n\n",
                           "Cowardly refusing to continue.\n");
             exit 2;
@@ -731,8 +889,7 @@ sub read_config(\%;$) {
 
     if ($isRereading) {
         # Only validate the options in daemon-mode.  Since rereading only
-        # happens during daemon-mode, we can call
-        # 'validate_options()' here.
+        # happens during daemon-mode, we call 'validate_options()' here.
         validate_options(%$ref_options);
 
         print STDERR ("    Finished rereading configuration.\n");
@@ -771,9 +928,9 @@ sub appendSecret2ConfigFile() {
     close(OUT_FH);
     chmod(0600, $_ConfigFile);
 
-    print ("Secret appended to configuration file:\n\t\"", $_ConfigFile,
-           "\"\n",
-           "Be sure to edit this file to clean it up to your liking.\n\n");
+    print("Secret appended to configuration file:\n\t\"", $_ConfigFile,
+          "\"\n",
+          "Be sure to edit this file to clean it up to your liking.\n\n");
     exit 0;
 }
 
@@ -796,15 +953,15 @@ sub parse_syslog($$$$$$$\@) {
     # Build the command string separately from the authorization credentials.
     my $auth = "";
     if ( ($user ne "") && ($passwd ne "") ) {
-        $auth = $_WebGet{$how}{'user_arg'};
+        $auth = $c_WebGet{$how}{'user_arg'};
         $auth .= $user;
-        $auth .= $_WebGet{$how}{'passwd_arg'};
+        $auth .= $c_WebGet{$how}{'passwd_arg'};
         $auth .= $passwd;
         $auth .= " ";
     }
 
-    my $getUrl_cmd = $_WebGet{$how}{'cmd'};
-    $getUrl_cmd .= $_WebGet{$how}{'args'};
+    my $getUrl_cmd = $c_WebGet{$how}{'cmd'};
+    $getUrl_cmd .= $c_WebGet{$how}{'args'};
     my $http_fh;
     unless (open($http_fh, '-|', $getUrl_cmd . $auth . $url)) {
         print STDERR ("FATAL: Can't run command: ", $getUrl_cmd, $url,
@@ -857,10 +1014,42 @@ sub parse_syslog($$$$$$$\@) {
 }
 
 
-sub removeDuplicatesAndAdjust(\@$$) {
+sub adjustBorkedTimestamps(\@$$$$) {
+    my $ref_events = shift();
+    my $isCurrentlyDST = shift();
+    my $tsIsDSTCorrect = shift();
+    my $additionalTSCorrection = shift();
+    my $strftimeFmt = shift();
+
+    return unless (!$tsIsDSTCorrect || $additionalTSCorrection);
+
+    my $xtraTime = $additionalTSCorrection;
+
+    if (!$tsIsDSTCorrect && $isCurrentlyDST) {
+        # Adjust time forward one hour.
+        $xtraTime += 3600;
+        # (Sorry, Lord Howe Island, but you're the weird minority compared to
+        # the rest of the world.)
+    }
+
+    return unless ($xtraTime);
+
+    # Fix both timestamps:
+    foreach my $ref_event (@$ref_events) {
+        $ref_event->[$c_tsIdx] += $xtraTime;
+        $ref_event->[$c_HRT_Idx]
+            = strftime($strftimeFmt, localtime($ref_event->[$c_tsIdx]));
+    }
+}
+
+
+sub removeOldEventsAndAdjust(\@$$) {
     my $ref_events = shift();
     my $t_lastEvent = shift();
     my $nDropped_last = shift();
+
+    # No events?  Do nothing.
+    return 1 unless (scalar(@$ref_events));
 
     # 'parse_syslog()' may have been called in the middle of the
     # '$_DropCountInterval'.  If the first new event is still in that
@@ -868,30 +1057,42 @@ sub removeDuplicatesAndAdjust(\@$$) {
     # end of the last call to 'parse_syslog()'.
     my $lastEvent_UptdInterval_end = t2DropCountInterval($t_lastEvent, 1);
 
-    my @duplicates = ();
+    my @idxKeep = ();
     foreach my $idx (0 .. $#$ref_events) {
-        # The last update time == $ref_events->[$idx][$c_tsIdx]
         my $t_event = $ref_events->[$idx][$c_tsIdx];
-        if ($t_event <= $t_lastEvent) {
-            push(@duplicates, $idx);
-        } elsif ($t_event < $lastEvent_UptdInterval_end) {
+        # Event already seen; ignore.
+        next if ($t_event <= $t_lastEvent);
+        push(@idxKeep, $idx);
+        if ($t_event < $lastEvent_UptdInterval_end) {
             # This event is in the '$_DropCountInterval' from last time.
             # Update the event with the correct offset.
             $ref_events->[$idx][$c_nDropsIdx] += $nDropped_last;
         }
     }
 
-    # Last, prune the duplicates.
-    if (scalar(@duplicates)) {
-        delete @$ref_events->[@duplicates];
+    # Last, prune the duplicates.  Note that we can't use 'delete' since it
+    # doesn't remove elements from the middle of an array (it only sets them
+    # to 'undef').
+    if (!scalar(@idxKeep)) {
+        # ==> They're all duplicates.
+        @$ref_events = ();
+    } elsif (scalar(@idxKeep) != scalar(@$ref_events)) {
+        @$ref_events = @$ref_events[@idxKeep];
     }
+    # else:  (scalar(@idxKeep) == scalar(@$ref_events)), so there's nothing to
+    # remove.
 }
 
 
-sub resetStaleDropCounts(\@$\@) {
+sub resetStaleDropCounts(\@$\@$) {
     my $ref_newEvents = shift();
     my $currentTime = shift();
     my $ref_lastEvent = shift();
+    my $strftimeFmt = shift();
+
+    # N.B. - If there are no new events, then the connection state hasn't
+    # changed.  If the connection is up, then the drop count's probably stale.
+    # So, this routine still has work to do even if @$ref_newEvents is empty.
 
     my @event = @$ref_lastEvent;
     my $timeSinceLastEvent = $currentTime - $event[$c_tsIdx];
@@ -906,7 +1107,7 @@ sub resetStaleDropCounts(\@$\@) {
                 ($event[$c_nDropsIdx] == 0) );
 
     $event[$c_tsIdx] = $currentTime;
-    $event[$c_HRT_Idx] = strftime($c_myTimeFmt, localtime());
+    $event[$c_HRT_Idx] = strftime($strftimeFmt, localtime());
     $event[$c_nDropsIdx] = 0;
     push(@$ref_newEvents, \@event);
 }
@@ -929,12 +1130,44 @@ sub printEvent($\@) {
 }
 
 
+sub isValidEvent($) {
+    my $ref_event = shift();
+
+    return 1 if (defined($ref_event) && (ref($ref_event) eq "ARRAY")
+                 && scalar(@$ref_event));
+    # else:
+
+    print STDERR ("!!!INTERNAL ERROR!!! - ");
+    if (defined($ref_event)) {
+        print STDERR ("Undefined entry in new event array.\n",
+                      " "x24, "Expected an arrayref.\n");
+    } elsif (ref($ref_event) ne "ARRAY") {
+        my $type = ref($ref_event);
+        print STDERR ("Entry in new event array is a ");
+        if ($type) {
+            print STDERR ('"', $type, '"');
+            }
+        else {
+            print STDERR ("scalar value");
+        }
+            print STDERR (",\n", " " x24, "not an arrayref.\n");
+    } else {
+        print STDERR ("Empty event.\n");
+    }
+    print STDERR (" "x24, "Ignoring bogus entry...\n");
+
+    return 0;
+}
+
+
 sub startup_eventDefaultValue() {
     my @defaultInitialEvent = ();
     $defaultInitialEvent[$c_UpDownIdx] = 1;
     $defaultInitialEvent[$c_nDropsIdx] = 0;
-    $defaultInitialEvent[$c_HRT_Idx] = strftime($c_myTimeFmt, localtime());
-    $defaultInitialEvent[$c_tsIdx] = time();
+    # N.B. - DO NOT use the current time.  Doing so may remove unseen events
+    # at startup.
+    $defaultInitialEvent[$c_HRT_Idx] = "\<\<Daemon Startup\>\>";
+    $defaultInitialEvent[$c_tsIdx] = 0;
     return \@defaultInitialEvent;
 }
 
@@ -968,17 +1201,19 @@ sub tieArrayElement2eventArray($;$) {
         $tieElement =~ s/\]\]$//;
         my @eventArrayTAO = split(/;\|;/, $tieElement);
 
-        if ($keepTieArrayOrder) {
-            @eventArray = @eventArrayTAO;
-        } else {
-            $eventArray[$c_UpDownIdx] = $eventArrayTAO[0];
-            $eventArray[$c_nDropsIdx] = $eventArrayTAO[1];
-            $eventArray[$c_HRT_Idx] = $eventArrayTAO[2];
-            $eventArray[$c_tsIdx] = $eventArrayTAO[3];
+        if (scalar(@eventArrayTAO) >= 4) {
+            if ($keepTieArrayOrder) {
+                @eventArray = @eventArrayTAO;
+            } else {
+                $eventArray[$c_UpDownIdx] = $eventArrayTAO[0];
+                $eventArray[$c_nDropsIdx] = $eventArrayTAO[1];
+                $eventArray[$c_HRT_Idx] = $eventArrayTAO[2];
+                $eventArray[$c_tsIdx] = $eventArrayTAO[3];
+            }
         }
     }
 
-    return @eventArray;
+    return \@eventArray;
 }
 
 
@@ -1065,7 +1300,7 @@ sub retrieve_statistics($$) {
 
     foreach my $t ($targ1, $targ2) {
         # FIXME:  I should really make a set of constants for the
-        # @_Measurements indices.
+        # @g_Measurements indices.
         next unless ($t == 1);
         my $t_UptdInterval_end = t2DropCountInterval($result[$#result], 1);
         my $now = time();
@@ -1117,8 +1352,8 @@ sub myLogfile2tieArrayElement($) {
             $seen{$ts} = 1;
             $seen{$tsh} = 1;
 
-            print ("[[", $isUp, ";|;", $ndn{$tsh}, ";|;", $hrt,
-                   ";|;", $ts, "]]\n");
+            print("[[", $isUp, ";|;", $ndn{$tsh}, ";|;", $hrt,
+                  ";|;", $ts, "]]\n");
             print;
         }
     }
@@ -1139,11 +1374,11 @@ sub recoveredTieArray2MRTG($$) {
 
     my $mrtgNewDatafile = $mrtgDatafile . '-nu';
 
-    $_refDataTieObj = tie(@_Measurements, 'Tie::File', $recoveredDatafile,
+    $g_refDataTieObj = tie(@g_Measurements, 'Tie::File', $recoveredDatafile,
                           'mode' => O_RDONLY);
     my @unsortedData = ();
     my %seen = ();
-    foreach my $entryStr (@_Measurements) {
+    foreach my $entryStr (@g_Measurements) {
         my @event = tieArrayElement2eventArray($entryStr);
         unless (exists($seen{$event[$c_tsIdx]})) {
             $seen{$event[$c_tsIdx]} = 1;
@@ -1322,14 +1557,22 @@ sub updateMRTGdata(\@$$) {
     my $mrtgDatafile = shift();
     my $mrtgNewDatafile = shift();
 
-    printDbg(join("\n", map({ eventArray2tieArrayElement(@{$_})
-                            } @$ref_newData)), "\n");
-
-    # Empty-case check
+    # No new data?  Nothing to do...
     return 1 unless (scalar(@$ref_newData));
 
-    # For error messages.
-    my $now = strftime($c_myTimeFmt, localtime());
+    if ($_DebugLoggingIsActive) {
+        # N.B. - Reason for this 'if'-statement == avoid doing the 'map(...)'
+        #        work when not needed.
+        printDbg(join("\n", map({ my $rT = ref;
+                                  if ("ARRAY" eq $rT) {
+                                      eventArray2tieArrayElement(@{$_});
+                                  } else {
+                                      '!!!!! Error: ref == "' . $rT . '"'
+                                  }
+                                } @$ref_newData)
+                     ), "\n");
+    }
+
     # Time bounds of the new data.
     my $t_firstNewEvent = $ref_newData->[0][0];
     my $t_lastNewEvent = $ref_newData->[$#$ref_newData][0];
@@ -1341,11 +1584,11 @@ sub updateMRTGdata(\@$$) {
                        'mode' => O_RDONLY);
     my $failure = checkForErrors_tie($!, $@, $ref_tied, $mrtgDatafile);
     if (defined($failure)) {
-        print STDERR ($now, ":  ", $failure,
-                     "Cannot update MRTG data in \"", $mrtgDatafile, "\"\n",
-                     "DSL State information between ", $t_firstNewEvent,
-                      " and ", $t_lastNewEvent, "\n",
-                      "will be lost.\n");
+        printLog($failure,
+                 "Cannot update MRTG data in \"", $mrtgDatafile, "\"\n",
+                 "DSL State information between ", $t_firstNewEvent,
+                 " and ", $t_lastNewEvent, "\n",
+                 "will be lost.\n");
         return 0;
     }
 
@@ -1370,10 +1613,9 @@ sub updateMRTGdata(\@$$) {
     #
 
     unless (open(OUT_FH, ">$mrtgNewDatafile")) {
-        print STDERR ($now, ":  ",
-                      "Unable to open file for writing: \"",
-                      $mrtgNewDatafile, "\"\n", "Reason: \"$!\"\n",
-                     "Cowwardly refusing to update the MRTG data.\n");
+        printLog("Unable to open file for writing: \"",
+                 $mrtgNewDatafile, "\"\n", "Reason: \"$!\"\n",
+                 "Cowwardly refusing to update the MRTG data.\n");
         return 0;
     }
 
@@ -1419,9 +1661,8 @@ sub updateMRTGdata(\@$$) {
 
     # Now overwrite MRTG's file with our update file.
     unless (rename($mrtgNewDatafile, $mrtgDatafile)) {
-        print STDERR ($now, ":  ",
-                      "Failed to update the MRTG data (could not rename\n",
-                      "the updated file).\n");
+        printLog("Failed to update the MRTG data (could not rename\n",
+                 "the updated file).\n");
         return 0;
     }
 
@@ -1453,7 +1694,7 @@ sub daemonize(;$) {
         or die "Can't write to $_DaemonLog: $!";
     open STDERR, '>&STDOUT' or die "Can't dup stdout: $!";
 
-    defined(my $pid = fork) or die "Can't fork: $!";
+    defined($pid = fork) or die "Can't fork: $!";
     exit 0 if ($pid);
     #else:  We're the (grand)child;
 
@@ -1507,36 +1748,53 @@ sub no_running_daemon() {
 sub daemon_sig_cleanup {
     my $killsig=shift();
 
-    undef($_refDataTieObj);
-    untie(@_Measurements);
-    unlink($_DaemonPIDFile, $_DataFile);
+    untie(@g_Measurements);
+    undef($g_refDataTieObj);
+    unlink($_DaemonPIDFile);
 
-    if (($killsig == 1) || ($killsig == 2) || ($killsig == 15)) {
+    if ($killsig =~ m/HUP|INT|TERM/) {
+        # Only delete the data file in the event of a normal termination.
+        unlink($_DataFile);
         exit 0;
     } # else
-    exit $killsig;
+    #FIXME:  Would be nice to xlate this into the number...
+    exit 1; #$killsig;
 }
 
 
-sub daemon_housekeeping() {
+sub daemon_housekeeping(\$\$$) {
+    my $ref_inDST = shift();
+    my $ref_currentWeek_endTs = shift();
+    my $now = shift();
+
+    # Do nothing until next week.
+    unless ($$ref_currentWeek_endTs < $now) {
+        # Update the week counter.
+        $$ref_currentWeek_endTs += $c_Week_Secs;
+
+        # Now check and see if we're in DST.
+        $$ref_inDST = (localtime())[8];
+    }
+
     my $datafileSize = (stat($_DataFile))[7];
     if ($datafileSize > $_MaxSize_DataFile) {
+        printDbg($c_dbgTsHdr, "\tRotating data file...\n");
+
         my $errmsg;
         if (open ROT_FH, ">", $_DataFile.'-old') {
-            foreach (@_Measurements) {
+            foreach (@g_Measurements) {
                 print ROT_FH ($_, "\n");
             }
             close(ROT_FH);
-            my $threeQuarters = scalar(@_Measurements) * 3 / 4;
-            my @keep = @_Measurements[($threeQuarters .. $#_Measurements)];
-            @_Measurements = @keep;
+            my $threeQuarters = scalar(@g_Measurements) * 3 / 4;
+            my @keep = @g_Measurements[($threeQuarters .. $#g_Measurements)];
+            @g_Measurements = @keep;
         } else {
-            print STDERR (strftime($c_myTimeFmt, localtime()),
-                          ":  Failed to open file for writing:\n\t\"",
-                          $_DataFile, "-old\"\n  ", $!,
-                          "\nThe original file, \"", $_DataFile,
-                          "\" will keep growing.\n",
-                         "Data file rotation failed.\n");
+            printLog("Failed to open file for writing:\n\t\"",
+                     $_DataFile, "-old\"\n  ", $!,
+                     "\nThe original file, \"", $_DataFile,
+                     "\" will keep growing.\n",
+                     "Data file rotation failed.\n");
         }
     }
 
@@ -1544,6 +1802,8 @@ sub daemon_housekeeping() {
     # fails.
     my $logSize = (stat(STDOUT))[7];
     if ($logSize > $_MaxSize_Log) {
+        printDbg($c_dbgTsHdr, "\tRotating log file...\n");
+
         if (rename($_DaemonLog, $_DaemonLog.'-old')) {
             unless (open STDOUT, ">$_DaemonLog") {
                 my $errmsg = strftime($c_myTimeFmt, localtime());
@@ -1558,10 +1818,8 @@ sub daemon_housekeeping() {
                         and close(EFH);
             }
         } else {
-            print STDERR (strftime($c_myTimeFmt, localtime()),
-                          ":  Could not rotate ",
-                          $_DaemonLog, ":\n  ", $!,
-                          "\nThe log file will keep growing.\n");
+            printLog("Could not rotate ", $_DaemonLog, ":\n  ", $!,
+                     "\nThe log file will keep growing.\n");
         }
     }
 }
@@ -1593,10 +1851,10 @@ sub daemon_main(\%) {
         next if (($signame eq 'KILL' ) || ($signame eq 'STOP'));
         if ($signame =~ m/ALRM|CHLD|CLD|NUM/) {
             $SIG{$signame} = "IGNORE";
-        } elsif ($signame =~ m/USR1/) {
+        } elsif ($signame =~ m/USR[12]/) {
             # Use a closure to define the "reload-the-configfile" handler.
             $SIG{$signame} = sub {
-                read_config(%options, 1);
+                processConfigFile(%options, 1);
             };
         } else {
             $SIG{$signame} = \&daemon_sig_cleanup;
@@ -1606,12 +1864,14 @@ sub daemon_main(\%) {
     # Tie an array to the data file, keeping any existing one.
     #
     if ( -f $_DataFile) {
-        $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile,
-                              'mode' => O_APPEND);
+        # Make sure the permissions are correct.
+        chmod(0644, $_DataFile);
+        $g_refDataTieObj = tie(@g_Measurements, 'Tie::File', $_DataFile,
+                              'mode' => O_APPEND | O_RDWR);
     } else {
-        $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile);
+        $g_refDataTieObj = tie(@g_Measurements, 'Tie::File', $_DataFile);
     }
-    my $failure = checkForErrors_tie($!, $@, $_refDataTieObj, $_DataFile);
+    my $failure = checkForErrors_tie($!, $@, $g_refDataTieObj, $_DataFile);
     if (defined($failure)) {
         print STDERR ($failure,
                      "\nCowardly refusing to continue running.\n");
@@ -1619,27 +1879,33 @@ sub daemon_main(\%) {
     }
 
     #
-    # The Main Loop
+    # Variables used in the Main Loop
+    # (No need to keep redeclaring them every iteration.)
     #
 
     my @updatedDslState = ();
     my $probe_duration;
+    my $adjustedSleepTime;
     my $ref_lastEvent = startup_eventDefaultValue();
-    if (scalar(@_Measurements)) {
+
+    if (scalar(@g_Measurements)) {
         my $ref_tmpArr
-            = tieArrayElement2eventArray($_Measurements[$#_Measurements]);
+            = tieArrayElement2eventArray($g_Measurements[$#g_Measurements]);
         # If there was an error retrieving the last measurement, stick to the
-        # default (which we don't need to add to @_Measurements, since we know
+        # default (which we don't need to add to @g_Measurements, since we know
         # that it has data).
         if (scalar(@$ref_tmpArr)) {
             $ref_lastEvent = $ref_tmpArr;
         }
-    } else {
-        # We must have some initial event in case parse_syslog returns
-        # nothing for a while.
-        push(@_Measurements,
-             eventArray2tieArrayElement(@$ref_lastEvent));
     }
+
+    my $inDST = 0;
+    my $currentWeek_endTs = 0;
+    init_DST_vars($inDST, $currentWeek_endTs);
+
+    #
+    # The Main Loop:
+    #
 
     while (1) {
         my $now = time();
@@ -1652,20 +1918,25 @@ sub daemon_main(\%) {
                      $options{'userid'}, $options{'passwd'},
                      $options{'DslUp_expr'}, $options{'DslDown_expr'},
                      $options{'_Time_Regexp_'}, @updatedDslState);
+        adjustBorkedTimestamps(@updatedDslState, $inDST,
+                               $options{'ModemAdjustsForDST'},
+                               $options{'ExtraTimeOffset'},
+                               $options{"_strftime_Format_"});
+        removeOldEventsAndAdjust(@updatedDslState,
+                                 $ref_lastEvent->[$c_tsIdx],
+                                 $ref_lastEvent->[$c_nDropsIdx]);
+        resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent,
+                             $options{"_strftime_Format_"});
 
-        removeDuplicatesAndAdjust(@updatedDslState,
-                                  $ref_lastEvent->[$c_tsIdx],
-                                  $ref_lastEvent->[$c_nDropsIdx]);
-        resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent);
-
-        printDbg($c_dbgTsHdr, "Storing...\n");
+        printDbg($c_dbgTsHdr, "    Storing...\n");
 
         # Output:
         foreach my $ref_event (@updatedDslState) {
-            # Skip empty data.
-            next unless(defined($ref_event) && scalar(@$ref_event));
+            # Empty data is an error of some sort.
+            next unless(isValidEvent($ref_event));
+
             # 'push' on a tied-array always flushes.
-            push(@_Measurements,
+            push(@g_Measurements,
                  eventArray2tieArrayElement(@$ref_event));
             # Log the event, as well (at least for now).
             printEvent(\*STDERR, @$ref_event);
@@ -1673,21 +1944,24 @@ sub daemon_main(\%) {
             $ref_lastEvent = $ref_event;
         }
 
+        printDbg($c_dbgTsHdr, "    Updating the MRTG data...\n");
+
         # Build the new MRTG data log file & rotate it in.
         updateMRTGdata(@updatedDslState,
                        $options{'_MRTG_Data_'},
                        $options{'_MRTG_Updated_Data_'});
 
-        daemon_housekeeping();
+        daemon_housekeeping($inDST, $currentWeek_endTs, $now);
 
         printDbg($c_dbgTsHdr, "Done.  Sleeping.\n");
 
         $probe_duration += time();
-        if ($_UpdateInterval < $probe_duration) {
-            sleep($_UpdateInterval);
-        } else {
-            sleep($_UpdateInterval - $probe_duration);
+        $adjustedSleepTime = $options{"_UpdateInterval_sec_"};
+        next if ($adjustedSleepTime == $probe_duration);
+        if ($adjustedSleepTime > $probe_duration) {
+            $adjustedSleepTime -= $probe_duration;
         }
+        sleep($adjustedSleepTime);
     }
 }
 
@@ -1792,7 +2066,7 @@ if ($ARGV[0] eq "-d") {
     print STDERR ("Ignore the 'Rereading' bit in the next message.  We're\n",
                   "using the sighanlder to read the configuration and\n",
                   "validate in one go, and that's what it spits out.\n");
-    read_config(%dbgO, 1);
+    processConfigFile(%dbgO, 1);
     daemon_main(%dbgO);
     exit 127;  #Should never reach here.
 } elsif ($ARGV[0] =~ m/^-/) {
@@ -1815,18 +2089,25 @@ if (($ARGV[0] eq "") && !$daemonize && !$checkNow) {
 # Read the configuration.
 #
 my %options;
-read_config(%options);
+processConfigFile(%options);
 
 if ($checkNow) {
     # We don't need to validate the various pieces-parts needed for
     # daemon-mode, but we do need to validate any web page password.
     validate_auth_only(%options);
     my @recentState = ();
+    my $inDST;
+    my $dummy;
+    init_DST_vars($inDST, $dummy);
     print "===== Current DSL Modem Syslog: =====\n\n";
     parse_syslog($_GetURLVia, $options{'SyslogUrl'},
                  $options{'userid'}, $options{'passwd'},
                  $options{'DslUp_expr'}, $options{'DslDown_expr'},
                  $options{'_Time_Regexp_'}, @recentState);
+    adjustBorkedTimestamps(@recentState, $inDST,
+                           $options{'ModemAdjustsForDST'},
+                           $options{'ExtraTimeOffset'},
+                           $options{"_strftime_Format_"});
     foreach my $ref_event (@recentState) {
         printEvent(\*STDOUT, @$ref_event);
     }
@@ -1848,20 +2129,20 @@ if ($checkNow) {
         }
         elsif (!$reportAfterDaemonizing) {
             # Don't do anything more.
-            print ("Daemonized instance already running.  Examine \n\"",
-                   $_DaemonPIDFile, "\" for its PID.\n\n",
-                   "To restart $0, do the following:\n",
-                   "\tkill \$(\< ", $_DaemonPIDFile, ");\n",
-                   "\t$0 -d\n");
+            print("Daemonized instance already running.  Examine \n\"",
+                  $_DaemonPIDFile, "\" for its PID.\n\n",
+                  "To restart $0, do the following:\n",
+                  "\tkill \$(\< ", $_DaemonPIDFile, ");\n",
+                  "\t$0 -d\n");
             exit 0;
         }
 
         # else:  We want to ping whether or not we daemonize.
     }
     elsif ($noDaemonRunning && !$daemonize) {
-        print ("No daemonized instance running.  Rerun \n",
-               "$0 with the '-d' option.\n\n",
-               "Cowardly refusing to continue.\n");
+        print("No daemonized instance running.  Rerun \n",
+              "$0 with the '-d' option.\n\n",
+              "Cowardly refusing to continue.\n");
         exit 2;
     }
 }
