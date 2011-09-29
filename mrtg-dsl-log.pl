@@ -165,6 +165,15 @@ my $c_Week_Secs = 7*24*3600;
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
+my $c_EndTag_re = '</[^>\s\n]+>';
+my $c_Ignored_StandaloneTag_re
+    = '(?:B(?:ASE(?:FONT)?|R)|COL|FRAME|HR|LINK|META)\s*/?';
+my $c__Ignored1_re='[AB]|D(?:EL|IV)|EM|FO(?:RM|NT)|HTML|I(?:MG|NPUT)?|';
+my $c__Ignored2_re='NOBR(?:EAK)?|S(?:PAN|TR(?:IKE|ONG)|U[BP])|TT|U';
+my $c_Ignored_Tags_re
+    = '/?(?:'.$c__Ignored1_re.'|'.$c__Ignored2_re.')';
+my $c_TableNonCellTags='T(?:ABLE|BODY|FOOT|HEAD|R)';
+
 # Used to warn the user when they need to rerun this script in '-p'-mode.
 my $c_VerifyShhhh='9a892c8b9c83496e52591e133cc36112ac3db12d0bdee6273ea961'.
     '0fb12048bded4bfdfd4384d3fee3c57f02c07055d876ca58da0b538a889d113baefb'.
@@ -939,7 +948,7 @@ sub appendSecret2ConfigFile() {
 
 
 #----------
-# Parsing & Processing "Web Pages" from the  DSL Modem
+# Parsing & Processing the Syslog from the DSL Modem
 #----------
 
 
@@ -1126,6 +1135,538 @@ sub resetStaleDropCounts(\@$\@$) {
     $event[$c_HRT_Idx] = strftime($strftimeFmt, localtime($event[$c_tsIdx]));
     $event[$c_nDropsIdx] = 0;
     push(@$ref_newEvents, \@event);
+}
+
+
+#----------
+# Parsing & Processing DSL Modem's Line Statistics Page
+#----------
+
+
+sub read_and_clean_webpage($$\%\@) {
+    my $how = shift();
+    my $url = shift();
+    my $ref_auth = shift();
+    my $ref_cleanedLines = shift();
+
+
+    # Build the command string separately from the authorization credentials.
+    my $auth = "";
+    if ( exists($ref_auth->{'userid'}) && exists($ref_auth->{'passwd'}) &&
+         ($ref_auth->{'userid'} ne "") && ($ref_auth->{'passwd'} ne "") )
+    {
+        $auth = $c_WebGet{$how}{'user_arg'};
+        $auth .= $ref_auth->{'userid'};
+        $auth .= $c_WebGet{$how}{'passwd_arg'};
+        $auth .= $ref_auth->{'passwd'};
+        $auth .= " ";
+    }
+
+    my $getUrl_cmd = $c_WebGet{$how}{'cmd'};
+    $getUrl_cmd .= $c_WebGet{$how}{'args'};
+    my $http_fh;
+    unless (open($http_fh, '-|', $getUrl_cmd . $auth . $url)) {
+        print STDERR ("FATAL: Can't run command: ", $getUrl_cmd, $url,
+                      "\nReason: \"", $!, "\"\n");
+        return 0;
+    }
+
+    # Read in lines, splitting lines at end tags.
+    #
+    # The goal is to remove unnecessary tags & whitespace and break up
+    # super-long lines of HTML into something a tad more manageable.
+    while (<$http_fh>) {
+        chomp;
+        study;
+        # Trim crap off of the ends.
+        s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
+
+        # Remove inlined comments
+        s¦<!--(?:[^-\n]|-[^-\n])+-->¦¦g;
+
+        # Remove intra-tag spaces, which will make the subsequent regexps
+        # simpler.
+        s¦/\s+>¦/>¦g;
+        s¦\s+/?>¦$1>¦g;
+        s¦(</?)\s+¦$1¦g;
+
+        # Remove all of the attributes from the tags.  We don't need them.
+        # Because of maximal munch, we need to make sure that we don't
+        # accidentally include nested tags.
+        s¦<(\w\S*)\s+[^<>\n]+>¦<$1>¦g;
+
+        # Some of these DSL modems put a line-break into the labels.  We not
+        # only don't need that, it's a problem when scanning for the stats
+        # that we want.  So, convert the <br/> tags into a ' '.
+        s¦<(?:BR/?|P)>¦ ¦gi;
+
+        # The paragraph-end tags should be removed.
+        s¦</P>¦¦gi;
+
+        # Remove tags that we don't care about, *and* that we can remove from
+        # anyplace in the file w/o causing problems.
+        s¦<(?:$c_Ignored_StandaloneTag_re|$c_Ignored_Tags_re)>¦¦goi;
+
+        # Remove any inter-tag spaces.  We don't need it.
+        s¦>\s+<¦><¦g;
+
+        # Convert "nonbreaking space" entities to the actual spaces.  BUT only
+        # AFTER removing inter-tag spaces.  (This way, we preserve the
+        # non-breaking spaces in the original document.)
+        s¦&nbsp;¦ ¦g;
+
+        # NOW that we've pruned out all manner of stuff, we can check for and
+        # skip empty lines.
+        #
+        next if (m/^\s*$/);
+
+        if (m¦$c_EndTag_re.¦o) {
+            # If we match an end tag, followed by any character, then we have
+            # a line that needs to be split into smaller lines.
+            s¦($c_EndTag_re)¦$1\n¦go;
+
+            # Clean any crap off of the ends of the new lines we've created.
+            my @subLines = map({ s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
+                                 $_; } split(m¦\n¦));
+            # Add only nonblank lines.
+            push(@$ref_cleanedLines, grep(!m¦^\s*$¦, @subLines));
+        } else {
+            push(@$ref_cleanedLines, $_);
+        }
+    }
+
+    close($http_fh);
+}
+
+
+sub keepBody(\@) {
+    my $ref_lines = shift();
+
+    my $startNotSeen = 1;
+    my $endNotSeen = 1;
+    my $bodyStartIdx = -1;
+    my $bodyEndIdx = -1;
+    foreach (@$ref_lines) {
+        next unless (defined);
+        # Increment first, since we're starting our indices at -1.
+        ++$bodyStartIdx if ($startNotSeen);
+        ++$bodyEndIdx if ($endNotSeen);
+        $startNotSeen = 0 if (m¦<BODY>¦i);
+        $endNotSeen = 0 if (m¦</BODY>¦i);
+    }
+
+    return (undef, undef) if ($startNotSeen && $endNotSeen);
+
+    # Remove any trailing junk.
+    my @trailing = ();
+    if ($bodyEndIdx > -1) {
+        @trailing = splice(@$ref_lines, $bodyEndIdx);
+        # Remove the </BODY> tag.
+        if ($trailing[0] =~ m¦^.+</BODY>$¦i) {
+            $trailing[0] =~ s¦</BODY>¦¦i;
+        } else {
+            shift(@trailing);
+        }
+    }
+
+    # Remove any header.
+    my @header = ();
+    if ($bodyStartIdx > -1) {
+        # Is anything following the <BODY> tag?
+        my $inTheHeader = 0;
+        if ($ref_lines->[$bodyStartIdx] =~ m¦<BODY>$¦i) {
+            # Nope.  Ensure that its removed from @$ref_lines and tossed into
+            # the header.
+            ++$bodyStartIdx;
+            $inTheHeader = 1;
+        }
+
+        @header = splice(@$ref_lines, 0, $bodyStartIdx);
+
+        # Remove the lone <BODY> tag from wherever it is.
+        if ($inTheHeader) {
+            # Nothing following the tag.  Just remove it.
+            $header[$#header] =~ s¦<BODY>¦¦i;
+            pop(@header) if ($header[$#header] eq '');
+        } else {
+            # Remove everything up to and including the <BODY> tag from
+            # @$ref_lines.  (We only know that something follows the tag.  We
+            # don't know what precedes it, if anything.)
+            $ref_lines->[0] =~ s¦^(.*<BODY>)¦¦i;
+            my $lastLine = $1;
+            # Remove the <BODY> tag completely.
+            $lastLine =~ s¦<BODY>¦¦i;
+            # If there was anything preceding the <BODY> tag, put it at the
+            # end of the header.
+            push(@header, $lastLine) unless ($lastLine eq '');
+        }
+    }
+
+    return ( (scalar(@header) ? \@header : undef),
+             (scalar(@trailing) ? \@trailing : undef) );
+}
+
+
+sub findComments(\@\@) {
+    my $ref_lines = shift();
+    my $ref_comments = shift();
+
+    # Now rescan the contents, removing all comments.
+    my $insideComment = 0;
+    my $idx = 0;
+    foreach (@$ref_lines) {
+        study;
+        if (m¦<!--¦) {
+            $insideComment = 1;
+            if (m¦^<!--¦) {
+                push(@$ref_comments, $idx);
+            } else {
+                s¦<!--.*$¦¦;
+            }
+        } elsif (m¦-->¦) {
+            $insideComment = 0;
+            if (m¦-->$¦) {
+                push(@$ref_comments, $idx);
+            } else {
+                s¦^.*-->¦¦;
+            }
+        } elsif ($insideComment) {
+            push(@$ref_comments, $idx);
+        }
+
+        # While we're here, check again and trim off any leading/trailing
+        # whitespace.
+        s¦^\s+¦¦; s¦\s+$¦¦;
+
+        # Don't forget to bump the index!
+        ++$idx;
+    }
+}
+
+
+sub findEmptyPairs(\@\@@) {
+    my $ref_lines = shift();
+    my $ref_empties = shift();
+
+    my $regexp = '';
+    foreach (@_) {
+        $regexp .= '|' unless ($regexp eq '');
+        $regexp .= '<'; $regexp .= $_; $regexp .= '></';
+        $regexp .= $_; $regexp .= '>';
+    }
+
+    my $idx = 0;
+    foreach (@$ref_lines) {
+        study;
+        push(@$ref_empties, $idx) if (m¦^(?:$regexp)$¦i);
+        ++$idx;
+    }
+}
+
+
+sub findScriptCode(\@\@) {
+    my $ref_lines = shift();
+    my $ref_scriptCode = shift();
+
+
+    # Now rescan the contents, removing all comments.
+    my $insideScript = 0;
+    my $idx = 0;
+    foreach (@$ref_lines) {
+        study;
+        my $hasScriptEndTag = m¦</SCRIPT>¦i;
+
+        # The order that we do things in is important now.
+        #
+        # We must start by checking for a newly-seen <SCRIPT>, or a line of
+        # code in the middle of a script-block.
+        if (m¦<SCRIPT>¦i) {
+            # We're only inside of a script-block if there's no end-tag on
+            # this line.
+            $insideScript = !$hasScriptEndTag;
+            if (m¦^<SCRIPT>¦i && !$hasScriptEndTag) {
+                push(@$ref_scriptCode, $idx);
+            } else {
+                # There's either something preceding the open-tag, and/or
+                # we're inside of an inline script-blocks.  Remove the
+                # open-tag and everything following it.
+                s¦<SCRIPT>.*$¦¦i;
+            }
+        } elsif ($insideScript && !$hasScriptEndTag) {
+            push(@$ref_scriptCode, $idx);
+        } elsif ($hasScriptEndTag) {
+            $insideScript = 0;
+            # Nothing follows an ending tag.  If anything precedes the
+            # </SCRIPT>, we want to ignore it.
+            push(@$ref_scriptCode, $idx);
+        }
+
+        # While we're here, check again and trim off any leading/trailing
+        # whitespace.
+        s¦^\s+¦¦; s¦\s+$¦¦;
+
+        # Did we create any blank lines (say, when removing inline script
+        # code)?  Skip those.
+        push(@$ref_scriptCode, $idx) if ($_ eq '');
+
+        # Don't forget to bump the index!
+        ++$idx;
+    }
+}
+
+
+sub getTableLines(\@\@) {
+    my $ref_content = shift();
+    my $ref_tblLines = shift();
+
+    # Notes:
+    #
+    # <table> contains <(?:thead|tfoot|tbody|tr)>
+    #   -- xhtml-basic only requires <tr>
+    # <tbody> contains <tr>
+    # <thead> contains <tr>
+    # <tfoot> contains <tr>
+    # <tr> contains <t[hd]>
+    #   -- xhtml-basic requires a <th>
+    #   -- The other forms of xhtml require a <td>
+    # <th> is like <td>, but for column header info.  Prefer it to the
+    #   first <td> cell.
+
+    # Start by finding the table lines.
+    my $tableDepth = 0;
+    my $maxTableDepth = 0;
+    my @tableLinesIdx = ();
+    foreach my $idx (0 .. $#$ref_content) {
+        my $line = $ref_content->[$idx];
+        study $line;
+
+        if ($line =~ m¦<(/?)TABLE>¦i) {
+            push(@tableLinesIdx, $idx);
+            if ($1) {
+                --$tableDepth;
+            } else {
+                ++$tableDepth;
+                if ($tableDepth > $maxTableDepth) {
+                    $maxTableDepth = $tableDepth;
+                }
+            }
+        } elsif ($tableDepth ||
+                 ($line =~ m¦</?T(?:BODY|D|FOOT|H(?:EAD)?|R)>¦i)) {
+            push(@tableLinesIdx, $idx);
+        }
+    }
+
+    # Break apart and store these lines.
+    @$ref_tblLines = ();
+    my $isFirstLine = 1;
+    my $inMultilineCell = 0;
+    my $modifiedLine;
+    foreach (@$ref_content[@tableLinesIdx]) {
+        next if (m/^\s*$/);
+
+        # Check everything all at once, after studying but before modifying.
+        study;
+
+        # Table-Cells on their own line need no additional processing.  Nor do
+        # tags alread on their own line.  Skip them so that we don't need to
+        # worry about them in the subsequent lines.
+        if (m¦^<T[DH]></T[DH]>$¦i || m¦^<[^>]+>$¦) {
+            push(@$ref_tblLines, $_);
+            next;
+        }
+
+        # Don't edit the $_ variable!  That would modify the array elements
+        # themselves.  So, we'll check the regexps for all of the expressions
+        # we want to handle up front and store them for later reuse.
+        my $splitTags = (m¦>\s*<¦);
+        my $textBeforeTag = (m¦[^>]\s*</?$c_TableNonCellTags¦o);
+        my $textAfterOpenTag = (m¦<$c_TableNonCellTags>\s*[^<]¦o);
+        my $textBeforeFirstTable = ($isFirstLine && $textBeforeTag &&
+                                    m¦^.+<TABLE>¦i);
+        my $hasCellOpen = (m¦<T[DH]>¦i);
+
+        # If there are no special cases to handle, then store and continue.
+        unless ($splitTags || $textBeforeTag || $textAfterOpenTag ||
+                $textBeforeFirstTable)
+        {
+            push(@$ref_tblLines, $_);
+            next;
+        }
+
+
+        # At this point, we'll have to modify this line somehow, so make a
+        # copy.
+        $modifiedLine = $_;
+
+        # Remove anything preceding the first <TABLE> tag.  (This is the only
+        # edge-case we need, since nothing will follow the last </TABLE> tag.)
+        if ($isFirstLine) {
+            $isFirstLine = 0;
+            if ($textBeforeFirstTable) {
+                $modifiedLine =~ s¦^.+(<TABLE>)¦$1¦i;
+            }
+        }
+
+        # Break off any table cells in this line.
+        if ($hasCellOpen) {
+            $modifiedLine =~ s¦(.)(<T[DH]>)¦$1\n$2¦g;
+            # Note:  $modifiedLine =~ m|</T[DH]>$| is always true, so nothing
+            # further to do.
+        }
+
+        # Split up tags that are on the same line.  (Ignore any whitespace
+        # between them, for the most part.)
+        if ($splitTags) {
+            $modifiedLine =~ s¦>[ \t\f\r]*<(?!/T[DH]>)¦>\n<¦gi;
+            # N.B - No '<TD>...</TD>' or '<TH>...</TH>' should be split by the
+            # previous regexp.
+        }
+
+        # Put all tags onto their own line, removing any text preceding
+        # them.  If it's whitespace before the tag, keep it on the line.
+        if ($textBeforeTag) {
+            $modifiedLine =~ s¦([^\n])(</?$c_TableNonCellTags)¦$1\n$2¦gi;
+        }
+
+        # Put all tags onto their own line, removing any text preceding
+        # them.  If it's whitespace after the tag, keep it on the line.
+        if ($textAfterOpenTag) {
+            $modifiedLine =~ s¦(<$c_TableNonCellTags>)([^\n])¦$1\n$2¦gi;
+        }
+
+        push(@$ref_tblLines, split(/\n/, $modifiedLine));
+    }
+
+    print Data::Dumper->Dump([$ref_tblLines], [qw(TableContents)]), "\n";
+    return $maxTableDepth;
+
+    # FIXME:  Scan for and re-join multiline <TH> & <TR> cells that don't
+    # contain other tables.
+
+    #####
+    # OLD
+    #####
+
+    my $insideTable = 0;
+    foreach (@$ref_content) {
+        study;
+
+        my $tableLine;
+        if (m¦<TABLE>¦i) {
+            ++$insideTable;
+            $tableLine = $_;
+        } elsif (m¦</TABLE>¦i) {
+            --$insideTable;
+            $tableLine = $_;
+        } elsif ($insideTable) {
+            $tableLine = $_;
+        }
+
+        next unless ($tableLine);
+printDbg("Orig: '", $tableLine, "'\n");
+
+        # Check everything all at once, after studying but before modifying.
+        study $tableLine;
+        my $stuffAfterTblTag = ($tableLine =~ m¦<TABLE>.+$¦i);
+        my $stuffBeforeTblTags = ($tableLine =~ m¦^.+</?TABLE>¦i);
+        my $hasTRTD = ($tableLine =~ m¦.<T[RD]>¦i);
+        my $stuffBeforeTR = ($tableLine =~ m¦^.+</TR>$¦i);
+
+        # Split at table tags.
+        if ($stuffAfterTblTag) {
+            $tableLine =~ s¦(<TABLE>)¦$1\n¦gi;
+        }
+        if ($stuffBeforeTblTags || $hasTRTD) {
+            $tableLine =~ s¦([^\n])(</?TABLE>|<T[DR]>)¦$1\n$2¦gi;
+        }
+        if ($stuffBeforeTR) {
+            $tableLine =~ s¦([^\n])(</TR>)¦$1\n$2¦gi;
+        }
+printDbg("Pre-split: '", $tableLine, "'\n");
+
+        # Break into separate strings and push.
+        if ($tableLine =~ m/\n/) {
+            push(@$ref_tblLines, split(/\n/, $tableLine));
+        } else {
+            push(@$ref_tblLines, $tableLine);
+        }
+    }
+}
+
+
+sub parseTables_rowMajor(\@\@) {
+    my $ref_content = shift();
+    my $ref_tables = shift();
+
+    my @tableLines = ();
+    getTableLines(@$ref_content, @tableLines);
+
+    # This is fairly easy.  We just look for the <tr> tags and use the first
+    # column as the key.
+    my $insideTable = 0;
+}
+
+
+sub parseTables_columnMajor(\@\@) {
+    my $ref_content = shift();
+    my $ref_tables = shift();
+
+    my @tableLines = ();
+    getTableLines(@$ref_content, @tableLines);
+}
+
+
+sub parse_statsPage($$\%\%\%) {
+    my $how = shift();
+    my $url = shift();
+    my $ref_auth = shift();
+    my $ref_options = shift();
+    my $ref_statsMap = shift();
+
+    my @content;
+    read_and_clean_webpage($how, $url, %$ref_auth, @content);
+
+    # Separate the body from anything else.
+    my ($ref_header, $ref_trailing) = keepBody(@content);
+
+    if (exists($ref_options->{'StatsInScriptCode'})) {
+        # FIXME:  Add code & use the correct option.
+        my $tmp;
+    } else {
+        # Remove comments, empty tag pairs, and scripts embedded in the body.
+        my @removeIdx = ();
+        findComments(@content, @removeIdx);
+        findEmptyPairs(@content, @removeIdx, 'li', 'dl', 'dt');
+        findScriptCode(@content, @removeIdx);
+
+        # Delete the lines marked for removal.
+        if (scalar(@removeIdx)) {
+            delete(@content[@removeIdx]);
+            @content = grep(defined, @content);
+        }
+
+        # FIXME:  Remove when finished debugging.
+#        print (Data::Dumper->Dump([\@content, $ref_header,
+#                                   $ref_trailing, \@removeIdx],
+#                                  [qw(body Header Trailing RemoveThese)]),
+#               "\n");
+
+        # FIXME:  Cleanup.
+        #if ( exists($ref_options->{'Table_RowMajor'}) ||
+        #     exists($ref_options->{'Table_ColumnMajor'}) )
+        if (1 || # FIXME
+            exists($ref_options->{'TableLayout_RowMajor'})) {
+            my @tables = ();
+            if (1 || #FIXME
+                $ref_options->{'TableLayout_RowMajor'}) {
+                parseTables_rowMajor(@content, @tables);
+            } else {
+                parseTables_columnMajor(@content, @tables);
+            }
+        }
+    }
+
+##print "'", join("'\n'", @content), "'\n";
 }
 
 
@@ -2069,6 +2610,13 @@ sub usage() {
 #
 ############
 
+#DBG::rm#
+#my %dummy=();
+#$_DebugLoggingIsActive=1;
+#parse_statsPage('curl',
+#                'file:///home/candide/src/perl/'.$ARGV[0],
+#                %dummy, %dummy, %dummy);
+#exit 0;
 
 # This is a really crude script.  Since it only exists to be run by MRTG, I
 # don't want too much overhead in it.
