@@ -145,6 +145,12 @@ use Term::ReadKey;
 use Tie::File;
 use Fcntl qw(O_RDONLY O_RDWR O_APPEND O_CREAT);  # For use with 'tie'
 use POSIX qw(nice setsid strftime);
+
+# Used to extract statistics from the DSL Modem.
+# It will be loaded (using "require") at runtime if needed.
+#use HTML::TableExtract;
+
+# For Debugging:
 use Data::Dumper;
 
 
@@ -1536,83 +1542,158 @@ sub getTableLines(\@\@) {
 
         push(@$ref_tblLines, split(/\n/, $modifiedLine));
     }
+    @tableLinesIdx = (); # Free up memory
 
-    print Data::Dumper->Dump([$ref_tblLines], [qw(TableContents)]), "\n";
-    return $maxTableDepth;
-
-    # FIXME:  Scan for and re-join multiline <TH> & <TR> cells that don't
+    # Scan for and re-join multiline <TH> & <TD> cells that don't
     # contain other tables.
-
-    #####
-    # OLD
-    #####
-
-    my $insideTable = 0;
-    foreach (@$ref_content) {
-        study;
-
-        my $tableLine;
-        if (m¦<TABLE>¦i) {
-            ++$insideTable;
-            $tableLine = $_;
-        } elsif (m¦</TABLE>¦i) {
-            --$insideTable;
-            $tableLine = $_;
-        } elsif ($insideTable) {
-            $tableLine = $_;
+    my @splitCellsIdx = ();
+    my $splitStartIdx = 0;  # shouldn't ever be a <TH>/<TD> tag here.
+    foreach my $idx (0 .. $#$ref_tblLines) {
+        if ($ref_tblLines->[$idx] =~ m¦<$c_TableNonCellTags>¦i) {
+            # Reset the counters any time we see any other table tag.  Nested
+            # tables won't be reconcatenated into one line.
+            $splitStartIdx = 0;
+            next;
         }
 
-        next unless ($tableLine);
-printDbg("Orig: '", $tableLine, "'\n");
+        my $hasCellOpen = ($ref_tblLines->[$idx] =~ m¦<T[DH]>¦i);
+        my $hasCellClosed = ($ref_tblLines->[$idx] =~ m¦</T[DH]>¦i);
+        # Skip lines that don't have a hanging tag.
+        # [N.B. - We don't have to worry about the first conditional catching a
+        #  line with m|</T[DH]>.+<T[DH]>|, since we've already split up
+        #  lines after the end-tags.]
+        next if ( ($hasCellOpen && $hasCellClosed) ||
+                  (!$hasCellOpen && !$hasCellClosed) );
 
-        # Check everything all at once, after studying but before modifying.
-        study $tableLine;
-        my $stuffAfterTblTag = ($tableLine =~ m¦<TABLE>.+$¦i);
-        my $stuffBeforeTblTags = ($tableLine =~ m¦^.+</?TABLE>¦i);
-        my $hasTRTD = ($tableLine =~ m¦.<T[RD]>¦i);
-        my $stuffBeforeTR = ($tableLine =~ m¦^.+</TR>$¦i);
+        if ($hasCellOpen) {
+            # Dangling open tag.
+            $splitStartIdx = $idx;
+        } else {  # $hasCellClosed
+            # In case of nested tables, some of the dangling closed tags won't
+            # have any matching open tags, at least as far as this loop is
+            # concerned.
+            if ($splitStartIdx) {
+                push(@splitCellsIdx, [$splitStartIdx, $idx]);
+            }
+            # ...aaand, reset.
+            $splitStartIdx = 0;
+        }
+    }
 
-        # Split at table tags.
-        if ($stuffAfterTblTag) {
-            $tableLine =~ s¦(<TABLE>)¦$1\n¦gi;
-        }
-        if ($stuffBeforeTblTags || $hasTRTD) {
-            $tableLine =~ s¦([^\n])(</?TABLE>|<T[DR]>)¦$1\n$2¦gi;
-        }
-        if ($stuffBeforeTR) {
-            $tableLine =~ s¦([^\n])(</TR>)¦$1\n$2¦gi;
-        }
-printDbg("Pre-split: '", $tableLine, "'\n");
+    return $maxTableDepth unless (scalar(@splitCellsIdx));
 
-        # Break into separate strings and push.
-        if ($tableLine =~ m/\n/) {
-            push(@$ref_tblLines, split(/\n/, $tableLine));
-        } else {
-            push(@$ref_tblLines, $tableLine);
-        }
+    foreach (@splitCellsIdx) {
+        my ($startIdx, $stopIdx) = @$_;
+        my @range = ($startIdx .. $stopIdx);
+        # Note:  All <TD> and <TH> tags in @$ref_tblLines are at the beginning
+        # of the line they occur in.  So, a simple 'join' is fine.
+        my $line = join("", @$ref_tblLines[@range]);
+        delete(@$ref_tblLines[@range]);
+        $ref_tblLines->[$startIdx] = $line;
+    }
+    @$ref_tblLines = grep(defined, @$ref_tblLines);
+
+    return $maxTableDepth;
+}
+
+
+sub storeRow_and_reset($\$) {
+    my $ref_tbl = shift();
+    my $refref_row = shift();
+
+    # Do nothing if there's no table at present.
+    my $tblExists = (defined($ref_tbl) && (ref($ref_tbl) eq "HASH"));
+    my $isValidRow = (ref($$refref_row) eq "ARRAY");
+
+    if ($tblExists && $isValidRow && scalar(@$$refref_row)) {
+        $ref_tbl->{$$refref_row->[0]} = $$refref_row;
+    }
+    # Reset the row by setting the underlying arrayref variable to a new
+    # arrayref.
+    $$refref_row = [];
+    return $tblExists;
+}
+
+
+sub pushTable(\@$\@;$) {
+    my $ref_stack = shift();
+    my $ref_tbl = shift();
+    my $ref_row = shift();
+    my $pushTblOnly = (scalar(@_) ? shift() : 0);
+
+    my $lastRowKey = (scalar(@$ref_row) ? $ref_row->[0] : undef);
+
+    # Do nothing if there's no table at present.
+    return unless (storeRow_and_reset($ref_tbl, $ref_row));
+    if ($pushTblOnly) {
+        push(@$ref_stack, $ref_tbl);
+    } else {
+        push(@$ref_stack, [$ref_tbl, $lastRowKey]);
     }
 }
 
 
-sub parseTables_rowMajor(\@\@) {
-    my $ref_content = shift();
+sub parseTables_rowMajor(\@$\@) {
+    my $ref_tblContent = shift();
+    my $hasNested = shift();
     my $ref_tables = shift();
-
-    my @tableLines = ();
-    getTableLines(@$ref_content, @tableLines);
 
     # This is fairly easy.  We just look for the <tr> tags and use the first
     # column as the key.
-    my $insideTable = 0;
+    my $ref_currentTbl = undef;
+    my $ref_currentRow = [];
+    my @tblStack = ();
+    foreach (@$ref_tblContent) {
+
+        study;
+        # Ignore stray text and certain table-tags.
+        next unless(m¦</?T(?:ABLE|[DHR])>¦i);
+
+        if (m¦<TABLE>¦i) {
+            # New table.  If it's nested, put the current one back on the
+            # stack.
+            pushTable(@tblStack, $ref_currentTbl, @$ref_currentRow);
+            $ref_currentTbl = {};
+        }
+        elsif (m¦</TABLE>¦i) {
+
+            # This time, store the current table in the output array.
+            pushTable(@$ref_tables, $ref_currentTbl, @$ref_currentRow, 1);
+            my $lastRowSeen;
+            ($ref_currentTbl, $lastRowSeen) = pop(@tblStack);
+            if (defined($lastRowSeen)) {
+                $ref_currentRow = $ref_currentTbl->{$lastRowSeen};
+            }
+
+        }
+        elsif (m¦</?TR>¦i) {
+            storeRow_and_reset($ref_currentTbl, $ref_currentRow);
+        }
+        elsif (m¦<TD>¦i) {
+            push(@$ref_currentRow, $_);
+        }
+        elsif (m¦<TH>¦i) {
+            # Keep the most recent heading, overwriting any earlier ones.
+            $ref_currentRow->[0] = $_;
+        }
+
+    }
+print Data::Dumper->Dump([\@tblStack, $ref_tables],
+                         [qw(Cruft CookedTables)]), "\n";
+    # Anything leftover in @tblStack is an unclosed table.  Explicitly
+    # discarding it to make it clear that it's garbage.
+    @tblStack = ();
+
 }
 
 
-sub parseTables_columnMajor(\@\@) {
-    my $ref_content = shift();
+sub parseTables_columnMajor(\@$\@) {
+    my $ref_tblContent = shift();
+    my $hasNested = shift();
     my $ref_tables = shift();
 
-    my @tableLines = ();
-    getTableLines(@$ref_content, @tableLines);
+    # FIXME:  This will be far easier to do using the HTML::TableExtract
+    # package.
 }
 
 
@@ -1624,6 +1705,27 @@ sub parse_statsPage($$\%\%\%) {
     my $ref_statsMap = shift();
 
     my @content;
+
+    # FIXME:  We should use the HTML::TableExtract package, since it does most
+    # of what we want.
+    #
+    # Create a list of dependent pkgs in a comment in this file, to be moved
+    # later into a README file and/or a script to get the pkgs from CPAN &
+    # install in /usr/local/share/perl or somesuch.
+    #
+    # Since HTML::TableExtract uses HTML::Parser, we can use the latter to do
+    # other things.
+    #
+    # Set the following on the HTML::TableExtract object (inherited from
+    # HTML::Parser):
+    #     $teParser->emtpy_element_tags(1);
+    #     $teParser->ignore_elements(qw(style img form));
+    #
+    # Use $teParser->parse_file($fh) to parse.
+
+    # FIXME:  Regroup the options into a $opt{'syslog'}{...} subhash and a
+    # $opt{'dslStats'}{...} subhash, or somesuch.
+
     read_and_clean_webpage($how, $url, %$ref_auth, @content);
 
     # Separate the body from anything else.
@@ -1645,23 +1747,26 @@ sub parse_statsPage($$\%\%\%) {
             @content = grep(defined, @content);
         }
 
-        # FIXME:  Remove when finished debugging.
-#        print (Data::Dumper->Dump([\@content, $ref_header,
-#                                   $ref_trailing, \@removeIdx],
-#                                  [qw(body Header Trailing RemoveThese)]),
-#               "\n");
+#DBG::rm#
+# print (Data::Dumper->Dump([\@content, $ref_header,
+# $ref_trailing, \@removeIdx], [qw(body Header Trailing RemoveThese)]), "\n");
 
         # FIXME:  Cleanup.
         #if ( exists($ref_options->{'Table_RowMajor'}) ||
         #     exists($ref_options->{'Table_ColumnMajor'}) )
         if (1 || # FIXME
             exists($ref_options->{'TableLayout_RowMajor'})) {
-            my @tables = ();
+            my @tableData = ();
+            my $hasNested = getTableLines(@content, @tableData);
+#DBG::rm#
+#print Data::Dumper->Dump([\@tableData],
+#                         [qw(TableContents)]), "\n";
+            my @tableMaps = ();
             if (1 || #FIXME
                 $ref_options->{'TableLayout_RowMajor'}) {
-                parseTables_rowMajor(@content, @tables);
+                parseTables_rowMajor(@tableData, $hasNested, @tableMaps);
             } else {
-                parseTables_columnMajor(@content, @tables);
+                parseTables_columnMajor(@tableData, $hasNested, @tableMaps);
             }
         }
     }
@@ -2611,12 +2716,12 @@ sub usage() {
 ############
 
 #DBG::rm#
-#my %dummy=();
-#$_DebugLoggingIsActive=1;
-#parse_statsPage('curl',
-#                'file:///home/candide/src/perl/'.$ARGV[0],
-#                %dummy, %dummy, %dummy);
-#exit 0;
+my %dummy=();
+$_DebugLoggingIsActive=1;
+parse_statsPage('curl',
+                'file:///home/candide/src/perl/'.$ARGV[0],
+                %dummy, %dummy, %dummy);
+exit 0;
 
 # This is a really crude script.  Since it only exists to be run by MRTG, I
 # don't want too much overhead in it.
