@@ -171,22 +171,11 @@ my $c_Week_Secs = 7*24*3600;
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
-my $c_EndTag_re = '</[^>\s\n]+>';
-my $c_Ignored_StandaloneTag_re
-    = '(?:B(?:ASE(?:FONT)?|R)|COL|FRAME|HR|LINK|META)\s*/?';
-my $c__Ignored1_re='[AB]|D(?:EL|IV)|EM|FO(?:RM|NT)|HTML|I(?:MG|NPUT)?|';
-my $c__Ignored2_re='NOBR(?:EAK)?|S(?:PAN|TR(?:IKE|ONG)|U[BP])|TT|U';
-my $c_Ignored_Tags_re
-    = '/?(?:'.$c__Ignored1_re.'|'.$c__Ignored2_re.')';
-my $c_TableNonCellTags='T(?:ABLE|BODY|FOOT|HEAD|R)';
-
 # Used to warn the user when they need to rerun this script in '-p'-mode.
-my $c_VerifyShhhh='9a892c8b9c83496e52591e133cc36112ac3db12d0bdee6273ea961'.
-    '0fb12048bded4bfdfd4384d3fee3c57f02c07055d876ca58da0b538a889d113baefb'.
-    '8161e3e64068f914bdfd5e';
-my $c_ExpectedShhhh='sub shhhhh($$); my $c_ExpectedShhhh="@th350und0fth3"';
-# FIXME:  Change to this at some point:
-#my $c_ExpectedShhhh='sub shhhhh($$){ my $c_ExpectedShhhh="@th350und0fth3"';
+my $c_VerifyShhhh='468acef89c068eb5957bc0d1a066435cd1e2adca8e894b577b72f4'.
+    'bef6cdf25bce33bf3ebc57ad5efb7500e9299c310cb877865c87b07a1e2c40f9303b'.
+    '4f89272578c046cbf0432f';
+my $c_ExpectedShhhh='sub shhhhh($$){ my $c_ExpectedShhhh="@th350und0fth3"';
 my $c_VersionShhhh="# 1.0 #";
 
 
@@ -695,8 +684,9 @@ sub validate_auth_only(\%\%) {
 
     return 1 unless (exists($ref_options->{"passwd"}));
 
-    if (exists($ref_options->{"GPG_SettingsFile"})) {
-        return read_fromGPG($ref_options->{"GPG_SettingsFile"}, %$ref_auth);
+    if (exists($ref_options->{'GPG'}{'SettingsFile'})) {
+        return read_fromGPG($ref_options->{'GPG'}{'SettingsFile'},
+                            %$ref_auth);
     }
 
     my $perms = (stat($_ConfigFile))[2] & 07077;
@@ -748,33 +738,34 @@ sub validate_options(\%\%) {
 
     validate_auth_only(%$ref_options, %$ref_auth);
 
-    if (exists($ref_options->{"MRTG_LogDir"})) {
-        unless ((-d $ref_options->{"MRTG_LogDir"}) &&
-                (-w $ref_options->{"MRTG_LogDir"}))
+    my $ref_MRTGOpts = $ref_options->{'MRTG'};
+    if (exists($ref_MRTGOpts->{'LogDir'})) {
+        unless ((-d $ref_MRTGOpts->{'LogDir'}) &&
+                (-w $ref_MRTGOpts->{'LogDir'}))
         {
-            print STDERR ("ERROR:  Parameter 'MRTG_LogDir' set to ",
+            print STDERR ("ERROR:  Parameter 'MRTG.LogDir' set to ",
                           "bad value.\n",
                           "Not a directory or not writeable:  \"",
-                          $ref_options->{"MRTG_LogDir"},
+                          $ref_options->{"MRTG.LogDir"},
                           "\"\n\n",
                           "Cowardly refusing to continue.\n");
             exit 2;
         }
     } else {
-        print STDERR ("ERROR:  Configuration file parameter 'MRTG_LogDir' ",
+        print STDERR ("ERROR:  Configuration file parameter 'MRTG.LogDir' ",
                       "not set.\n\n",
                       "Cowardly refusing to continue.\n");
         exit 2;
     }
 
-    if (exists($ref_options->{"Our_MRTG_DataFile"})) {
-        my $mrtg_log_file = $ref_options->{"MRTG_LogDir"};
+    if (exists($ref_MRTGOpts->{'Our_DataFile'})) {
+        my $mrtg_log_file = $ref_MRTGOpts->{'LogDir'};
         unless ($mrtg_log_file =~ m|/$|) {
             $mrtg_log_file .= '/';
         }
-        $mrtg_log_file .= $ref_options->{"Our_MRTG_DataFile"};
+        $mrtg_log_file .= $ref_MRTGOpts->{'Our_DataFile'};
         unless ((-e $mrtg_log_file) && (-w $mrtg_log_file)) {
-            print STDERR ("ERROR:  Parameter 'Our_MRTG_DataFile' set to ",
+            print STDERR ("ERROR:  Parameter 'MRTG.Our_DataFile' set to ",
                           "bad value.\n",
                           "File doesn't exist or isn't writeable:  \"",
                           $mrtg_log_file, "\"\n\n",
@@ -783,15 +774,33 @@ sub validate_options(\%\%) {
         }
 
         # Constructed Options:
-        $ref_options->{"_MRTG_Data_"} = $mrtg_log_file;
-        $ref_options->{"_MRTG_Updated_Data_"} = $mrtg_log_file;
-        $ref_options->{"_MRTG_Updated_Data_"} .= '-new'
+        $ref_MRTGOpts->{'_Data_'} = $mrtg_log_file;
+        $ref_MRTGOpts->{'_Updated_Data_'} = $mrtg_log_file;
+        $ref_MRTGOpts->{'_Updated_Data_'} .= '-new'
     } else {
         print STDERR ("ERROR:  Configuration file parameter ",
-                      "'Our_MRTG_DataFile' not set.\n\n",
+                      "'MRTG.Our_DataFile' not set.\n\n",
                       "Cowardly refusing to continue.\n");
         exit 2;
     }
+}
+
+
+sub separateOutOptionSets(\%\%$) {
+    my $ref_allOptions = shift();
+    my $ref_optSet = shift();
+    my $keyPrefix = shift();
+
+    my @selectedKeys = grep(/$keyPrefix\./, keys(%$ref_allOptions));
+    foreach (@selectedKeys) {
+        my $newKey = $_;
+        $newKey =~s/$keyPrefix\.//;
+        $ref_optSet->{$newKey} = $ref_allOptions->{$_};
+    }
+    if (scalar(@selectedKeys)) {
+        delete @$ref_allOptions{@selectedKeys};
+    }
+    $ref_allOptions->{$keyPrefix} = $ref_optSet;
 }
 
 
@@ -803,6 +812,16 @@ sub processConfigFile(\%) {
     #
     # Process/Compute Options Not Requiring Validation
     #
+
+    # Separate out all of the different sets of options:
+    #
+    my %syslogOpt = ();
+    separateOutOptionSets(%$ref_options, %syslogOpt, 'Syslog');
+    my %mrtgOpt = ();
+    separateOutOptionSets(%$ref_options, %mrtgOpt, 'MRTG');
+    my %gpgOpt = ();
+    separateOutOptionSets(%$ref_options, %gpgOpt, 'GPG');
+
 
     # 'UpdateInterval' and '_UpdateInterval_sec_'
     #
@@ -821,20 +840,19 @@ sub processConfigFile(\%) {
 
     # 'TimeFormat' and '_Time_Regexp_'
     #
-    unless (exists($c_TimeRegexps{$ref_options->{"TimeFormat"}})) {
+    unless (exists($c_TimeRegexps{$syslogOpt{"TimeFormat"}})) {
         print STDERR ("ERROR:  Bad value:  \"",
-                      $ref_options->{"TimeFormat"}, "\"\n",
-                      "Parameter 'TimeFormat' must be set to ",
+                      $syslogOpt{'TimeFormat'}, "\"\n",
+                      "Parameter 'Syslog.TimeFormat' must be set to ",
                       "one of the following:\n",
                       "\t\"", join("\"\n\t\"", keys(%c_TimeRegexps)),
                       "\"\n\n",
                       "Cowardly refusing to continue.\n");
         exit 2;
     }
-    $ref_options->{"_Time_Regexp_"}
-        = $c_TimeRegexps{$ref_options->{"TimeFormat"}};
-    $ref_options->{"_strftime_Format_"}
-        = $c_TimeFormatStr{$ref_options->{"TimeFormat"}};
+    $syslogOpt{'_Time_Regexp_'} = $c_TimeRegexps{$syslogOpt{'TimeFormat'}};
+    $syslogOpt{'_strftime_Format_'}
+        = $c_TimeFormatStr{$syslogOpt{'TimeFormat'}};
 
     #
     # Set some sane defaults:
@@ -958,14 +976,16 @@ sub appendSecret2ConfigFile() {
 #----------
 
 
-sub parse_syslog($$\%$$$\@) {
+sub parse_syslog($\%\%\@) {
     my $how = shift();
-    my $url = shift();
+    my $ref_opts = shift();
     my $ref_auth = shift();
-    my $dslUp_re = shift();
-    my $dslDown_re = shift();
-    my $time_re = shift();
     my $ref_dslState = shift();
+
+    my $url = $ref_opts->{'Url'};
+    my $dslUp_re = $ref_opts->{'DslUp_expr'};
+    my $dslDown_re = $ref_opts->{'DslDown_expr'};
+    my $time_re = $ref_opts->{'_Time_Regexp_'};
 
     # Build the command string separately from the authorization credentials.
     my $auth = "";
@@ -1149,7 +1169,7 @@ sub resetStaleDropCounts(\@$\@$) {
 #----------
 
 
-sub read_and_clean_webpage($$\%\@) {
+sub read_webpage($$\%\@) {
     my $how = shift();
     my $url = shift();
     my $ref_auth = shift();
@@ -1177,459 +1197,9 @@ sub read_and_clean_webpage($$\%\@) {
         return 0;
     }
 
-    # Read in lines, splitting lines at end tags.
-    #
-    # The goal is to remove unnecessary tags & whitespace and break up
-    # super-long lines of HTML into something a tad more manageable.
-    while (<$http_fh>) {
-        chomp;
-        study;
-        # Trim crap off of the ends.
-        s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
-
-        # Remove inlined comments
-        s¦<!--(?:[^-\n]|-[^-\n])+-->¦¦g;
-
-        # Remove intra-tag spaces, which will make the subsequent regexps
-        # simpler.
-        s¦/\s+>¦/>¦g;
-        s¦\s+/?>¦$1>¦g;
-        s¦(</?)\s+¦$1¦g;
-
-        # Remove all of the attributes from the tags.  We don't need them.
-        # Because of maximal munch, we need to make sure that we don't
-        # accidentally include nested tags.
-        s¦<(\w\S*)\s+[^<>\n]+>¦<$1>¦g;
-
-        # Some of these DSL modems put a line-break into the labels.  We not
-        # only don't need that, it's a problem when scanning for the stats
-        # that we want.  So, convert the <br/> tags into a ' '.
-        s¦<(?:BR/?|P)>¦ ¦gi;
-
-        # The paragraph-end tags should be removed.
-        s¦</P>¦¦gi;
-
-        # Remove tags that we don't care about, *and* that we can remove from
-        # anyplace in the file w/o causing problems.
-        s¦<(?:$c_Ignored_StandaloneTag_re|$c_Ignored_Tags_re)>¦¦goi;
-
-        # Remove any inter-tag spaces.  We don't need it.
-        s¦>\s+<¦><¦g;
-
-        # Convert "nonbreaking space" entities to the actual spaces.  BUT only
-        # AFTER removing inter-tag spaces.  (This way, we preserve the
-        # non-breaking spaces in the original document.)
-        s¦&nbsp;¦ ¦g;
-
-        # NOW that we've pruned out all manner of stuff, we can check for and
-        # skip empty lines.
-        #
-        next if (m/^\s*$/);
-
-        if (m¦$c_EndTag_re.¦o) {
-            # If we match an end tag, followed by any character, then we have
-            # a line that needs to be split into smaller lines.
-            s¦($c_EndTag_re)¦$1\n¦go;
-
-            # Clean any crap off of the ends of the new lines we've created.
-            my @subLines = map({ s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
-                                 $_; } split(m¦\n¦));
-            # Add only nonblank lines.
-            push(@$ref_cleanedLines, grep(!m¦^\s*$¦, @subLines));
-        } else {
-            push(@$ref_cleanedLines, $_);
-        }
-    }
+    # FIXME:  Construct HTML::TableExtract here.
 
     close($http_fh);
-}
-
-
-sub keepBody(\@) {
-    my $ref_lines = shift();
-
-    my $startNotSeen = 1;
-    my $endNotSeen = 1;
-    my $bodyStartIdx = -1;
-    my $bodyEndIdx = -1;
-    foreach (@$ref_lines) {
-        next unless (defined);
-        # Increment first, since we're starting our indices at -1.
-        ++$bodyStartIdx if ($startNotSeen);
-        ++$bodyEndIdx if ($endNotSeen);
-        $startNotSeen = 0 if (m¦<BODY>¦i);
-        $endNotSeen = 0 if (m¦</BODY>¦i);
-    }
-
-    return (undef, undef) if ($startNotSeen && $endNotSeen);
-
-    # Remove any trailing junk.
-    my @trailing = ();
-    if ($bodyEndIdx > -1) {
-        @trailing = splice(@$ref_lines, $bodyEndIdx);
-        # Remove the </BODY> tag.
-        if ($trailing[0] =~ m¦^.+</BODY>$¦i) {
-            $trailing[0] =~ s¦</BODY>¦¦i;
-        } else {
-            shift(@trailing);
-        }
-    }
-
-    # Remove any header.
-    my @header = ();
-    if ($bodyStartIdx > -1) {
-        # Is anything following the <BODY> tag?
-        my $inTheHeader = 0;
-        if ($ref_lines->[$bodyStartIdx] =~ m¦<BODY>$¦i) {
-            # Nope.  Ensure that its removed from @$ref_lines and tossed into
-            # the header.
-            ++$bodyStartIdx;
-            $inTheHeader = 1;
-        }
-
-        @header = splice(@$ref_lines, 0, $bodyStartIdx);
-
-        # Remove the lone <BODY> tag from wherever it is.
-        if ($inTheHeader) {
-            # Nothing following the tag.  Just remove it.
-            $header[$#header] =~ s¦<BODY>¦¦i;
-            pop(@header) if ($header[$#header] eq '');
-        } else {
-            # Remove everything up to and including the <BODY> tag from
-            # @$ref_lines.  (We only know that something follows the tag.  We
-            # don't know what precedes it, if anything.)
-            $ref_lines->[0] =~ s¦^(.*<BODY>)¦¦i;
-            my $lastLine = $1;
-            # Remove the <BODY> tag completely.
-            $lastLine =~ s¦<BODY>¦¦i;
-            # If there was anything preceding the <BODY> tag, put it at the
-            # end of the header.
-            push(@header, $lastLine) unless ($lastLine eq '');
-        }
-    }
-
-    return ( (scalar(@header) ? \@header : undef),
-             (scalar(@trailing) ? \@trailing : undef) );
-}
-
-
-sub findComments(\@\@) {
-    my $ref_lines = shift();
-    my $ref_comments = shift();
-
-    # Now rescan the contents, removing all comments.
-    my $insideComment = 0;
-    my $idx = 0;
-    foreach (@$ref_lines) {
-        study;
-        if (m¦<!--¦) {
-            $insideComment = 1;
-            if (m¦^<!--¦) {
-                push(@$ref_comments, $idx);
-            } else {
-                s¦<!--.*$¦¦;
-            }
-        } elsif (m¦-->¦) {
-            $insideComment = 0;
-            if (m¦-->$¦) {
-                push(@$ref_comments, $idx);
-            } else {
-                s¦^.*-->¦¦;
-            }
-        } elsif ($insideComment) {
-            push(@$ref_comments, $idx);
-        }
-
-        # While we're here, check again and trim off any leading/trailing
-        # whitespace.
-        s¦^\s+¦¦; s¦\s+$¦¦;
-
-        # Don't forget to bump the index!
-        ++$idx;
-    }
-}
-
-
-sub findEmptyPairs(\@\@@) {
-    my $ref_lines = shift();
-    my $ref_empties = shift();
-
-    my $regexp = '';
-    foreach (@_) {
-        $regexp .= '|' unless ($regexp eq '');
-        $regexp .= '<'; $regexp .= $_; $regexp .= '></';
-        $regexp .= $_; $regexp .= '>';
-    }
-
-    my $idx = 0;
-    foreach (@$ref_lines) {
-        study;
-        push(@$ref_empties, $idx) if (m¦^(?:$regexp)$¦i);
-        ++$idx;
-    }
-}
-
-
-sub findScriptCode(\@\@) {
-    my $ref_lines = shift();
-    my $ref_scriptCode = shift();
-
-
-    # Now rescan the contents, removing all comments.
-    my $insideScript = 0;
-    my $idx = 0;
-    foreach (@$ref_lines) {
-        study;
-        my $hasScriptEndTag = m¦</SCRIPT>¦i;
-
-        # The order that we do things in is important now.
-        #
-        # We must start by checking for a newly-seen <SCRIPT>, or a line of
-        # code in the middle of a script-block.
-        if (m¦<SCRIPT>¦i) {
-            # We're only inside of a script-block if there's no end-tag on
-            # this line.
-            $insideScript = !$hasScriptEndTag;
-            if (m¦^<SCRIPT>¦i && !$hasScriptEndTag) {
-                push(@$ref_scriptCode, $idx);
-            } else {
-                # There's either something preceding the open-tag, and/or
-                # we're inside of an inline script-blocks.  Remove the
-                # open-tag and everything following it.
-                s¦<SCRIPT>.*$¦¦i;
-            }
-        } elsif ($insideScript && !$hasScriptEndTag) {
-            push(@$ref_scriptCode, $idx);
-        } elsif ($hasScriptEndTag) {
-            $insideScript = 0;
-            # Nothing follows an ending tag.  If anything precedes the
-            # </SCRIPT>, we want to ignore it.
-            push(@$ref_scriptCode, $idx);
-        }
-
-        # While we're here, check again and trim off any leading/trailing
-        # whitespace.
-        s¦^\s+¦¦; s¦\s+$¦¦;
-
-        # Did we create any blank lines (say, when removing inline script
-        # code)?  Skip those.
-        push(@$ref_scriptCode, $idx) if ($_ eq '');
-
-        # Don't forget to bump the index!
-        ++$idx;
-    }
-}
-
-
-sub getTableLines(\@\@) {
-    my $ref_content = shift();
-    my $ref_tblLines = shift();
-
-    # Notes:
-    #
-    # <table> contains <(?:thead|tfoot|tbody|tr)>
-    #   -- xhtml-basic only requires <tr>
-    # <tbody> contains <tr>
-    # <thead> contains <tr>
-    # <tfoot> contains <tr>
-    # <tr> contains <t[hd]>
-    #   -- xhtml-basic requires a <th>
-    #   -- The other forms of xhtml require a <td>
-    # <th> is like <td>, but for column header info.  Prefer it to the
-    #   first <td> cell.
-
-    # Start by finding the table lines.
-    my $tableDepth = 0;
-    my $maxTableDepth = 0;
-    my @tableLinesIdx = ();
-    foreach my $idx (0 .. $#$ref_content) {
-        my $line = $ref_content->[$idx];
-        study $line;
-
-        if ($line =~ m¦<(/?)TABLE>¦i) {
-            push(@tableLinesIdx, $idx);
-            if ($1) {
-                --$tableDepth;
-            } else {
-                ++$tableDepth;
-                if ($tableDepth > $maxTableDepth) {
-                    $maxTableDepth = $tableDepth;
-                }
-            }
-        } elsif ($tableDepth ||
-                 ($line =~ m¦</?T(?:BODY|D|FOOT|H(?:EAD)?|R)>¦i)) {
-            push(@tableLinesIdx, $idx);
-        }
-    }
-
-    # Break apart and store these lines.
-    @$ref_tblLines = ();
-    my $isFirstLine = 1;
-    my $inMultilineCell = 0;
-    my $modifiedLine;
-    foreach (@$ref_content[@tableLinesIdx]) {
-        next if (m/^\s*$/);
-
-        # Check everything all at once, after studying but before modifying.
-        study;
-
-        # Table-Cells on their own line need no additional processing.  Nor do
-        # tags alread on their own line.  Skip them so that we don't need to
-        # worry about them in the subsequent lines.
-        if (m¦^<T[DH]></T[DH]>$¦i || m¦^<[^>]+>$¦) {
-            push(@$ref_tblLines, $_);
-            next;
-        }
-
-        # Don't edit the $_ variable!  That would modify the array elements
-        # themselves.  So, we'll check the regexps for all of the expressions
-        # we want to handle up front and store them for later reuse.
-        my $splitTags = (m¦>\s*<¦);
-        my $textBeforeTag = (m¦[^>]\s*</?$c_TableNonCellTags¦o);
-        my $textAfterOpenTag = (m¦<$c_TableNonCellTags>\s*[^<]¦o);
-        my $textBeforeFirstTable = ($isFirstLine && $textBeforeTag &&
-                                    m¦^.+<TABLE>¦i);
-        my $hasCellOpen = (m¦<T[DH]>¦i);
-
-        # If there are no special cases to handle, then store and continue.
-        unless ($splitTags || $textBeforeTag || $textAfterOpenTag ||
-                $textBeforeFirstTable)
-        {
-            push(@$ref_tblLines, $_);
-            next;
-        }
-
-
-        # At this point, we'll have to modify this line somehow, so make a
-        # copy.
-        $modifiedLine = $_;
-
-        # Remove anything preceding the first <TABLE> tag.  (This is the only
-        # edge-case we need, since nothing will follow the last </TABLE> tag.)
-        if ($isFirstLine) {
-            $isFirstLine = 0;
-            if ($textBeforeFirstTable) {
-                $modifiedLine =~ s¦^.+(<TABLE>)¦$1¦i;
-            }
-        }
-
-        # Break off any table cells in this line.
-        if ($hasCellOpen) {
-            $modifiedLine =~ s¦(.)(<T[DH]>)¦$1\n$2¦g;
-            # Note:  $modifiedLine =~ m|</T[DH]>$| is always true, so nothing
-            # further to do.
-        }
-
-        # Split up tags that are on the same line.  (Ignore any whitespace
-        # between them, for the most part.)
-        if ($splitTags) {
-            $modifiedLine =~ s¦>[ \t\f\r]*<(?!/T[DH]>)¦>\n<¦gi;
-            # N.B - No '<TD>...</TD>' or '<TH>...</TH>' should be split by the
-            # previous regexp.
-        }
-
-        # Put all tags onto their own line, removing any text preceding
-        # them.  If it's whitespace before the tag, keep it on the line.
-        if ($textBeforeTag) {
-            $modifiedLine =~ s¦([^\n])(</?$c_TableNonCellTags)¦$1\n$2¦gi;
-        }
-
-        # Put all tags onto their own line, removing any text preceding
-        # them.  If it's whitespace after the tag, keep it on the line.
-        if ($textAfterOpenTag) {
-            $modifiedLine =~ s¦(<$c_TableNonCellTags>)([^\n])¦$1\n$2¦gi;
-        }
-
-        push(@$ref_tblLines, split(/\n/, $modifiedLine));
-    }
-    @tableLinesIdx = (); # Free up memory
-
-    # Scan for and re-join multiline <TH> & <TD> cells that don't
-    # contain other tables.
-    my @splitCellsIdx = ();
-    my $splitStartIdx = 0;  # shouldn't ever be a <TH>/<TD> tag here.
-    foreach my $idx (0 .. $#$ref_tblLines) {
-        if ($ref_tblLines->[$idx] =~ m¦<$c_TableNonCellTags>¦i) {
-            # Reset the counters any time we see any other table tag.  Nested
-            # tables won't be reconcatenated into one line.
-            $splitStartIdx = 0;
-            next;
-        }
-
-        my $hasCellOpen = ($ref_tblLines->[$idx] =~ m¦<T[DH]>¦i);
-        my $hasCellClosed = ($ref_tblLines->[$idx] =~ m¦</T[DH]>¦i);
-        # Skip lines that don't have a hanging tag.
-        # [N.B. - We don't have to worry about the first conditional catching a
-        #  line with m|</T[DH]>.+<T[DH]>|, since we've already split up
-        #  lines after the end-tags.]
-        next if ( ($hasCellOpen && $hasCellClosed) ||
-                  (!$hasCellOpen && !$hasCellClosed) );
-
-        if ($hasCellOpen) {
-            # Dangling open tag.
-            $splitStartIdx = $idx;
-        } else {  # $hasCellClosed
-            # In case of nested tables, some of the dangling closed tags won't
-            # have any matching open tags, at least as far as this loop is
-            # concerned.
-            if ($splitStartIdx) {
-                push(@splitCellsIdx, [$splitStartIdx, $idx]);
-            }
-            # ...aaand, reset.
-            $splitStartIdx = 0;
-        }
-    }
-
-    return $maxTableDepth unless (scalar(@splitCellsIdx));
-
-    foreach (@splitCellsIdx) {
-        my ($startIdx, $stopIdx) = @$_;
-        my @range = ($startIdx .. $stopIdx);
-        # Note:  All <TD> and <TH> tags in @$ref_tblLines are at the beginning
-        # of the line they occur in.  So, a simple 'join' is fine.
-        my $line = join("", @$ref_tblLines[@range]);
-        delete(@$ref_tblLines[@range]);
-        $ref_tblLines->[$startIdx] = $line;
-    }
-    @$ref_tblLines = grep(defined, @$ref_tblLines);
-
-    return $maxTableDepth;
-}
-
-
-sub storeRow_and_reset($\$) {
-    my $ref_tbl = shift();
-    my $refref_row = shift();
-
-    # Do nothing if there's no table at present.
-    my $tblExists = (defined($ref_tbl) && (ref($ref_tbl) eq "HASH"));
-    my $isValidRow = (ref($$refref_row) eq "ARRAY");
-
-    if ($tblExists && $isValidRow && scalar(@$$refref_row)) {
-        $ref_tbl->{$$refref_row->[0]} = $$refref_row;
-    }
-    # Reset the row by setting the underlying arrayref variable to a new
-    # arrayref.
-    $$refref_row = [];
-    return $tblExists;
-}
-
-
-sub pushTable(\@$\@;$) {
-    my $ref_stack = shift();
-    my $ref_tbl = shift();
-    my $ref_row = shift();
-    my $pushTblOnly = (scalar(@_) ? shift() : 0);
-
-    my $lastRowKey = (scalar(@$ref_row) ? $ref_row->[0] : undef);
-
-    # Do nothing if there's no table at present.
-    return unless (storeRow_and_reset($ref_tbl, $ref_row));
-    if ($pushTblOnly) {
-        push(@$ref_stack, $ref_tbl);
-    } else {
-        push(@$ref_stack, [$ref_tbl, $lastRowKey]);
-    }
 }
 
 
@@ -1726,52 +1296,16 @@ sub parse_statsPage($$\%\%\%) {
     # FIXME:  Regroup the options into a $opt{'syslog'}{...} subhash and a
     # $opt{'dslStats'}{...} subhash, or somesuch.
 
-    read_and_clean_webpage($how, $url, %$ref_auth, @content);
-
-    # Separate the body from anything else.
-    my ($ref_header, $ref_trailing) = keepBody(@content);
+    my $teParser = read_webpage($how, $url, %$ref_auth, @content);
 
     if (exists($ref_options->{'StatsInScriptCode'})) {
         # FIXME:  Add code & use the correct option.
         my $tmp;
     } else {
-        # Remove comments, empty tag pairs, and scripts embedded in the body.
-        my @removeIdx = ();
-        findComments(@content, @removeIdx);
-        findEmptyPairs(@content, @removeIdx, 'li', 'dl', 'dt');
-        findScriptCode(@content, @removeIdx);
-
-        # Delete the lines marked for removal.
-        if (scalar(@removeIdx)) {
-            delete(@content[@removeIdx]);
-            @content = grep(defined, @content);
-        }
-
-#DBG::rm#
-# print (Data::Dumper->Dump([\@content, $ref_header,
-# $ref_trailing, \@removeIdx], [qw(body Header Trailing RemoveThese)]), "\n");
-
-        # FIXME:  Cleanup.
-        #if ( exists($ref_options->{'Table_RowMajor'}) ||
-        #     exists($ref_options->{'Table_ColumnMajor'}) )
-        if (1 || # FIXME
-            exists($ref_options->{'TableLayout_RowMajor'})) {
-            my @tableData = ();
-            my $hasNested = getTableLines(@content, @tableData);
-#DBG::rm#
-#print Data::Dumper->Dump([\@tableData],
-#                         [qw(TableContents)]), "\n";
-            my @tableMaps = ();
-            if (1 || #FIXME
-                $ref_options->{'TableLayout_RowMajor'}) {
-                parseTables_rowMajor(@tableData, $hasNested, @tableMaps);
-            } else {
-                parseTables_columnMajor(@tableData, $hasNested, @tableMaps);
-            }
-        }
+        my $tmp;
+#                parseTables_rowMajor(@tableData, $hasNested, @tableMaps);
+#                parseTables_columnMajor(@tableData, $hasNested, @tableMaps);
     }
-
-##print "'", join("'\n'", @content), "'\n";
 }
 
 
@@ -2589,21 +2123,21 @@ sub daemon_main(\%\%) {
         my $probe_duration = -$now;
 
         printErr("\n\n");
-        if ($options{'SyslogUrl'} ne "") {
+        if ($options{'Syslog'}{'Url'} ne "") {
             printDbg("Reading DSL modem log.\n");
 
-            parse_syslog($_GetURLVia, $options{'SyslogUrl'}, %auth,
-                         $options{'DslUp_expr'}, $options{'DslDown_expr'},
-                         $options{'_Time_Regexp_'}, @updatedDslState);
+            parse_syslog($_GetURLVia, %{$options{'Syslog'}}, %auth,
+                         @updatedDslState);
             adjustBorkedTimestamps(@updatedDslState, $inDST,
                                    $options{'ModemAdjustsForDST'},
                                    $options{'ExtraTimeOffset'},
-                                   $options{"_strftime_Format_"});
+                                   $options{'Syslog'}{'_strftime_Format_'});
             removeOldEventsAndAdjust(@updatedDslState,
                                      $ref_lastEvent->[$c_tsIdx],
                                      $ref_lastEvent->[$c_nDropsIdx]);
             resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent,
-                                 $options{"_strftime_Format_"});
+                                 $options{'Syslog'}{'_strftime_Format_'});
+
         } else {
             # Create a placeholder that we can add the S&R, Attenuation,
             # etc. statistics to.  This will also become $ref_lastEvent later
@@ -2632,8 +2166,8 @@ sub daemon_main(\%\%) {
 
         # Build the new MRTG data log file & rotate it in.
         updateMRTGdata(@updatedDslState,
-                       $options{'_MRTG_Data_'},
-                       $options{'_MRTG_Updated_Data_'});
+                       $options{'MRTG'}{'_Data_'},
+                       $options{'MRTG'}{'_Updated_Data_'});
 
         daemon_housekeeping($inDST, $currentWeek_endTs, $now);
 
@@ -2715,13 +2249,6 @@ sub usage() {
 #
 ############
 
-#DBG::rm#
-my %dummy=();
-$_DebugLoggingIsActive=1;
-parse_statsPage('curl',
-                'file:///home/candide/src/perl/'.$ARGV[0],
-                %dummy, %dummy, %dummy);
-exit 0;
 
 # This is a really crude script.  Since it only exists to be run by MRTG, I
 # don't want too much overhead in it.
@@ -2792,13 +2319,11 @@ if ($checkNow) {
     my $dummy;
     init_DST_vars($inDST, $dummy);
     print "===== Current DSL Modem Syslog: =====\n\n";
-    parse_syslog($_GetURLVia, $options{'SyslogUrl'}, %auth,
-                 $options{'DslUp_expr'}, $options{'DslDown_expr'},
-                 $options{'_Time_Regexp_'}, @recentState);
+    parse_syslog($_GetURLVia, %{$options{'Syslog'}}, %auth, @recentState);
     adjustBorkedTimestamps(@recentState, $inDST,
                            $options{'ModemAdjustsForDST'},
                            $options{'ExtraTimeOffset'},
-                           $options{"_strftime_Format_"});
+                           $options{'Syslog'}{"_strftime_Format_"});
     foreach my $ref_event (@recentState) {
         printEvent(\*STDOUT, @$ref_event);
     }
