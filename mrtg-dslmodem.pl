@@ -148,7 +148,7 @@ use POSIX qw(nice setsid strftime);
 
 # Used to extract statistics from the DSL Modem.
 # It will be loaded (using "require") at runtime if needed.
-#use HTML::TableExtract;
+use HTML::TableExtract;
 
 # For Debugging:
 use Data::Dumper;
@@ -170,6 +170,20 @@ my $c_Week_Secs = 7*24*3600;
 
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
+
+my $c_EndTag_re = '</[^>\s\n]+>';
+#my $c_IgnoredStandalone_re
+#    = '(?:B(?:ASE(?:FONT)?|R)|COL|FRAME|HR|LINK|META)\s*/?';
+#my $c__Ignored1_re='[AB]|D(?:EL|IV)|EM|FO(?:RM|NT)|I(?:MG|NPUT)?|';
+#my $c__Ignored2_re='NOBR(?:EAK)?|S(?:PAN|TR(?:IKE|ONG)|U[BP])|TT|U';
+my $c_IgnoredStandalone_re
+    = '(?:B(?:ASE(?:FONT)?)|COL|FRAME|HR|LINK|META)\s*/?';
+my $c__Ignored1_re='A|DIV|FO(?:RM|NT)|I(?:MG|NPUT)|';
+my $c__Ignored2_re='NOBR(?:EAK)?|SPAN';
+
+my $c_IgnoredPlain_re='/?(?:'.$c__Ignored1_re.$c__Ignored2_re.')';
+my $c_Ignored_Tags_re
+    = '(?:/?(?:'.$c_IgnoredPlain_re.')|'.$c_IgnoredStandalone_re.')';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
 my $c_VerifyShhhh='468acef89c068eb5957bc0d1a066435cd1e2adca8e894b577b72f4'.
@@ -481,6 +495,10 @@ sub read_config(\%) {
         # Special handling:
         # We are in the middle of processing an array option.
         if ($array_option) {
+            for ($line) {
+                s/^['"]//;
+                s/['"]$//;
+            }
             push @{$ref_options->{$array_option}}, $line;
             next;
         }
@@ -815,12 +833,16 @@ sub processConfigFile(\%) {
 
     # Separate out all of the different sets of options:
     #
-    my %syslogOpt = ();
-    separateOutOptionSets(%$ref_options, %syslogOpt, 'Syslog');
     my %mrtgOpt = ();
     separateOutOptionSets(%$ref_options, %mrtgOpt, 'MRTG');
     my %gpgOpt = ();
     separateOutOptionSets(%$ref_options, %gpgOpt, 'GPG');
+    my %syslogOpt = ();
+    separateOutOptionSets(%$ref_options, %syslogOpt, 'Syslog');
+    my %statsOpt = ();
+    separateOutOptionSets(%$ref_options, %statsOpt, 'Stats');
+    my %statsTblOpt = ();
+    separateOutOptionSets(%statsOpt, %statsTblOpt, 'Table');
 
 
     # 'UpdateInterval' and '_UpdateInterval_sec_'
@@ -853,6 +875,37 @@ sub processConfigFile(\%) {
     $syslogOpt{'_Time_Regexp_'} = $c_TimeRegexps{$syslogOpt{'TimeFormat'}};
     $syslogOpt{'_strftime_Format_'}
         = $c_TimeFormatStr{$syslogOpt{'TimeFormat'}};
+
+    # 'Stats.Table.AdjustUnits'
+    #
+    if (exists($statsTblOpt{'AdjustUnits'})) {
+        if (exists($statsTblOpt{'Heading_exprs'})) {
+            my $nExprs = scalar(@{$statsTblOpt{'Heading_exprs'}});
+            if ($nExprs > scalar(@{$statsTblOpt{'AdjustUnits'}})) {
+                --$nExprs;
+                $statsTblOpt{'AdjustUnits'}[$nExprs] = 1;
+            }
+        }
+        foreach (@{$statsTblOpt{'AdjustUnits'}}) {
+            # Convert to number:
+            $_ += 0;
+            unless (defined && $_) {
+                $_ = 1;
+            }
+        }
+    }
+
+    # 'Stats.Table.Row_exprs' and 'Stats.Table._Row_re_'
+    #
+    if (exists($statsTblOpt{'Row_exprs'})) {
+        my $rowExpJoined = join(')|(?:', @{$statsTblOpt{'Row_exprs'}});
+        $statsTblOpt{'_Row_re_'} = qr/((?:$rowExpJoined))/;
+    }
+
+    # 'Stats.Table.KeepIdx' and 'Stats.Table._KeepColumn_'
+    if (exists($statsTblOpt{'KeepIdx'})) {
+        $statsTblOpt{'_KeepColumn_'} = $statsTblOpt{'KeepIdx'} + 1;
+    }
 
     #
     # Set some sane defaults:
@@ -916,6 +969,8 @@ sub processConfigFile(\%) {
             exit 2;
         }
     }
+
+    #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
 
     return 1;
 }
@@ -1169,12 +1224,11 @@ sub resetStaleDropCounts(\@$\@$) {
 #----------
 
 
-sub read_webpage($$\%\@) {
+sub read_and_clean_webpage($\%\%\@) {
     my $how = shift();
-    my $url = shift();
+    my $ref_opts = shift();
     my $ref_auth = shift();
     my $ref_cleanedLines = shift();
-
 
     # Build the command string separately from the authorization credentials.
     my $auth = "";
@@ -1188,124 +1242,246 @@ sub read_webpage($$\%\@) {
         $auth .= " ";
     }
 
+    my $url = $ref_opts->{'Url'};
+
     my $getUrl_cmd = $c_WebGet{$how}{'cmd'};
     $getUrl_cmd .= $c_WebGet{$how}{'args'};
     my $http_fh;
-    unless (open($http_fh, '-|', $getUrl_cmd . $auth . $url)) {
+    unless (open($http_fh, '-|', $getUrl_cmd.$auth.$url)) {
         print STDERR ("FATAL: Can't run command: ", $getUrl_cmd, $url,
                       "\nReason: \"", $!, "\"\n");
         return 0;
     }
 
-    # FIXME:  Construct HTML::TableExtract here.
+    # Read in lines, splitting lines at end tags.
+    #
+    # The goal is to remove unnecessary tags & whitespace and break up
+    # super-long lines of HTML into something a tad more manageable.
+    while (<$http_fh>) {
+        chomp;
+        study;
+        # Trim crap off of the ends.
+        s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
+
+        # Remove intra-tag spaces, which will make the subsequent regexps
+        # simpler.
+        s¦/\s+>¦/>¦g;
+        s¦\s+/?>¦$1>¦g;
+        s¦(</?)\s+¦$1¦g;
+
+        # Remove certain tags that are causing problems for
+        # HTML::TableExtract.
+        s¦<$c_Ignored_Tags_re(?:\s+[^<>\n]+)?>¦¦goi;
+
+        # Some of these DSL modems put a line-break into the labels.  We
+        # don't need that.  So, convert the <br/> tags into a ' '.
+        s¦<(?:BR/?|P(?:\s+[^<>\n]+)?>\s*</P)>¦ ¦gi;
+
+        # NOW that we've pruned out all manner of stuff, we can check for and
+        # skip empty lines.
+        #
+        next if (m/^\s*$/);
+
+        # HTML::TableExtract has trouble when tags are all crammed into one
+        # line.
+        if (m¦$c_EndTag_re.¦o) {
+            # If we match an end tag, followed by any character, then we have
+            # a line that needs to be split into smaller lines.
+            s¦($c_EndTag_re)¦$1\n¦go;
+
+            # Clean any crap off of the ends of the new lines we've created.
+            my @subLines = map({ s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
+                                 $_; } split(m¦\n¦));
+            # Add only nonblank lines.
+            push(@$ref_cleanedLines, grep(!m¦^\s*$¦, @subLines));
+        } else {
+            push(@$ref_cleanedLines, $_);
+        }
+    }
 
     close($http_fh);
 }
 
 
-sub parseTables_rowMajor(\@$\@) {
-    my $ref_tblContent = shift();
-    my $hasNested = shift();
-    my $ref_tables = shift();
+sub createTableParser(\%) {
+    my $ref_opts = shift();
 
-    # This is fairly easy.  We just look for the <tr> tags and use the first
-    # column as the key.
-    my $ref_currentTbl = undef;
-    my $ref_currentRow = [];
-    my @tblStack = ();
-    foreach (@$ref_tblContent) {
+    #^^^^^^^^^^^^
+    # FIXME:  Only load the HTML::TableExtract package if required, and then,
+    # only once.  Prolly should do that in processConfigFile().
+    #vvvvvvvvvvvv
 
-        study;
-        # Ignore stray text and certain table-tags.
-        next unless(m¦</?T(?:ABLE|[DHR])>¦i);
-
-        if (m¦<TABLE>¦i) {
-            # New table.  If it's nested, put the current one back on the
-            # stack.
-            pushTable(@tblStack, $ref_currentTbl, @$ref_currentRow);
-            $ref_currentTbl = {};
-        }
-        elsif (m¦</TABLE>¦i) {
-
-            # This time, store the current table in the output array.
-            pushTable(@$ref_tables, $ref_currentTbl, @$ref_currentRow, 1);
-            my $lastRowSeen;
-            ($ref_currentTbl, $lastRowSeen) = pop(@tblStack);
-            if (defined($lastRowSeen)) {
-                $ref_currentRow = $ref_currentTbl->{$lastRowSeen};
-            }
-
-        }
-        elsif (m¦</?TR>¦i) {
-            storeRow_and_reset($ref_currentTbl, $ref_currentRow);
-        }
-        elsif (m¦<TD>¦i) {
-            push(@$ref_currentRow, $_);
-        }
-        elsif (m¦<TH>¦i) {
-            # Keep the most recent heading, overwriting any earlier ones.
-            $ref_currentRow->[0] = $_;
-        }
-
+    my %ctorOpts = ('debug' => ($_DebugLoggingIsActive > 1) );
+    if (exists($ref_opts->{'Column_exprs'})) {
+        $ctorOpts{'headers'} = $ref_opts->{'Column_exprs'};
     }
-print Data::Dumper->Dump([\@tblStack, $ref_tables],
-                         [qw(Cruft CookedTables)]), "\n";
-    # Anything leftover in @tblStack is an unclosed table.  Explicitly
-    # discarding it to make it clear that it's garbage.
-    @tblStack = ();
+    if (exists($ref_opts->{'Depth'})) {
+        $ctorOpts{'depth'} = $ref_opts->{'Depth'};
+    }
+    if (exists($ref_opts->{'PositionInLayer'})) {
+        $ctorOpts{'count'} = $ref_opts->{'PositionInLayer'};
+    }
 
+    my @ignoreThese = qw(style script);
+    if (exists($ref_opts->{'IgnoreTags'})) {
+        @ignoreThese = @{$ref_opts->{'IgnoreTags'}};
+    }
+
+    my $tblParser = HTML::TableExtract->new(%ctorOpts);
+    $tblParser->empty_element_tags(1);
+    $tblParser->ignore_elements(@ignoreThese);
+
+    return $tblParser;
 }
 
 
-sub parseTables_columnMajor(\@$\@) {
-    my $ref_tblContent = shift();
-    my $hasNested = shift();
-    my $ref_tables = shift();
+sub getClearlyDefinedHeaders($\@) {
+    my $tblObj = shift();
+    my $ref_hdrs = shift();
 
-    # FIXME:  This will be far easier to do using the HTML::TableExtract
-    # package.
+    my $colIdx = 0;
+    foreach my $h ($tblObj->hrow()) {
+        unless (!defined($h) ||  ($h =~ m/^\s*$/)) {
+            $h = "idx_";
+            $h .= $colIdx;
+            ++$colIdx;
+        }
+        push(@$ref_hdrs, $h);
+    }
 }
 
 
-sub parse_statsPage($$\%\%\%) {
+sub parseTables_grid($\%\%) {
+    my $parser = shift();
+    my $ref_opts = shift();
+    my $ref_results = shift();
+
+
+    # Grab all of the desired rows.
+    my @allHeaders = ();
+    my @slice;
+    foreach my $table ($parser->tables()) {
+        next unless (defined($table));
+
+        # Don't include the first column in the slice.
+        @slice = grep($_, $table->column_map());
+        foreach my $ref_row ($table->rows()) {
+            study $ref_row->[0];
+            next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
+
+            push(@allHeaders, $ref_row->[0]);
+            $ref_results->{$ref_row->[0]} = [@$ref_row[@slice]];
+        }
+    }
+
+    # Now, put the headers into the order requested in the config file.
+    $ref_results->{'_Headers_InOrder_'} = [];
+    foreach my $re (@{$ref_opts->{'Row_exprs'}}) {
+        push( @{$ref_results->{'_Headers_InOrder_'}},
+              grep(m/(?:$re)/, @allHeaders) );
+    }
+}
+
+
+sub parseTables_rowMajor($\%\%) {
+    my $parser = shift();
+    my $ref_opts = shift();
+    my $ref_results = shift();
+
+    return unless ( exists($ref_opts->{'Row_exprs'}) &&
+                    scalar($ref_opts->{'Row_exprs'}) );
+
+    # Grab all of the desired rows.
+    my @allHeaders = ();
+    foreach my $table ($parser->tables()) {
+        next unless (defined($table));
+
+        foreach my $ref_row ($table->rows()) {
+            study $ref_row->[0];
+            next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
+
+            push(@allHeaders, $ref_row->[0]);
+            $ref_results->{$ref_row->[0]}
+                = $ref_row->[$ref_opts->{'_KeepColumn_'}];
+        }
+    }
+
+    # Now, put the headers into the order requested in the config file.
+    $ref_results->{'_Headers_InOrder_'} = [];
+    foreach my $re (@{$ref_opts->{'Row_exprs'}}) {
+        push( @{$ref_results->{'_Headers_InOrder_'}},
+              grep(m/(?:$re)/, @allHeaders) );
+    }
+}
+
+
+sub parseTables_columnMajor($\%\%) {
+    my $parser = shift();
+    my $ref_opts = shift();
+    my $ref_results = shift();
+
+    # This is the easiest of the table-parsing operations.
+    my @allHeaders = ();
+
+    foreach my $table ($parser->tables()) {
+        next unless (defined($table));
+
+        # Get the column headers, replacing any blank or missing headers with
+        # a constructed one.
+        my @headers;
+        getClearlyDefinedHeaders($table, @headers);
+
+        if (scalar(@headers)) {
+            @$ref_results{@headers} = $table->row($ref_opts->{'KeepIdx'});
+            push(@allHeaders, @headers);
+        }
+    }
+
+    $ref_results->{'_Headers_InOrder_'} = \@allHeaders;
+}
+
+
+sub parse_statsPage($\%\%\%) {
     my $how = shift();
-    my $url = shift();
-    my $ref_auth = shift();
     my $ref_options = shift();
+    my $ref_auth = shift();
     my $ref_statsMap = shift();
 
+    # "Preparse" the web page.  I've found that HTML::TableExtract doesn't
+    # like the raw HTML.
     my @content;
+    read_and_clean_webpage($how, %$ref_options, %$ref_auth, @content);
 
-    # FIXME:  We should use the HTML::TableExtract package, since it does most
-    # of what we want.
-    #
-    # Create a list of dependent pkgs in a comment in this file, to be moved
-    # later into a README file and/or a script to get the pkgs from CPAN &
-    # install in /usr/local/share/perl or somesuch.
-    #
-    # Since HTML::TableExtract uses HTML::Parser, we can use the latter to do
-    # other things.
-    #
-    # Set the following on the HTML::TableExtract object (inherited from
-    # HTML::Parser):
-    #     $teParser->emtpy_element_tags(1);
-    #     $teParser->ignore_elements(qw(style img form));
-    #
-    # Use $teParser->parse_file($fh) to parse.
+    if (exists($ref_options->{'Table'}) && defined($ref_options->{'Table'}))
+    {
 
-    # FIXME:  Regroup the options into a $opt{'syslog'}{...} subhash and a
-    # $opt{'dslStats'}{...} subhash, or somesuch.
+        my $ref_tblOpts = $ref_options->{'Table'};
+        my $teParser = createTableParser(%$ref_tblOpts);
+        $teParser->parse(join("\n",@content)."\n");
+        if ( exists($ref_tblOpts->{'Column_exprs'}) &&
+             exists($ref_tblOpts->{'Row_exprs'}) )
+        {
+            parseTables_grid($teParser, %$ref_tblOpts, %$ref_statsMap);
+        } elsif(exists($ref_tblOpts->{'Column_exprs'})){
+            parseTables_columnMajor($teParser, %$ref_tblOpts, %$ref_statsMap);
+        } else {
+            parseTables_rowMajor($teParser, %$ref_tblOpts, %$ref_statsMap);
+        }
 
-    my $teParser = read_webpage($how, $url, %$ref_auth, @content);
+        # Adjust the stats so that they're all integers.
+        if (exists($ref_tblOpts->{'AdjustUnits'})) {
+            my $idx = 0;
+            foreach my $k (@{$ref_statsMap->{'_Headers_InOrder_'}}) {
+                $ref_statsMap->{$k} *= $ref_tblOpts->{'AdjustUnits'}[$idx];
+                ++$idx;
+            }
+        }
 
-    if (exists($ref_options->{'StatsInScriptCode'})) {
-        # FIXME:  Add code & use the correct option.
+    } elsif (0) {
+
         my $tmp;
-    } else {
-        my $tmp;
-#                parseTables_rowMajor(@tableData, $hasNested, @tableMaps);
-#                parseTables_columnMajor(@tableData, $hasNested, @tableMaps);
-    }
+
+    } # else:  Do nothing.
 }
 
 
@@ -2200,6 +2376,55 @@ sub start_daemon($\%\%) {
 }
 
 
+#----------
+# Actions
+#----------
+
+
+sub checkNow_and_exit(\%\%) {
+    my %options = %{shift()};
+    my %auth = %{shift()};
+
+
+    if ($options{'Stats'}{'Url'} ne "") {
+        print "DSL Modem Statistics:\n";
+        print "---------------------\n";
+        my %dslStats = ();
+        parse_statsPage($_GetURLVia, %{$options{'Stats'}}, %auth, %dslStats);
+        foreach my $k (@{$dslStats{'_Headers_InOrder_'}}) {
+            print " "x4, $k, " == ";
+            if (ref($dslStats{$k})) {
+                print "(", join(", ", @{$dslStats{$k}}), ") \n";
+            } else {
+                print $dslStats{$k}," \n";
+            }
+        }
+        print "\n";
+    }
+
+    if ($options{'Syslog'}{'Url'} ne "") {
+
+        my @recentState = ();
+        my $inDST;
+        my $dummy;
+        init_DST_vars($inDST, $dummy);
+        print "===== Current DSL Modem Syslog: =====\n\n";
+        parse_syslog($_GetURLVia, %{$options{'Syslog'}},
+                     %auth, @recentState);
+        adjustBorkedTimestamps(@recentState, $inDST,
+                               $options{'ModemAdjustsForDST'},
+                               $options{'ExtraTimeOffset'},
+                               $options{'Syslog'}{"_strftime_Format_"});
+        foreach my $ref_event (@recentState) {
+            printEvent(\*STDOUT, @$ref_event);
+        }
+
+    }
+
+    exit 0;
+}
+
+
 sub usage() {
     print STDERR ("usage: ", $_MyName, " -n\n");
     print STDERR (" "x7, $_MyName, " -d\n");
@@ -2311,23 +2536,12 @@ my %auth;
 processConfigFile(%options);
 
 if ($checkNow) {
+
     # We don't need to validate the various pieces-parts needed for
     # daemon-mode, but we do need to validate any web page password.
     validate_auth_only(%options, %auth);
-    my @recentState = ();
-    my $inDST;
-    my $dummy;
-    init_DST_vars($inDST, $dummy);
-    print "===== Current DSL Modem Syslog: =====\n\n";
-    parse_syslog($_GetURLVia, %{$options{'Syslog'}}, %auth, @recentState);
-    adjustBorkedTimestamps(@recentState, $inDST,
-                           $options{'ModemAdjustsForDST'},
-                           $options{'ExtraTimeOffset'},
-                           $options{'Syslog'}{"_strftime_Format_"});
-    foreach my $ref_event (@recentState) {
-        printEvent(\*STDOUT, @$ref_event);
-    }
-    exit 0;
+    checkNow_and_exit(%options, %auth);
+
 } else {
     my $noDaemonRunning = no_running_daemon();
     if ($daemonize) {
