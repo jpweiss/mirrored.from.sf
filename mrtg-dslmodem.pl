@@ -161,6 +161,8 @@ use Data::Dumper;
 ############
 
 
+my $c_N_DbgStatsManual = 1000;
+
 my $c_tsIdx = 0;
 my $c_HRT_Idx = 1;
 my $c_UpDownIdx = 2;
@@ -172,10 +174,6 @@ my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
 my $c_EndTag_re = '</[^>\s\n]+>';
-#my $c_IgnoredStandalone_re
-#    = '(?:B(?:ASE(?:FONT)?|R)|COL|FRAME|HR|LINK|META)\s*/?';
-#my $c__Ignored1_re='[AB]|D(?:EL|IV)|EM|FO(?:RM|NT)|I(?:MG|NPUT)?|';
-#my $c__Ignored2_re='NOBR(?:EAK)?|S(?:PAN|TR(?:IKE|ONG)|U[BP])|TT|U';
 my $c_IgnoredStandalone_re
     = '(?:B(?:ASE(?:FONT)?)|COL|FRAME|HR|LINK|META)\s*/?';
 my $c__Ignored1_re='A|DIV|FO(?:RM|NT)|I(?:MG|NPUT)|';
@@ -314,6 +312,30 @@ sub are_numbers(;@) {
             return 0;
         }
     }
+    return 1;
+}
+
+
+sub hasOption(\%$) {
+    my $ref_optMap = shift();
+    my $optNm = shift();
+
+    return 0 unless (exists($ref_optMap->{$optNm}) &&
+                     defined($ref_optMap->{$optNm}));
+
+    # Scalar Value
+    return 1 unless (ref($ref_optMap->{$optNm}));
+
+    # References
+    foreach (ref($ref_optMap->{$optNm})) {
+        m/ARRAY/ && do {
+            return scalar(@{$ref_optMap->{$optNm}});
+        };
+        m/HASH/ && do {
+            return scalar(keys(%{$ref_optMap->{$optNm}}));
+        };
+    }
+
     return 1;
 }
 
@@ -843,6 +865,8 @@ sub processConfigFile(\%) {
     separateOutOptionSets(%$ref_options, %statsOpt, 'Stats');
     my %statsTblOpt = ();
     separateOutOptionSets(%statsOpt, %statsTblOpt, 'Table');
+    my %statsByHand = ();
+    separateOutOptionSets(%statsOpt, %statsByHand, 'Manual');
 
 
     # 'UpdateInterval' and '_UpdateInterval_sec_'
@@ -876,22 +900,13 @@ sub processConfigFile(\%) {
     $syslogOpt{'_strftime_Format_'}
         = $c_TimeFormatStr{$syslogOpt{'TimeFormat'}};
 
-    # 'Stats.Table.AdjustUnits'
+    # 'Stats.AdjustUnits'
     #
-    if (exists($statsTblOpt{'AdjustUnits'})) {
-        if (exists($statsTblOpt{'Heading_exprs'})) {
-            my $nExprs = scalar(@{$statsTblOpt{'Heading_exprs'}});
-            if ($nExprs > scalar(@{$statsTblOpt{'AdjustUnits'}})) {
-                --$nExprs;
-                $statsTblOpt{'AdjustUnits'}[$nExprs] = 1;
-            }
-        }
-        foreach (@{$statsTblOpt{'AdjustUnits'}}) {
+    if (exists($statsOpt{'AdjustUnits'})) {
+        foreach my $v (@{$statsOpt{'AdjustUnits'}}) {
             # Convert to number:
-            $_ += 0;
-            unless (defined && $_) {
-                $_ = 1;
-            }
+            $v += 0;
+            $v = 1 unless ($v);
         }
     }
 
@@ -903,8 +918,40 @@ sub processConfigFile(\%) {
     }
 
     # 'Stats.Table.KeepIdx' and 'Stats.Table._KeepColumn_'
+    #
     if (exists($statsTblOpt{'KeepIdx'})) {
         $statsTblOpt{'_KeepColumn_'} = $statsTblOpt{'KeepIdx'} + 1;
+    }
+
+    # 'Stats.Manual.Select', 'Stats.Manual._Select_Idx_',
+    # 'Stats.Manual._Select_Re_' and 'Stats.Manual._SelectKeys_Sorted_'
+    #
+    if (exists($statsByHand{'Select'})) {
+        my @allIndices = (0 .. $#{$statsByHand{'Select'}});
+        my @numsIdx = grep({ $statsByHand{'Select'}[$_] =~ /^\d+$/
+                           }  @allIndices);
+        $statsByHand{'_Select_Idx_'}
+            = { map({ sprintf("ModemStat_%02d",
+                              $_+1) => $statsByHand{'Select'}[$_] + 0;
+                    } @numsIdx) };
+        delete @allIndices[@numsIdx];
+        my @regexpIdx = grep(defined, @allIndices);
+        $statsByHand{'_Select_Re_'}
+            = { map({ sprintf("ModemStat_%02d",
+                              $_+1) => $statsByHand{'Select'}[$_]
+                    } @regexpIdx) };
+
+        if (scalar(grep(/\A\*\Z/, values(%{$statsByHand{'_Select_Re_'}}))))
+        {
+            $statsByHand{'_Select_Re_'} = {};
+            $statsByHand{'_Select_Idx_'}
+                = { map({ sprintf("ModemStat_Dbg_%06d", $_) => $_;
+                        } (0 .. $c_N_DbgStatsManual)) };
+        }
+
+        $statsByHand{'_SelectKeys_Sorted_'}
+            = [ sort( keys(%{$statsByHand{'_Select_Idx_'}}),
+                      keys(%{$statsByHand{'_Select_Re_'}}) ) ];
     }
 
     #
@@ -1335,19 +1382,44 @@ sub createTableParser(\%) {
 }
 
 
-sub getClearlyDefinedHeaders($\@) {
-    my $tblObj = shift();
-    my $ref_hdrs = shift();
+sub ensureDefinedHeaders($\$) {
+    my $val = shift();
+    my $ref_count = shift();
 
-    my $colIdx = 0;
-    foreach my $h ($tblObj->hrow()) {
-        unless (!defined($h) ||  ($h =~ m/^\s*$/)) {
-            $h = "idx_";
-            $h .= $colIdx;
-            ++$colIdx;
-        }
-        push(@$ref_hdrs, $h);
+    study $val;
+    if (!defined($val) || ($val =~ m/^[\s\xA0]*$/)) {
+        $val = "modemStat::idx_";
+        $val .= $$ref_count;
+        ++$$ref_count;
     }
+
+    return $val;
+}
+
+
+sub setOrderedUniqHeaders(\%\@) {
+    my $ref_results = shift();
+    my $ref_headers = shift();
+
+    my %uniq = ();
+    $ref_results->{'_Headers_InOrder_'} = [ grep({ !$uniq{$_}++
+                                                 } @$ref_headers) ];
+}
+
+
+sub setRowHeadersInOrder(\%\@\@) {
+    my $ref_results = shift();
+    my $ref_allHeaders = shift();
+    my $ref_rowRe = shift();
+
+
+    # Now, put the headers into the order requested in the config file.
+    my @orderedHeaders = ();
+    foreach my $re (@$ref_rowRe) {
+        push(@orderedHeaders, grep(m/(?:$re)/, @$ref_allHeaders));
+    }
+
+    setOrderedUniqHeaders(%$ref_results, @orderedHeaders);
 }
 
 
@@ -1360,6 +1432,8 @@ sub parseTables_grid($\%\%) {
     # Grab all of the desired rows.
     my @allHeaders = ();
     my @slice;
+    my $colCount = 0;
+
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
 
@@ -1369,17 +1443,16 @@ sub parseTables_grid($\%\%) {
             study $ref_row->[0];
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
+            my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
             push(@allHeaders, $ref_row->[0]);
             $ref_results->{$ref_row->[0]} = [@$ref_row[@slice]];
         }
     }
 
     # Now, put the headers into the order requested in the config file.
-    $ref_results->{'_Headers_InOrder_'} = [];
-    foreach my $re (@{$ref_opts->{'Row_exprs'}}) {
-        push( @{$ref_results->{'_Headers_InOrder_'}},
-              grep(m/(?:$re)/, @allHeaders) );
-    }
+    setRowHeadersInOrder(%$ref_results,
+                         @allHeaders,
+                         @{$ref_opts->{'Row_exprs'}});
 }
 
 
@@ -1393,6 +1466,8 @@ sub parseTables_rowMajor($\%\%) {
 
     # Grab all of the desired rows.
     my @allHeaders = ();
+    my $colCount = 0;
+
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
 
@@ -1400,18 +1475,16 @@ sub parseTables_rowMajor($\%\%) {
             study $ref_row->[0];
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
-            push(@allHeaders, $ref_row->[0]);
-            $ref_results->{$ref_row->[0]}
-                = $ref_row->[$ref_opts->{'_KeepColumn_'}];
+            my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
+            push(@allHeaders, $hdr);
+            $ref_results->{$hdr} = $ref_row->[$ref_opts->{'_KeepColumn_'}];
         }
     }
 
     # Now, put the headers into the order requested in the config file.
-    $ref_results->{'_Headers_InOrder_'} = [];
-    foreach my $re (@{$ref_opts->{'Row_exprs'}}) {
-        push( @{$ref_results->{'_Headers_InOrder_'}},
-              grep(m/(?:$re)/, @allHeaders) );
-    }
+    setRowHeadersInOrder(%$ref_results,
+                         @allHeaders,
+                         @{$ref_opts->{'Row_exprs'}});
 }
 
 
@@ -1422,14 +1495,15 @@ sub parseTables_columnMajor($\%\%) {
 
     # This is the easiest of the table-parsing operations.
     my @allHeaders = ();
+    my $colCount = 0;
 
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
 
         # Get the column headers, replacing any blank or missing headers with
         # a constructed one.
-        my @headers;
-        getClearlyDefinedHeaders($table, @headers);
+        my @headers = map( { ensureDefinedHeaders($_, $colCount); }
+                           $table->hrow() );
 
         if (scalar(@headers)) {
             @$ref_results{@headers} = $table->row($ref_opts->{'KeepIdx'});
@@ -1437,7 +1511,104 @@ sub parseTables_columnMajor($\%\%) {
         }
     }
 
-    $ref_results->{'_Headers_InOrder_'} = \@allHeaders;
+    setOrderedUniqHeaders(%$ref_results, @allHeaders);
+}
+
+
+# Designed for use with 'map', 'grep' and the like.
+sub applyFilterRegexLists(\%) {
+    my $ref_filter = $_[0]{'FilterRegexps'};
+    my $ref_replace = $_[0]{'ExtractionRegexps'};
+
+    # *sigh* I wish there were a more efficient way to do this.  Alas, a huge
+    # regexp with multiple alternatives is often slower than individual
+    # regexps for each alternative.
+    study;
+    my $keep = 0;
+    foreach my $re (@$ref_filter) {
+        next unless (m/(?:$re)/);
+        $keep = 1;
+        last;
+    }
+
+    foreach my $re (@$ref_replace) {
+        next unless (m/(?:$re)/);
+        next unless ($1);
+        $_ = $1;
+        $keep = 1
+    }
+    return $keep;
+}
+
+
+# Designed for use with 'map', 'grep' and the like.
+sub applyCleanupRegexList(\%) {
+    my $ref_cleanup = $_[0]{'CleanupRegexps'};
+
+    study;
+    foreach my $re (@$ref_cleanup) {
+        s¦(?:$re)¦¦gi;
+    }
+
+    # Trim surrounding whitespace.
+    s¦\A\s+¦¦g;
+    s¦\s+\Z¦¦g;
+
+    return $_;
+}
+
+
+sub splitRequestedFields(\@\%) {
+    my $ref_lines = shift();
+    my $ref_opts = shift();
+
+    return 1 unless (exists($ref_opts->{'Split'}));
+
+    foreach my $split_re (@{$ref_opts->{'Split'}}) {
+        next unless (scalar(grep(m¦(?:$split_re)¦, @$ref_lines)));
+        @$ref_lines = map({
+                           if (m¦(?:$split_re)¦) {
+                               split(m¦$split_re¦);
+                           } else {
+                               $_;
+                           }
+                          } @$ref_lines);
+    }
+}
+
+
+sub selectResults(\%\@\%) {
+    my $ref_results = shift();
+    my $ref_lines = shift();
+    my $ref_opts = shift();
+
+
+    # Remove the desired values from the list of lines, using the indexes
+    # passed in the config file.  Store 'em in the results map.
+    while (my ($k, $v) = each(%{$ref_opts->{'_Select_Idx_'}})) {
+        next unless (exists($ref_lines->[$v]));
+        if (defined($ref_lines->[$v]) && ($ref_lines->[$v] ne '')) {
+            $ref_results->{$k} = $ref_lines->[$v];
+        } else {
+            $ref_results->{$k} = -1;
+        }
+        delete $ref_lines->[$v];
+    }
+
+    # Search the remaining lines using the regular expressions passed in the
+    # config file.  Store the first line that matches.
+    my @matches;
+    while (my ($k, $re) = each(%{$ref_opts->{'_Select_Re_'}})) {
+        @matches = grep(m¦(?:$re)¦, @$ref_lines);
+        if (scalar(@matches) && defined($matches[0]) && ($matches[0] ne ''))
+        {
+            $ref_results->{$k} = $matches[0];
+        } else {
+            $ref_results->{$k} = -1;
+        }
+    }
+
+    $ref_results->{'_Headers_InOrder_'} = $ref_opts->{'_SelectKeys_Sorted_'};
 }
 
 
@@ -1452,8 +1623,7 @@ sub parse_statsPage($\%\%\%) {
     my @content;
     read_and_clean_webpage($how, %$ref_options, %$ref_auth, @content);
 
-    if (exists($ref_options->{'Table'}) && defined($ref_options->{'Table'}))
-    {
+    if (hasOption(%$ref_options, 'Table')) {
 
         my $ref_tblOpts = $ref_options->{'Table'};
         my $teParser = createTableParser(%$ref_tblOpts);
@@ -1468,20 +1638,40 @@ sub parse_statsPage($\%\%\%) {
             parseTables_rowMajor($teParser, %$ref_tblOpts, %$ref_statsMap);
         }
 
-        # Adjust the stats so that they're all integers.
-        if (exists($ref_tblOpts->{'AdjustUnits'})) {
-            my $idx = 0;
-            foreach my $k (@{$ref_statsMap->{'_Headers_InOrder_'}}) {
-                $ref_statsMap->{$k} *= $ref_tblOpts->{'AdjustUnits'}[$idx];
-                ++$idx;
-            }
+    } elsif (hasOption(%$ref_options, 'Manual')) {
+
+        my $ref_exprOpts = $ref_options->{'Manual'};
+        my @processed = grep({ applyFilterRegexLists(%$ref_exprOpts)
+                             } @content);
+
+        if (hasOption(%$ref_exprOpts, 'CleanupRegexps')) {
+            @processed = grep( { (defined && $_)
+                               } map({ applyCleanupRegexList(%$ref_exprOpts)
+                                     } @processed)
+                              );
         }
 
-    } elsif (0) {
+        splitRequestedFields(@processed, %$ref_exprOpts);
 
-        my $tmp;
+        selectResults(%$ref_statsMap, @processed, %$ref_exprOpts);
 
-    } # else:  Do nothing.
+    }
+    else
+    {
+        # Do nothing.
+        return;
+    }
+
+    # Lastly:  Adjust the collected stats so that they're all integers.
+    if (exists($ref_options->{'AdjustUnits'})) {
+        my $idx = 0;
+        foreach my $k (@{$ref_statsMap->{'_Headers_InOrder_'}}) {
+            $ref_statsMap->{$k} *= $ref_options->{'AdjustUnits'}[$idx];
+            ++$idx;
+            # Stop if we run out of adjustment factors.
+            last unless (exists($ref_options->{'AdjustUnits'}[$idx]));
+        }
+    }
 }
 
 
@@ -2392,6 +2582,7 @@ sub checkNow_and_exit(\%\%) {
         my %dslStats = ();
         parse_statsPage($_GetURLVia, %{$options{'Stats'}}, %auth, %dslStats);
         foreach my $k (@{$dslStats{'_Headers_InOrder_'}}) {
+            last unless (exists($dslStats{$k}));
             print " "x4, $k, " == ";
             if (ref($dslStats{$k})) {
                 print "(", join(", ", @{$dslStats{$k}}), ") \n";
