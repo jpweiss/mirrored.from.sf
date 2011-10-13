@@ -303,8 +303,8 @@ sub read_config(\$\@\@\@;$) {
     if (exists($options{"_DaemonLog"})) {
         $_DaemonLog = $options{"_DaemonLog"};
     }
-    if (exists($ref_options->{"_DataFile"})) {
-        $_DataFile = $ref_options->{"_DataFile"};
+    if (exists($options{"_DataFile"})) {
+        $_DataFile = $options{"_DataFile"};
     }
 
     if ($isRereading) {
