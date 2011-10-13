@@ -28,14 +28,14 @@
 # file, but are not standard settings.  These are their default values.
 #
 
-my $_DaemonLog = "/tmp/mrtg-dslmodem.log";
-my $_DataFile = "/dev/shm/mrtg-dslmodem.dat";
+my $_DaemonLog = "/var/log/mrtg-dslmodem.log";
+my $_DataFile = "/tmp/mrtg-dslmodem.dat";
 my $_MaxSize_DataFile = 8*1024*1024;
 my $_MaxSize_Log = 64*1024*1024;
 my $_DaemonPIDFile = "/var/run/mrtg-dslmodem.pid";
 my $_GetURLVia = 'curl';
 my $_DebugLoggingIsActive = 0;
-my $_DropCountInterval = 3600;
+my $_MRTG_CollisionInterval = 15;
 
 
 # Internal Variables.
@@ -45,7 +45,8 @@ my $_DropCountInterval = 3600;
 #
 
 my $_ConfigFile = undef();
-my $_UpdateInterval_Default = 5*60;
+my $_UpdateInterval_Default = 15*60;
+my $_Stat_Event_MergeInterval = 5*60;
 my $_TieAttempts = 5;
 my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
@@ -145,10 +146,9 @@ use Term::ReadKey;
 use Tie::File;
 use Fcntl qw(O_RDONLY O_RDWR O_APPEND O_CREAT);  # For use with 'tie'
 use POSIX qw(nice setsid strftime);
-
-# Used to extract statistics from the DSL Modem.
-# It will be loaded (using "require") at runtime if needed.
-use HTML::TableExtract;
+## Used to extract statistics from the DSL Modem.
+## It will be loaded (using "require") at runtime if needed.
+##use HTML::TableExtract;
 
 # For Debugging:
 use Data::Dumper;
@@ -165,9 +165,17 @@ my $c_N_DbgStatsManual = 1000;
 
 my $c_tsIdx = 0;
 my $c_HRT_Idx = 1;
-my $c_UpDownIdx = 2;
-my $c_nDropsIdx = 3;
+my $c_EventTypeIdx = 2;
+my $c_UpDownIdx = 3;
+my $c_nDropsIdx = 4;
+my $c_firstDslStatIdx = 5;
 
+my $c_UpDown_tieIdx = 0;
+my $c_nDrops_tieIdx = 1;
+my $c_eventType_tieIdx_fromEnd = -2;
+
+
+my $c_DropCountInterval = 3600;
 my $c_Week_Secs = 7*24*3600;
 
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
@@ -184,12 +192,17 @@ my $c_Ignored_Tags_re
     = '(?:/?(?:'.$c_IgnoredPlain_re.')|'.$c_IgnoredStandalone_re.')';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
-my $c_VerifyShhhh='468acef89c068eb5957bc0d1a066435cd1e2adca8e894b577b72f4'.
-    'bef6cdf25bce33bf3ebc57ad5efb7500e9299c310cb877865c87b07a1e2c40f9303b'.
-    '4f89272578c046cbf0432f';
-my $c_ExpectedShhhh='sub shhhhh($$){ my $c_ExpectedShhhh="@th350und0fth3"';
-my $c_VersionShhhh="# 1.0 #";
+my $c_VerifyVal='088c7f9c76baf015e2e70dff8456c54e20a4f12aa333c36006a4db84c95'.
+    'bb9354cf6f7ae0dde06b8339fa27b60e869fb2a48bc2a089d18f087e09f54c4295a5971'.
+    'b955fa60f99a6a387e70bf';
+my $c_ExpectedVal='sub shhhhh($$){ my $c_ExpectedVal="@th350und0fth3t0n3"; ';
+my $c_VersionVal="# 2.0 #";
 
+my $c_EvT_startupDflt = 1;
+my $c_EvT_placeholder = 2;
+my $c_EvT_syslog = 4;
+my $c_EvT_newStats = 8;
+my $c_EvT_resetDropCount = 0x10;
 
 # Constants used in the time-format hashes.  Prevents inconsistencies due to
 # typos.
@@ -212,6 +225,41 @@ my $c__common_tFmt_slash_r = '%Y/%m/%d %r';
 
 my @c_Hex = ('0', '1', '2', '3', '4', '5', '6', '7',
              '8', '9', 'a', 'b', 'c', 'd', 'e', 'f');
+
+my @c_ScalarOptions = ('UpdateInterval',
+                       'ModemAdjustsForDST',
+                       'ExtraTimeOffset',
+                       'MRTG.LogDir',
+                       'MRTG.Our_DataFile',
+                       'Syslog.Url',
+                       'Syslog.DslDown_expr',
+                       'Syslog.DslUp_expr',
+                       'Syslog.TimeFormat',
+                       'Stats.Url',
+                       'Stats.Table.KeepIdx',
+                       'Stats.Table.Depth',
+                       'Stats.Table.PositionInLayer',
+                       '_DebugLoggingIsActive',
+                       '_DaemonLog',
+                       '_DataFile',
+                       '_DaemonPIDFile',
+                       '_MRTG_CollisionInterval',
+                       '_MaxSize_DataFile',
+                       '_MaxSize_Log',
+                       '_GetURLVia',
+                      );
+
+my @c_ArrayOptions = ('Stats.AdjustUnits',
+                      'Stats.Table.Column_exprs',
+                      'Stats.Table.Row_exprs',
+                      'Stats.Table.IgnoreTags',
+                      'Stats.Manual.FilterRegexps',
+                      'Stats.Manual.ExtractionRegexps',
+                      'Stats.Manual.CleanupRegexps',
+                      'Stats.Manual.Split',
+                      'Stats.Manual.Select',
+                      'Stats.Manual.DisplayText',
+                     );
 
 my %c_WebGet = ( 'curl' => { 'cmd' => "/usr/bin/curl",
                              'args' => " -4 -s -m 300 ",
@@ -272,7 +320,7 @@ my $g_refDataTieObj;
 
 
 # Forward decls.
-sub updateMRTGdata(\@$$);
+sub updateMRTGdata(\@\%);
 
 
 #----------
@@ -323,11 +371,13 @@ sub hasOption(\%$) {
     return 0 unless (exists($ref_optMap->{$optNm}) &&
                      defined($ref_optMap->{$optNm}));
 
+    my $type = ref($ref_optMap->{$optNm});
+
     # Scalar Value
-    return 1 unless (ref($ref_optMap->{$optNm}));
+    return 1 unless ($type);
 
     # References
-    foreach (ref($ref_optMap->{$optNm})) {
+    foreach ($type) {
         m/ARRAY/ && do {
             return scalar(@{$ref_optMap->{$optNm}});
         };
@@ -337,6 +387,17 @@ sub hasOption(\%$) {
     }
 
     return 1;
+}
+
+
+sub hasExpectedTypeIfExists(\%$$) {
+    my $ref_options = shift();
+    my $optNm = shift();
+    my $expectedType = shift();
+
+    return 1 unless (exists($ref_options->{$optNm}));
+    return 1 unless (defined($ref_options->{$optNm}));
+    return (ref($ref_options->{$optNm}) eq $expectedType);
 }
 
 
@@ -359,11 +420,12 @@ sub printDbg(@) {
 }
 
 
-sub convert2secs(\$) {
-    my $ref_var = shift();
-
-    my $timeStr = $$ref_var;
+sub convert2secs($) {
+    my $timeStr = shift();
     my $secs = undef;
+
+    # Check that the time-string is valid.
+    return undef unless ($timeStr =~ m/^(\d+(?:\.\d+)?)(?:\s*[smh])?$/);
 
     # Process any units-suffix:
     if ($timeStr =~ m/^(.*)\s*s$/) {
@@ -382,8 +444,6 @@ sub convert2secs(\$) {
 
     # Convert min. to sec.
     $secs *= 60;
-
-    $$ref_var = $secs;
     return $secs;
 }
 
@@ -418,9 +478,9 @@ sub t2DropCountInterval($;$) {
     my $t = shift();
     my $returnIntervalEnd = (scalar(@_) ? shift() : 0);
 
-    my $timeUptdInterval = $t - ($t % $_DropCountInterval);
+    my $timeUptdInterval = $t - ($t % $c_DropCountInterval);
     if ($returnIntervalEnd) {
-        $timeUptdInterval += $_DropCountInterval;
+        $timeUptdInterval += $c_DropCountInterval;
     }
     return $timeUptdInterval;
 }
@@ -639,7 +699,13 @@ sub my_codeval() {
     my $iVal = 0;
     my $hVal = 0;
     while (my $line=<IN_FH>) {
+        study $line;
         next if ($line =~ m/^#\s+\$Id:.+\s+\$/);
+        if ($line =~ m/^(my \$c_VerifyVal=').+('\.)\s*$/) {
+            $line = $1.$2;
+            my $skip=<IN_FH>;
+            until ($skip =~ m/;\s*$/) { $skip=<IN_FH>; }
+        }
         foreach (split(//, $line)) {
             if (($nc % 4) == 0) { $hVal ^= $iVal; $iVal = ord; }
             else { $iVal <<= 8; $iVal |= ord; }
@@ -657,15 +723,6 @@ sub my_codeval() {
     }
     close(IN_FH);
 
-    # FIXME:  Remove once this script has stabilized.
-    #print (join('', map({ my $v=ord;
-    #                      if (($v < 0x20) || ((0x7E < $v) && ($v < 0xA0)))
-    #                      { $v += 0x40; '^'.chr($v); } else { $_; }
-    #                    } @octets)), "\n");
-    @octets = ('n<Õ¾L^ßé^Æ^¿ÿ^X^Í-ê^O^Þ)Ë§ö1 ^Û^ZY¶Þµ%',
-               'i=p1Ùzµ^X^\êåkÌYf>^Þº~/§(h7÷^Ô^Î^S^^IÖ^R^Q½^@-^@^H^J^Mç',
-               'Î¾2^PóV^ZÖÿØ^R');
-
     return join('', @octets);
 }
 
@@ -680,7 +737,7 @@ sub shhhhh($$$) {
     my $cs = Crypt::CipherSaber->new($prghsh);
     my $retval = "";
     if ($fwd) {
-        $thing .= '|;|'; $thing .= $c_VersionShhhh;
+        $thing .= '|;|'; $thing .= $c_VersionVal;
         foreach my $octet (map(ord, split(//, $cs->encrypt($thing)))) {
             $retval .= $c_Hex[((0xF0 & $octet) >> 4)];
             $retval .= $c_Hex[(0x0F & $octet)];
@@ -697,7 +754,7 @@ sub shhhhh($$$) {
             $octets .= chr( (shift(@nibbles) << 4) | shift(@nibbles) );
         } while (scalar(@nibbles));
         my @parts = split(/\|;\|/, $cs->decrypt($octets));
-        $retval = ($parts[1] eq $c_VersionShhhh ? $parts[0] : undef);
+        $retval = ($parts[1] eq $c_VersionVal ? $parts[0] : undef);
     }
     return $retval;
 }
@@ -715,6 +772,42 @@ sub set_or_warn(\$$$$@) {
     } # else:  Error
 
     print STDERR("Error:  ", $why, " in setting:  \"", $what, "\"\n", @_);
+}
+
+
+sub die_CfgErr($@) {
+    my $exitVal = shift();
+
+    print STDERR ("ERROR:  ", @_);
+    print STDERR ("\nCowardly refusing to continue.\n");
+    exit $exitVal;
+}
+
+
+sub validate_types(\%) {
+    my $ref_options = shift();
+
+    my $typeErrors=0;
+    foreach my $optNm (@c_ScalarOptions) {
+        next if (hasExpectedTypeIfExists(%$ref_options, $optNm, ''));
+        # Skipped correct options.  Print out an error
+        print STDERR ("ERROR:  Setting '", $optNm,
+                      "' must be a scalar value.\n");
+        ++$typeErrors;
+    }
+
+    foreach my $optNm (@c_ArrayOptions) {
+        next if (hasExpectedTypeIfExists(%$ref_options, $optNm, 'ARRAY'));
+        # Skipped correct options.  Print out an error
+        print STDERR ("ERROR:  Setting '", $optNm,
+                      "' must be an array of value.\n");
+        ++$typeErrors;
+    }
+
+    if ($typeErrors) {
+        print STDERR ("\nCannot continue.\n\n");
+        exit 20;
+    }
 }
 
 
@@ -740,7 +833,7 @@ sub validate_auth_only(\%\%) {
        ) unless ($perms == 0);
 
     my $prghsh = my_codeval();
-    my $test = shhhhh($c_VerifyShhhh, $prghsh, 0);
+    my $test = shhhhh($c_VerifyVal, $prghsh, 0);
     die ("\nFATAL ERROR:\n\n".
          "Someone or something has changed this script!  All authentication".
          "\n".
@@ -755,7 +848,7 @@ sub validate_auth_only(\%\%) {
          "\n\n".
          "Cannot continue.".
          "\n\n"
-        ) unless ($test eq $c_ExpectedShhhh);
+        ) unless ($test eq $c_ExpectedVal);
 
     $ref_auth->{"userid"} = $ref_options->{"userid"};
     $ref_auth->{"passwd"} = shhhhh($ref_options->{"passwd"}, $prghsh, 0);
@@ -772,30 +865,24 @@ sub validate_auth_only(\%\%) {
 }
 
 
-sub validate_options(\%\%) {
+sub validate_syslogOpts(\%) {
     my $ref_options = shift();
-    my $ref_auth = shift();
 
-    validate_auth_only(%$ref_options, %$ref_auth);
+    return unless (exists($ref_options->{'Syslog'}));
+    return unless (exists($ref_options->{'Syslog'}{'Url'}));
 
     my $ref_MRTGOpts = $ref_options->{'MRTG'};
     if (exists($ref_MRTGOpts->{'LogDir'})) {
         unless ((-d $ref_MRTGOpts->{'LogDir'}) &&
                 (-w $ref_MRTGOpts->{'LogDir'}))
         {
-            print STDERR ("ERROR:  Parameter 'MRTG.LogDir' set to ",
-                          "bad value.\n",
-                          "Not a directory or not writeable:  \"",
-                          $ref_options->{"MRTG.LogDir"},
-                          "\"\n\n",
-                          "Cowardly refusing to continue.\n");
-            exit 2;
+            die_CfgErr(2, "Parameter 'MRTG.LogDir' set to bad value.\n",
+                       "Not a directory or not writeable:  \"",
+                       $ref_options->{"MRTG.LogDir"}, "\"\n");
         }
     } else {
-        print STDERR ("ERROR:  Configuration file parameter 'MRTG.LogDir' ",
-                      "not set.\n\n",
-                      "Cowardly refusing to continue.\n");
-        exit 2;
+        die_CfgErr(2,
+                   "Configuration file parameter 'MRTG.LogDir' not set.\n");
     }
 
     if (exists($ref_MRTGOpts->{'Our_DataFile'})) {
@@ -805,24 +892,104 @@ sub validate_options(\%\%) {
         }
         $mrtg_log_file .= $ref_MRTGOpts->{'Our_DataFile'};
         unless ((-e $mrtg_log_file) && (-w $mrtg_log_file)) {
-            print STDERR ("ERROR:  Parameter 'MRTG.Our_DataFile' set to ",
-                          "bad value.\n",
-                          "File doesn't exist or isn't writeable:  \"",
-                          $mrtg_log_file, "\"\n\n",
-                          "Cowardly refusing to continue.\n");
-            exit 2;
+            die_CfgErr(2, "Parameter 'MRTG.Our_DataFile' set to bad value.\n",
+                       "File doesn't exist or isn't writeable:  \"",
+                       $mrtg_log_file, "\"\n");
         }
 
         # Constructed Options:
         $ref_MRTGOpts->{'_Data_'} = $mrtg_log_file;
+        $ref_MRTGOpts->{'_RotatedData_'} = $mrtg_log_file;
+        $ref_MRTGOpts->{'_RotatedData_'} =~ s/\.log$/\.old/;
         $ref_MRTGOpts->{'_Updated_Data_'} = $mrtg_log_file;
-        $ref_MRTGOpts->{'_Updated_Data_'} .= '-new'
+        $ref_MRTGOpts->{'_Updated_Data_'} .= '-new';
+        $ref_MRTGOpts->{'_Interval_dt_'} = 0;
     } else {
-        print STDERR ("ERROR:  Configuration file parameter ",
-                      "'MRTG.Our_DataFile' not set.\n\n",
-                      "Cowardly refusing to continue.\n");
-        exit 2;
+        die_CfgErr(2, "Configuration file parameter 'MRTG.Our_DataFile' ",
+                   "not set.\n");
     }
+}
+
+
+sub validate_statsOpts(\%) {
+    my $ref_options = shift();
+
+    return unless (exists($ref_options->{'Stats'}));
+    my $ref_chkStatsOpts = $ref_options->{'Stats'};
+
+    return unless (exists($ref_chkStatsOpts->{'Url'}));
+
+    my $hasTableSection = hasOption(%$ref_chkStatsOpts, 'Table');
+    my $hasExprSection = hasOption(%$ref_chkStatsOpts, 'Manual');
+
+    # If we don't have any of these keys, then parse_statsPage() has nothing
+    # to do.  So, erase the URL to save an unnecessary call to
+    # parse_statsPage().
+    unless ($hasTableSection || $hasExprSection) {
+        delete($ref_chkStatsOpts->{'Url'});
+        return;
+    }
+
+    if ($hasTableSection) {
+        my $ref_tblOpts = $ref_chkStatsOpts->{'Table'};
+
+        unless ( hasOption(%$ref_tblOpts, 'Column_exprs') ||
+                 hasOption(%$ref_tblOpts, 'Row_exprs') )
+        {
+            die_CfgErr(4, "Configuration file parameters ",
+                       "'Stats.Table.Row_exprs' and ",
+                       "'Stats.Table.Column_exprs' not set.\n");
+        }
+
+    }
+
+    if ($hasExprSection) {
+        my $ref_exprOpts = $ref_chkStatsOpts->{'Manual'};
+
+        unless ( hasOption(%$ref_exprOpts, 'FilterRegexps') ||
+                 hasOption(%$ref_exprOpts, 'ExtractionRegexps') )
+        {
+            die_CfgErr(4, "Configuration file parameters ",
+                       "'Stats.Manual.FilterRegexps' and\n",
+                       "'Stats.Manual.ExtractionRegexps' not set.\n");
+        }
+
+        unless (hasOption(%$ref_exprOpts, 'Select')) {
+            die_CfgErr(4, "Configuration file parameter ",
+                          "'Stats.Manual.Select' not set.\n");
+        }
+
+        my $displayText_hasDuplicates = 0;
+        my $displayText_hasEmpty = 0;
+        if (hasOption(%$ref_exprOpts, 'DisplayText')) {
+            $displayText_hasEmpty
+                = scalar(grep({ !defined || m/^\s*$/ }
+                              @{$ref_exprOpts->{'DisplayText'}}));
+
+            my %uniq = ();
+            map({ $uniq{$_}++ } @{$ref_exprOpts->{'DisplayText'}});
+            $displayText_hasDuplicates
+                = scalar(grep({ $uniq{$_} > 1
+                              } @{$ref_exprOpts->{'DisplayText'}}));
+        }
+        if ($displayText_hasEmpty || $displayText_hasDuplicates) {
+            die_CfgErr(4, "Configuration file parameter ",
+                       "'Stats.Manual.DisplayText' is invalid.\n",
+                       "Cannot contain duplicate, blank, or whitespace-only ",
+                       "elements.\n");
+        }
+    }
+
+}
+
+
+sub validate_options(\%\%) {
+    my $ref_options = shift();
+    my $ref_auth = shift();
+
+    validate_auth_only(%$ref_options, %$ref_auth);
+    validate_syslogOpts(%$ref_options);
+    validate_statsOpts(%$ref_options);
 }
 
 
@@ -849,9 +1016,12 @@ sub processConfigFile(\%) {
 
     read_config(%$ref_options);
 
+    # Always ceck that every defined option has the correct type.  The script
+    # will abort otherwise, making it look like a coding error.  Or worse, in
+    # daemon mode, it might just silently die.
     #
-    # Process/Compute Options Not Requiring Validation
-    #
+    validate_types(%$ref_options);
+
 
     # Separate out all of the different sets of options:
     #
@@ -869,11 +1039,20 @@ sub processConfigFile(\%) {
     separateOutOptionSets(%statsOpt, %statsByHand, 'Manual');
 
 
+    # Check if we need to#use HTML::TableExtract;
+    #
+    if (scalar(keys(%statsTblOpt))) {
+        # 'use HTML::TableExtract' is a compile-time directive.  We want the
+        # runtime version:
+        require HTML::TableExtract;
+        import HTML::TableExtract;
+    }
+
+
     # 'UpdateInterval' and '_UpdateInterval_sec_'
     #
     if (exists($ref_options->{"UpdateInterval"})) {
-        my $rawUI = $ref_options->{"UpdateInterval"};
-        convert2secs($rawUI);
+        my $rawUI = convert2secs($ref_options->{"UpdateInterval"});
         set_or_warn($ref_options->{"_UpdateInterval_sec_"}, $rawUI,
                     "UpdateInterval",
                     "Invalid time value",
@@ -884,21 +1063,24 @@ sub processConfigFile(\%) {
         $ref_options->{"_UpdateInterval_sec_"} = $_UpdateInterval_Default;
     }
 
-    # 'TimeFormat' and '_Time_Regexp_'
+    # 'Syslog.TimeFormat', 'Syslog._Time_Regexp_' and '_strftime_Format_'
     #
-    unless (exists($c_TimeRegexps{$syslogOpt{"TimeFormat"}})) {
-        print STDERR ("ERROR:  Bad value:  \"",
-                      $syslogOpt{'TimeFormat'}, "\"\n",
-                      "Parameter 'Syslog.TimeFormat' must be set to ",
-                      "one of the following:\n",
-                      "\t\"", join("\"\n\t\"", keys(%c_TimeRegexps)),
-                      "\"\n\n",
-                      "Cowardly refusing to continue.\n");
-        exit 2;
+    if (exists($syslogOpt{"TimeFormat"})) {
+        unless (exists($c_TimeRegexps{$syslogOpt{"TimeFormat"}})) {
+            die_CfgErr(2, "Bad value:  \"", $syslogOpt{'TimeFormat'}, "\"\n",
+                       "Parameter 'Syslog.TimeFormat' must be set to ",
+                       "one of the following:\n\t\"",
+                       join("\"\n\t\"", keys(%c_TimeRegexps)), "\"\n");
+        }
+        $syslogOpt{'_Time_Regexp_'}
+            = $c_TimeRegexps{$syslogOpt{'TimeFormat'}};
+        $ref_options->{'_strftime_Format_'}
+            = $c_TimeFormatStr{$syslogOpt{'TimeFormat'}};
+    } else {
+        # No 'Syslog' (or 'Syslog.TimeFormat')?  Fall back on the script's
+        # default:
+        $ref_options->{'_strftime_Format_'} = $c_myTimeFmt;
     }
-    $syslogOpt{'_Time_Regexp_'} = $c_TimeRegexps{$syslogOpt{'TimeFormat'}};
-    $syslogOpt{'_strftime_Format_'}
-        = $c_TimeFormatStr{$syslogOpt{'TimeFormat'}};
 
     # 'Stats.AdjustUnits'
     #
@@ -923,35 +1105,78 @@ sub processConfigFile(\%) {
         $statsTblOpt{'_KeepColumn_'} = $statsTblOpt{'KeepIdx'} + 1;
     }
 
-    # 'Stats.Manual.Select', 'Stats.Manual._Select_Idx_',
-    # 'Stats.Manual._Select_Re_' and 'Stats.Manual._SelectKeys_Sorted_'
+    # Temp variables used when processing 'Stats.Manual.Select'
+    # and 'Stats.Manual.DisplayText'.
+    my $hasDisplayText = exists($statsByHand{'DisplayText'});
+    my $hasSelect = exists($statsByHand{'Select'});
+    my $hasSelectWildcard = ( $hasSelect &&
+                              scalar(grep(/\A\*\Z/,
+                                          @{$statsByHand{'Select'}})) );
+    my $n_Select = ($hasSelect ? scalar(@{$statsByHand{'Select'}}) : 0);
+
+    # 'Stats.Manual.DisplayText' and 'Stats.Manual._SelectKeys_Sorted_'
     #
-    if (exists($statsByHand{'Select'})) {
+    if ($hasSelectWildcard) {
+        # Construct a messload of labels.
+        my @labels = map({ sprintf("ModemStat_*_%06d", $_)
+                         } (0 .. $c_N_DbgStatsManual));
+
+        # Replace the initial labels with any specified with the
+        # 'Stats.Manual.DisplayText' setting.
+        if ($hasDisplayText) {
+            my $n_DisplayText = $#{$statsByHand{'DisplayText'}};
+            if ($n_DisplayText) {
+                @labels[(0 .. $n_DisplayText)]
+                    = @{$statsByHand{'DisplayText'}};
+            }
+        }
+
+    } elsif ($hasSelect) {
+        my $startAt = 0;
+        if ($hasDisplayText) {
+            $statsByHand{'_SelectKeys_Sorted_'}
+                = [ @{$statsByHand{'DisplayText'}} ];
+            $startAt = scalar(@{$statsByHand{'DisplayText'}});
+            if ($startAt == $n_Select) {
+                # If we don't need to fill in any labels with defaults, make
+                # the start index "too big."
+                $startAt *= 2;
+            }
+        } else {
+            $statsByHand{'_SelectKeys_Sorted_'} = [];
+        }
+        # Construct default labels where needed.
+        push( @{$statsByHand{'_SelectKeys_Sorted_'}},
+              map({ sprintf("ModemStat_%02d", $_+1);
+                  } ($startAt .. $n_Select)) );
+    }
+
+    # 'Stats.Manual.Select', 'Stats.Manual._Select_Idx_', and
+    # 'Stats.Manual._Select_Re_'
+    #
+    if ($hasSelect) {
         my @allIndices = (0 .. $#{$statsByHand{'Select'}});
         my @numsIdx = grep({ $statsByHand{'Select'}[$_] =~ /^\d+$/
                            }  @allIndices);
         $statsByHand{'_Select_Idx_'}
-            = { map({ sprintf("ModemStat_%02d",
-                              $_+1) => $statsByHand{'Select'}[$_] + 0;
+            = { map({ $statsByHand{'_SelectKeys_Sorted_'}[$_]
+                      =>
+                      $statsByHand{'Select'}[$_] + 0
                     } @numsIdx) };
         delete @allIndices[@numsIdx];
         my @regexpIdx = grep(defined, @allIndices);
         $statsByHand{'_Select_Re_'}
-            = { map({ sprintf("ModemStat_%02d",
-                              $_+1) => $statsByHand{'Select'}[$_]
+            = { map({ $statsByHand{'_SelectKeys_Sorted_'}[$_]
+                      =>
+                      $statsByHand{'Select'}[$_]
                     } @regexpIdx) };
 
-        if (scalar(grep(/\A\*\Z/, values(%{$statsByHand{'_Select_Re_'}}))))
-        {
+        if ($hasSelectWildcard) {
             $statsByHand{'_Select_Re_'} = {};
             $statsByHand{'_Select_Idx_'}
-                = { map({ sprintf("ModemStat_Dbg_%06d", $_) => $_;
+                = { map({ $statsByHand{'_SelectKeys_Sorted_'}[$_] => $_
                         } (0 .. $c_N_DbgStatsManual)) };
         }
-
-        $statsByHand{'_SelectKeys_Sorted_'}
-            = [ sort( keys(%{$statsByHand{'_Select_Idx_'}}),
-                      keys(%{$statsByHand{'_Select_Re_'}}) ) ];
     }
 
     #
@@ -987,6 +1212,19 @@ sub processConfigFile(\%) {
     if (exists($ref_options->{"_DaemonPIDFile"})) {
         $_DaemonPIDFile = $ref_options->{"_DaemonPIDFile"};
     }
+    if (exists($ref_options->{"_MRTG_CollisionInterval"})) {
+        # Don't really need to call convert2secs(), since this setting should
+        # be in units of seconds.  But, convert2secs() checks that its arg is
+        # a valid number, which we want.
+        my $rawCI = convert2secs($ref_options->{"_MRTG_CollisionInterval"});
+        unless (defined($rawCI)) {
+            die_CfgErr(2, "Parameter '_MRTG_CollisionInterval' is not a ",
+                       "numeric time value.\n");
+        }
+        $_MRTG_CollisionInterval = $rawCI;
+    }
+
+
     if (exists($ref_options->{"_MaxSize_DataFile"})) {
         convert2bytes($ref_options->{"_MaxSize_DataFile"});
         set_or_warn($_MaxSize_DataFile, $ref_options->{"_MaxSize_DataFile"},
@@ -1008,12 +1246,8 @@ sub processConfigFile(\%) {
     if (exists($ref_options->{"_GetURLVia"})) {
         $_GetURLVia = $ref_options->{"_GetURLVia"};
         unless (exists($c_WebGet{$_GetURLVia})) {
-            print STDERR ("ERROR:  Parameter '_GetURLVia' must be set to ",
-                          "one of the following:\n",
-                          "\t", join("\n\t", keys(%c_WebGet)),
-                          "\n\n",
-                          "Cowardly refusing to continue.\n");
-            exit 2;
+            die_CfgErr(2, "Parameter '_GetURLVia' must be set to one of the ",
+                       "following:\n\t", join("\n\t", keys(%c_WebGet)), "\n");
         }
     }
 
@@ -1140,11 +1374,11 @@ sub parse_syslog($\%\%\@) {
         }
 
         if (m/$dslUp_re/o) {
-            push(@parsedData, [$time_sec, $timestamp,
+            push(@parsedData, [$time_sec, $timestamp, $c_EvT_syslog,
                                1, $n_dropped{$timeUptdInterval}]);
         } elsif (m/$dslDown_re/o) {
             ++$n_dropped{$timeUptdInterval};
-            push(@parsedData, [$time_sec, $timestamp,
+            push(@parsedData, [$time_sec, $timestamp, $c_EvT_syslog,
                                0, $n_dropped{$timeUptdInterval}]);
         }
     }
@@ -1193,7 +1427,7 @@ sub removeOldEventsAndAdjust(\@$$) {
     return 1 unless (scalar(@$ref_events));
 
     # 'parse_syslog()' may have been called in the middle of the
-    # '$_DropCountInterval'.  If the first new event is still in that
+    # '$c_DropCountInterval'.  If the first new event is still in that
     # interval, we need to start the drop count with whatever it was at the
     # end of the last call to 'parse_syslog()'.
     my $lastEvent_UptdInterval_end = t2DropCountInterval($t_lastEvent, 1);
@@ -1205,7 +1439,7 @@ sub removeOldEventsAndAdjust(\@$$) {
         next if ($t_event <= $t_lastEvent);
         push(@idxKeep, $idx);
         if ($t_event < $lastEvent_UptdInterval_end) {
-            # This event is in the '$_DropCountInterval' from last time.
+            # This event is in the '$c_DropCountInterval' from last time.
             # Update the event with the correct offset.
             $ref_events->[$idx][$c_nDropsIdx] += $nDropped_last;
         }
@@ -1237,17 +1471,20 @@ sub resetStaleDropCounts(\@$\@$) {
 
     # Use the most recent event, whether that's a new event, or the last event
     # seen.
-    my @event = @$ref_lastEventSeen;
+    my @event;
     if (scalar(@$ref_newEvents)) {
-        @event = $ref_newEvents->[$#$ref_newEvents];
+        @event = @{$ref_newEvents->[$#$ref_newEvents]};
+    } else {
+        @event = @$ref_lastEventSeen;
+        $event[$c_EventTypeIdx] |= $c_EvT_resetDropCount;
     }
 
     my $ts_latestEvent = $event[$c_tsIdx];
     my $ts_nextDropCountInterval = t2DropCountInterval($ts_latestEvent, 1);
-    my $resetTime = $ts_nextDropCountInterval + int(0.02*$_DropCountInterval);
+    my $resetTime = $ts_nextDropCountInterval + int(0.02*$c_DropCountInterval);
 
-    # Do nothing unless the current time is last event is older than the last
-    # event's '$_DropCountInterval'.
+    # Do nothing unless the current time is older than the last event's
+    # '$c_DropCountInterval'.
     return if ($currentTime < $resetTime);
 
     # If the connection is still down, do nothing.  If the connection is up,
@@ -1260,7 +1497,7 @@ sub resetStaleDropCounts(\@$\@$) {
     # At this point, we know that nothing's happened since '$ts_latestEvent',
     # so make the reset-event occur at the reset time.
     $event[$c_tsIdx] = $resetTime;
-    $event[$c_HRT_Idx] = strftime($strftimeFmt, localtime($event[$c_tsIdx]));
+    $event[$c_HRT_Idx] = strftime($strftimeFmt, localtime($resetTime));
     $event[$c_nDropsIdx] = 0;
     push(@$ref_newEvents, \@event);
 }
@@ -1352,11 +1589,6 @@ sub read_and_clean_webpage($\%\%\@) {
 
 sub createTableParser(\%) {
     my $ref_opts = shift();
-
-    #^^^^^^^^^^^^
-    # FIXME:  Only load the HTML::TableExtract package if required, and then,
-    # only once.  Prolly should do that in processConfigFile().
-    #vvvvvvvvvvvv
 
     my %ctorOpts = ('debug' => ($_DebugLoggingIsActive > 1) );
     if (exists($ref_opts->{'Column_exprs'})) {
@@ -1675,9 +1907,119 @@ sub parse_statsPage($\%\%\%) {
 }
 
 
+sub mergeStatsWithEvents(\@\%\@$$) {
+    my $ref_oldestEvent = shift();
+    my $ref_dslStats = shift();
+    my $ref_events = shift();
+    my $now = shift();
+    my $strftimeFmt = shift();
+
+    # If the most recent up/down event is within the merge interval of when
+    # the stats were collected (i.e. now), merge the two together.  Otherwise,
+    # create a new event.
+
+    my $statEventDelta = 2*$_Stat_Event_MergeInterval;
+    my $n_events = scalar(@$ref_events);
+    my $ref_mostRecentEvent;
+    if ($n_events) {
+        $ref_mostRecentEvent = $ref_events->[$#$ref_events];
+        $statEventDelta = $now - $ref_mostRecentEvent->[$c_tsIdx];
+    }
+
+    if ( ($statEventDelta >= $_Stat_Event_MergeInterval) ||
+         !defined($ref_mostRecentEvent) )
+    {
+        $ref_mostRecentEvent = [];
+        $ref_mostRecentEvent->[$c_tsIdx] = $now;
+        $ref_mostRecentEvent->[$c_HRT_Idx] = strftime($strftimeFmt,
+                                                      localtime($now));
+
+        if ($n_events) {
+            # Keep the event info from the previous update event.
+            $ref_mostRecentEvent->[$c_UpDownIdx]
+                = $ref_events->[$#$ref_events][$c_UpDownIdx];
+            $ref_mostRecentEvent->[$c_nDropsIdx]
+                = $ref_events->[$#$ref_events][$c_nDropsIdx];
+        } else {
+            # Use the last event seen during the previous update cycle.
+            $ref_mostRecentEvent->[$c_UpDownIdx]
+                = $ref_oldestEvent->[$c_UpDownIdx];
+            $ref_mostRecentEvent->[$c_nDropsIdx]
+                = $ref_oldestEvent->[$c_nDropsIdx];
+        }
+        push(@$ref_events, $ref_mostRecentEvent);
+    }
+
+    # Mark the most recent event as having new stats
+    $ref_mostRecentEvent->[$c_EventTypeIdx] |= $c_EvT_newStats;
+
+    # We'll now use the temp. variable, '$ref_mostRecentEvent' to add in the
+    # stats.
+    push(@$ref_mostRecentEvent,
+         @$ref_dslStats{@{$ref_dslStats->{'_Headers_InOrder_'}}});
+
+    # Fill in any preceding events that are missing the dsl stats.
+    #
+    # But with which?  Use the most recent stats if the oldest event has none
+    # (or too few).
+    my $ref_updater = ( (scalar(@$ref_oldestEvent)
+                         < scalar(@$ref_mostRecentEvent))
+                        ? $ref_mostRecentEvent
+                        : $ref_oldestEvent );
+
+    my @updateSliceIdx = ($c_firstDslStatIdx .. $#$ref_updater);
+    foreach my $ref_event (@$ref_events[(0 .. ($#$ref_events - 1))]) {
+        # Skip any events that, for some reason, already seem to have the
+        # modem stats.
+        next unless ($#$ref_event < $#$ref_updater);
+        # Update by overwriting (and autovivifying) rather than pushing onto
+        # an event with extra stuff in it.
+        @$ref_event[@updateSliceIdx] = @$ref_updater[@updateSliceIdx];
+    }
+}
+
+
 #----------
 # Functions for handling event data
 #----------
+
+
+sub eventType2readableString($) {
+    my $code = shift();
+
+    my $descr = "";
+
+    if ($code & $c_EvT_syslog) {
+        $descr = "SyslogEvent";
+    }
+    if ($code & $c_EvT_newStats) {
+        if ($descr) { $descr .= "+"; }
+        $descr .= "NewModemStats";
+                }
+    if ($code & $c_EvT_resetDropCount) {
+        if ($descr) { $descr .= "+"; }
+        $descr .= "DropCountReset";
+    }
+
+    # Stop if the event type is any combination of the above.
+    unless ($descr ne "") {
+        if ($code & $c_EvT_placeholder) {
+            $descr = "PlaceholderEvent";
+        }
+        elsif ($code & $c_EvT_startupDflt) {
+            $descr = "StartupDefault";
+        }
+        else {
+            $descr = "NoEventType";
+        }
+    }
+
+    $descr .= " (";
+    $descr .= $code;
+    $descr .= ")";
+
+    return $descr;
+}
 
 
 sub printEvent($\@) {
@@ -1686,9 +2028,27 @@ sub printEvent($\@) {
 
     my $hrt = $ref_event->[$c_HRT_Idx];
     $hrt =~ s/\s+/ /g;
-    print $fh ($hrt, ":    DSL connection ");
-    print $fh ($ref_event->[$c_UpDownIdx] ? "came back up" : "went down   ");
-    printf $fh ("\t    (%10ds)\n", $ref_event->[$c_tsIdx]);
+
+    # Handle stats.
+    print $fh ($hrt, ":    ");
+    if ($ref_event->[$c_EventTypeIdx] & $c_EvT_syslog) {
+        print $fh ("DSL connection ",
+                   ($ref_event->[$c_UpDownIdx]
+                    ? "came back up"
+                    : "went down   "), "\t");
+    } elsif ($ref_event->[$c_EventTypeIdx] & $c_EvT_newStats) {
+        print $fh ("Collected new modem statistics");
+    } elsif ($ref_event->[$c_EventTypeIdx] & $c_EvT_resetDropCount) {
+        print $fh ("Reset the connection drop count");
+        #print $fh ("Reset the drop count         ");
+    } elsif ($ref_event->[$c_EventTypeIdx] & $c_EvT_placeholder) {
+        print $fh ("Placeholder event (error?)");
+    } elsif ($ref_event->[$c_EventTypeIdx] & $c_EvT_startupDflt) {
+        print $fh ("Default startup event (error?)");
+    } else {
+        print $fh ("Event Type == ", $ref_event->[$c_EventTypeIdx], "\t\t");
+    }
+    printf $fh ("\t(%10ds)\n", $ref_event->[$c_tsIdx]);
 }
 
 
@@ -1724,6 +2084,8 @@ sub isValidEvent($) {
 
 sub startup_eventDefaultValue() {
     my @defaultInitialEvent = ();
+    $defaultInitialEvent[$c_EventTypeIdx] = $c_EvT_startupDflt;
+
     $defaultInitialEvent[$c_UpDownIdx] = 1;
     $defaultInitialEvent[$c_nDropsIdx] = 0;
     # N.B. - DO NOT use the current time.  Doing so may remove unseen events
@@ -1737,6 +2099,8 @@ sub startup_eventDefaultValue() {
 sub placeholderSyslogEvent($) {
     my $t = shift();
     my @event = ();
+    $event[$c_EventTypeIdx] = $c_EvT_startupDflt;
+
     $event[$c_UpDownIdx] = 1;
     $event[$c_nDropsIdx] = 0;
     # N.B. - DO NOT use the current time.  Doing so may remove unseen events
@@ -1755,7 +2119,21 @@ sub eventArray2tieArrayElement(\@) {
     $element .= ';|;';
     $element .= $ref_event->[$c_nDropsIdx];
     $element .= ';|;';
-    # Time gets stored at the end.
+
+    # Add additional data, if any.
+    if (scalar(@$ref_event) > $c_firstDslStatIdx) {
+        # Use an array slice to get the additional data.
+        # Additionally, flatten and subarrays.
+        $element .= join(';|;',
+                         map({ (ref() ? @$_ : $_)
+                             } @$ref_event[($c_firstDslStatIdx
+                                            .. $#$ref_event)]));
+        $element .= ';|;';
+    }
+
+    # Time and type gets stored at the end.
+    $element .= $ref_event->[$c_EventTypeIdx];
+    $element .= ';|;';
     $element .= $ref_event->[$c_HRT_Idx];
     $element .= ';|;';
     $element .= $ref_event->[$c_tsIdx];
@@ -1780,10 +2158,23 @@ sub tieArrayElement2eventArray($;$) {
             if ($keepTieArrayOrder) {
                 @eventArray = @eventArrayTAO;
             } else {
-                $eventArray[$c_UpDownIdx] = $eventArrayTAO[0];
-                $eventArray[$c_nDropsIdx] = $eventArrayTAO[1];
-                $eventArray[$c_HRT_Idx] = $eventArrayTAO[2];
-                $eventArray[$c_tsIdx] = $eventArrayTAO[3];
+                $eventArray[$c_UpDownIdx] = $eventArrayTAO[$c_UpDown_tieIdx];
+                $eventArray[$c_nDropsIdx] = $eventArrayTAO[$c_nDrops_tieIdx];
+                $eventArray[$c_EventTypeIdx]
+                    = $eventArrayTAO[$#eventArrayTAO +
+                                     $c_eventType_tieIdx_fromEnd];
+                $eventArray[$c_HRT_Idx] = $eventArrayTAO[$#eventArrayTAO-1];
+                $eventArray[$c_tsIdx] = $eventArrayTAO[$#eventArrayTAO];
+
+                # Remove the stats that we just retrieved.
+                splice(@eventArrayTAO, 0, 2);
+                splice(@eventArrayTAO, -3);
+
+                # If there's any additional event data, append it to the end
+                # of @eventArray.
+                if (scalar(@eventArrayTAO)) {
+                    push(@eventArray, @eventArrayTAO);
+                }
             }
         }
     }
@@ -1854,8 +2245,8 @@ sub retrieve_statistics($$) {
     }
 
     # We're ready!  Retrieve the two measurements.
-    my @result = tieArrayElement2eventArray($measurements[$#measurements], 1);
-
+    my @result = @{ tieArrayElement2eventArray($measurements[$#measurements],
+                                               1) };
     # Cleanup
     undef($ref_tied);
     untie(@measurements);
@@ -1866,24 +2257,31 @@ sub retrieve_statistics($$) {
     if ($nMeasures < 1) {
         return (-1, -1);
     }
-    if (($targ1 < 0) || ($targ1 > $nMeasures)) {
+    if (($targ1 < 0) || ($targ1 > $#result)) {
         $targ1 = 0;
     }
-    if (($targ1 < 0) || ($targ2 > $nMeasures)) {
+    if (($targ1 < 0) || ($targ2 > $#result)) {
         $targ2 = 0;
     }
 
+
+    my $eventType_tieIdx = $#result + $c_eventType_tieIdx_fromEnd;
     foreach my $t ($targ1, $targ2) {
-        # FIXME:  I should really make a set of constants for the
         # @g_Measurements indices.
-        next unless ($t == 1);
-        my $t_UptdInterval_end = t2DropCountInterval($result[$#result], 1);
-        my $now = time();
-        if ($now >= $t_UptdInterval_end) {
-            # The most recent data might be from an earlier
-            # '$_DropCountInterval'.  If so, then we need to reset the drop
-            # count.
-            $result[$t] = 0;
+
+        if ($t == $c_nDrops_tieIdx) {
+            my $t_UptdInterval_end = t2DropCountInterval($result[$#result],
+                                                         1);
+            my $now = time();
+            if ($now >= $t_UptdInterval_end) {
+                # The most recent data might be from an earlier
+                # '$c_DropCountInterval'.  If so, then we need to reset the drop
+                # count.
+                $result[$t] = 0;
+            }
+        } elsif ($t == $eventType_tieIdx) {
+            # Convert the Type Code to a short string description.
+            $result[$t] = eventType2readableString($result[$t]);
         }
     }
 
@@ -1968,7 +2366,11 @@ sub recoveredTieArray2MRTG($$) {
                                } @unsortedData);
     @unsortedData = ();
 
-    updateMRTGdata(@recoveredEvents, $mrtgDatafile, $mrtgNewDatafile);
+    my %fake_mrtgOpts = ( '_Data_' => $mrtgDatafile,
+                          '_RotatedData_' => $mrtgDatafile,
+                          '_Updated_Data_' => $mrtgNewDatafile
+                        );
+    updateMRTGdata(@recoveredEvents, %fake_mrtgOpts);
     exit 0;
 }
 
@@ -2047,6 +2449,8 @@ sub mergeEventsWithMRTG(\@$$\@\@) {
         my $ref_curEvent_record
             = event2MRTGData_arrayref(@{$ref_newEvents->[$eventIdx]});
 
+        # Note:  Keep the integer constants here, since it's the indices for
+        # the MRTG data.
         if ($ref_curEvent_record->[0] > $record[0]) {
             push(@$ref_merged, $ref_curEvent_record);
             --$eventIdx;
@@ -2072,7 +2476,7 @@ sub projectDropCountsForward(\@\@) {
     my $ref_data = shift();
     my $ref_recentEvents = shift();
 
-    # Determine which '$_DropCountInterval's have drop events.
+    # Determine which '$c_DropCountInterval's have drop events.
     # Also find the timestamp of the most recent drop event.
     my %updtIntervalHasDropEvents = ();
     my $lastSeenDrop = 0;
@@ -2092,19 +2496,20 @@ sub projectDropCountsForward(\@\@) {
     # Remember: @$ref_data is in descending chronological order.  So, to
     # project the drop-counts "forward" in time, we need to reverse the index
     # order (which, sadly, we can't use the '..' operator to do directly).
+    # Also - @$ref_data is MRTG data, so we're just using the numeric indexes.
     foreach my $idx (reverse(0 .. ($#$ref_data -1))) {
         my $timeUptdInterval = t2DropCountInterval($ref_data->[$idx][0]);
 
         # Ignore data not in the update interval(s) of the new events.
         unless (exists($updtIntervalHasDropEvents{$timeUptdInterval})) {
             next if ($timeUptdInterval <= $lastSeenDrop);
-            # Any '$_DropCountInterval' later than the timestamp of the last
+            # Any '$c_DropCountInterval' later than the timestamp of the last
             # drop event seen should have its count "reset" to 0.
             $updtIntervalHasDropEvents{$timeUptdInterval} = 0;
         }
 
         if ($updtIntervalHasDropEvents{$timeUptdInterval}) {
-            # There are drop events somewhere in this '$_DropCountInterval'.
+            # There are drop events somewhere in this '$c_DropCountInterval'.
             # Extend them forward.
             if ( ($ref_data->[$idx+1][2] != 0) &&
                  ($ref_data->[$idx][2] == 0) )
@@ -2117,7 +2522,7 @@ sub projectDropCountsForward(\@\@) {
                 $ref_data->[$idx][4] = $ref_data->[$idx+1][4];
             }
         } else {
-            # No drop events anyplace in this '$_DropCountInterval'.  Reset
+            # No drop events anyplace in this '$c_DropCountInterval'.  Reset
             # the count to zero (but not the max counts).
             $ref_data->[$idx][2] = 0;
             #$ref_data->[$idx][4] = 0;
@@ -2127,17 +2532,58 @@ sub projectDropCountsForward(\@\@) {
 }
 
 
-sub updateMRTGdata(\@$$) {
+sub avoidMRTGCollision(\%) {
+    my $ref_mrtgOpts = shift();
+
+    my @dataFile_stats = stat($ref_mrtgOpts->{'_Data_'});
+
+    # No file stats?  Then there's nothing that we can do.
+    return unless (scalar(@dataFile_stats));
+
+    # If it hasn't been set yet, compute the MRTG update interval delta.
+    unless ($ref_mrtgOpts->{'_Interval_dt_'}) {
+        my @rotatedFile_stats = stat($ref_mrtgOpts->{'_RotatedData_'});
+        # Again, there's nothing that we can do if we don't have the file
+        # stats.
+        return unless (scalar(@rotatedFile_stats));
+
+        $ref_mrtgOpts->{'_Interval_dt_'}
+            = $dataFile_stats[9] - $rotatedFile_stats[9];
+    }
+
+    # Pick the max of the atime, mtime, and ctime.
+    my $ts_lastChange = (($dataFile_stats[8] < $dataFile_stats[9])
+                         ? (($dataFile_stats[9] < $dataFile_stats[10])
+                            ? $dataFile_stats[10]
+                            : $dataFile_stats[9])
+                         : (($dataFile_stats[8] < $dataFile_stats[10])
+                            ? $dataFile_stats[10]
+                            : $dataFile_stats[8])
+                        );
+
+    my $t_fromMRTGUpdate
+        = $ts_lastChange + $ref_mrtgOpts->{'_Interval_dt_'} - time();
+    return if ( ($t_fromMRTGUpdate < 0) ||
+                ($t_fromMRTGUpdate > $_MRTG_CollisionInterval) );
+
+    sleep($_MRTG_CollisionInterval+$t_fromMRTGUpdate);
+}
+
+
+sub updateMRTGdata(\@\%) {
     my $ref_newData = shift();
-    my $mrtgDatafile = shift();
-    my $mrtgNewDatafile = shift();
+    my $ref_mrtgOpts = shift();
 
     # No new data?  Nothing to do...
     return 1 unless (scalar(@$ref_newData));
 
+    # If we're too close to an MRTG file update, wait for MRTG to finish its
+    # stuff.
+    avoidMRTGCollision(%$ref_mrtgOpts);
+
+    # N.B. - Reason for this 'if'-statement == avoid doing the 'map(...)'
+    #        work when not needed.
     if ($_DebugLoggingIsActive) {
-        # N.B. - Reason for this 'if'-statement == avoid doing the 'map(...)'
-        #        work when not needed.
         printDbg("\n\t",
                  join("\n\t", map({ my $rT = ref;
                                     if ("ARRAY" eq $rT) {
@@ -2148,6 +2594,10 @@ sub updateMRTGdata(\@$$) {
                                   } @$ref_newData)
                      ), "\n");
     }
+
+    # Settings for the MRTG data files.
+    my $mrtgDatafile = $ref_mrtgOpts->{'_Data_'};
+    my $mrtgNewDatafile = $ref_mrtgOpts->{'_Updated_Data_'};
 
     # Time bounds of the new data.
     my $t_firstNewEvent = $ref_newData->[0][0];
@@ -2333,7 +2783,8 @@ sub daemon_sig_cleanup {
         unlink($_DataFile);
         exit 0;
     } # else
-    #FIXME:  Would be nice to xlate this into the number...
+    # Todo:  Would be nice to xlate the signal into the number and use it as
+    # the exit-value...
     exit 1; #$killsig;
 }
 
@@ -2460,11 +2911,11 @@ sub daemon_main(\%\%) {
     # (No need to keep redeclaring them every iteration.)
     #
 
-    my @updatedDslState = ();
-    my $probe_duration;
-    my $adjustedSleepTime;
-    my $ref_lastEvent = startup_eventDefaultValue();
+    my $inDST = 0;
+    my $currentWeek_endTs = 0;
+    init_DST_vars($inDST, $currentWeek_endTs);
 
+    my $ref_lastEvent = startup_eventDefaultValue();
     if (scalar(@g_Measurements)) {
         my $ref_tmpArr
             = tieArrayElement2eventArray($g_Measurements[$#g_Measurements]);
@@ -2476,9 +2927,10 @@ sub daemon_main(\%\%) {
         }
     }
 
-    my $inDST = 0;
-    my $currentWeek_endTs = 0;
-    init_DST_vars($inDST, $currentWeek_endTs);
+    my %dslStats = ();
+    my @updatedDslState = ();
+    my $probe_duration;
+    my $adjustedSleepTime;
 
     #
     # The Main Loop:
@@ -2497,19 +2949,24 @@ sub daemon_main(\%\%) {
             adjustBorkedTimestamps(@updatedDslState, $inDST,
                                    $options{'ModemAdjustsForDST'},
                                    $options{'ExtraTimeOffset'},
-                                   $options{'Syslog'}{'_strftime_Format_'});
+                                   $options{'_strftime_Format_'});
             removeOldEventsAndAdjust(@updatedDslState,
                                      $ref_lastEvent->[$c_tsIdx],
                                      $ref_lastEvent->[$c_nDropsIdx]);
             resetStaleDropCounts(@updatedDslState, $now, @$ref_lastEvent,
-                                 $options{'Syslog'}{'_strftime_Format_'});
+                                 $options{'_strftime_Format_'});
+        }
 
-        } else {
-            # Create a placeholder that we can add the S&R, Attenuation,
-            # etc. statistics to.  This will also become $ref_lastEvent later
-            # on.
-            @updatedDslState = ();
-            push(@updatedDslState, placeholderSyslogEvent($now));
+        if ($options{'Stats'}{'Url'} ne "") {
+            printDbg("Snarfing DSL modem statistics page.\n");
+
+            parse_statsPage($_GetURLVia, %{$options{'Stats'}},
+                            %auth, %dslStats);
+
+            printDbg("    Merging modem stats and events...\n");
+            mergeStatsWithEvents(@$ref_lastEvent, %dslStats,
+                                 @updatedDslState, $now,
+                                 $options{'_strftime_Format_'});
         }
 
         printDbg("    Storing...\n");
@@ -2531,9 +2988,11 @@ sub daemon_main(\%\%) {
         printDbg("    Updating the MRTG data...\n");
 
         # Build the new MRTG data log file & rotate it in.
-        updateMRTGdata(@updatedDslState,
-                       $options{'MRTG'}{'_Data_'},
-                       $options{'MRTG'}{'_Updated_Data_'});
+        updateMRTGdata(@updatedDslState, %{$options{'MRTG'}});
+
+        # The last event seen has no type code.  Remove it, now that we're
+        # done processing.
+        $ref_lastEvent->[$c_EventTypeIdx] = 0;
 
         daemon_housekeeping($inDST, $currentWeek_endTs, $now);
 
@@ -2620,9 +3079,8 @@ sub usage() {
     print STDERR ("usage: ", $_MyName, " -n\n");
     print STDERR (" "x7, $_MyName, " -d\n");
     print STDERR (" "x7, $_MyName,
-                  " [-r] <target#> [<target#>]\n\n");
-    print STDERR (" "x7, $_MyName, " -c <hop#>[,<hop#>[,...]] <host>\n");
-    print STDERR ("<target#> is 0-offset.\n\n");
+                  " [-r] <measure#> [<measure#>]\n\n");
+    print STDERR ("<measure#> is 0-offset.\n\n");
     print STDERR ("In the configfile, \"UpdateInterval\" is normally in ",
                   "seconds.  You can\n",
                   "change these units by using the suffixes \"h\", \"m\", ",
@@ -2630,25 +3088,41 @@ sub usage() {
                   "number that you specify.\n");
     print STDERR ("\nRun Modes:\n\n");
     print STDERR ("'-n':  Run now, printing every DSL up/down event ",
-                  "currently  in the DSL\n",
-                  " "x7, "modem's log.\n");
+                  "and statistic\n",
+                  " "x7, "currently available from the modem.\n");
     print STDERR ("'-d':  Run in daemon mode.\n");
     print STDERR ("<no-option>:\n",
-                  " "x7, "Returns the most recent DSL connection ",
-                  "information from the instance\n",
-                  " "x7, "of this script already running in '-d' mode.  ",
-                  "Returns the requested\n",
-                  " "x7, "statistics by ID number:\n",
+                  " "x7, "Returns the most recent DSL statistics or ",
+                  "connection\n",
+                  " "x7, "information from the instance of this script ",
+                  "already running\n",
+                  " "x7, "in '-d' mode.  Returns the requested statistics ",
+                  "by ID number:\n",
                   " "x11, "0 :== The last connection event seen by the ",
                   "daemon.\n",
-                  " "x11, "1 :== The (human-readable) time of the last ",
+                  " "x11, "1 :== The number of disconnects in the past ",
+                  "hour.\n",
+                  " "x11, ":\n",
+                  " "x11, ":\n",
+                  " "x11, "<k> :== [cfgfile-defined modem statistics]\n",
+                  " "x11, ":\n",
+                  " "x11, ":\n",
+                  " "x11, "<N>-1 :== The (human-readable) time of the last ",
                   "connection event.\n",
-                  " "x11, "2 :== Like '1', but as seconds-since-epoch ",
-                  "(i.e. Unix time).\n");
+                  " "x11, "<N> :== Like '<N>-1', but as seconds-since-epoch\n",
+                  " "x19, "(i.e. Unix time).\n",
+                  " "x7, "<N> depends on the configuration file.  If it ",
+                  "only collects\n",
+                  " "x7, "the modem's syslog information, then it will be ",
+                  "'3'.  You can\n",
+                  " "x7, "collect an arbitrary number of additional ",
+                  "statistics (e.g.\n",
+                  " "x7, "output power, TX/RX errors...)\n"
+                 );
     print STDERR ("'-r':  Identical to the previous mode combined with '-d'.",
                   "  Starts a daemon\n");
     print STDERR (" "x7, "if one isn't already running, then returns the ",
-                  "requested statistics.\n");
+                  "requested measures.\n");
 
     print STDERR ("\nTo kill a daemonized instance, use:\n\t",
                   "kill \$(\< ", $_DaemonPIDFile, ")\n");
@@ -2670,18 +3144,15 @@ sub usage() {
 # don't want too much overhead in it.
 #
 my $daemonize=0;
-my $targetName='';
 my $checkNow=0;
 my $reportAfterDaemonizing=0;
 if ($ARGV[0] eq "-d") {
     shift(@ARGV);
     $daemonize = 1;
-    $targetName = shift(@ARGV);
 } elsif ($ARGV[0] eq "-r") {
     shift(@ARGV);
     $daemonize=1;
     $reportAfterDaemonizing=1;
-    $targetName = shift(@ARGV);
 } elsif ($ARGV[0] eq "-n") {
     shift(@ARGV);
     $checkNow=1;
@@ -2711,12 +3182,6 @@ if ($ARGV[0] eq "-d") {
 if (($ARGV[0] eq "") && !$daemonize && !$checkNow) {
     print STDERR ("Missing args.\n");
     usage();
-} elsif ($targetName ne '') {
-    print STDERR ("First arg must be the name of the target running this\n",
-                 "instance of ",$_MyName, "\n",
-                 "(The \"target-name\" is what you've put in the \"[]\" in\n",
-                 " the MRTG config file.)\n");
-    usage();
 }
 
 
@@ -2728,9 +3193,10 @@ processConfigFile(%options);
 
 if ($checkNow) {
 
-    # We don't need to validate the various pieces-parts needed for
-    # daemon-mode, but we do need to validate any web page password.
+    # We don't need to validate everything needed for daemon-mode, but we do
+    # need to validate any web page password and the stats-generation options.
     validate_auth_only(%options, %auth);
+    validate_statsOpts(%options);
     checkNow_and_exit(%options, %auth);
 
 } else {
@@ -2780,7 +3246,12 @@ if (scalar(@ARGV)) {
     $statistic2 = shift(@ARGV);
 }
 my @rates = retrieve_statistics($statistic1, $statistic2);
-printf ("%.0f\n%.0f\n", $rates[0], $rates[1]);
+foreach (@rates) {
+    if (m/^\d+\.\d+$/) {
+        $_ = sprintf("%.0f", $_);
+    }
+}
+print $rates[0], "\n", $rates[1], "\n";
 
 # TODO:
 #

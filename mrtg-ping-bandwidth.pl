@@ -30,7 +30,8 @@ my $_TieAttempts = 5;
 my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
 my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
-my $_DaemonLog = "/tmp/mrtg-ping-bandwidth.log";
+my $_DaemonLog = "/var/log/mrtg-ping-bandwidth.log";
+my $_LatencyNoConnection = -1;
 my $_ProbeInterval = 5*60;
 my $_ConfigUpdateInterval = 7;
 
@@ -66,6 +67,7 @@ use strict;
 use bytes;           # Overrides Unicode support
 use Data::Dumper;
 use Tie::File;
+use Fcntl qw(O_RDONLY);  # For readonly 'tie'
 use POSIX qw(nice setsid);
 
 
@@ -83,8 +85,8 @@ use POSIX qw(nice setsid);
 my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 -U ";
 # WARMING:  A packet size above 1k will not work with all hosts.
 my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 1024 ";
-my @_Measurements;
-my $_refDataTieObj;
+my @g_Measurements;
+my $g_refDataTieObj;
 
 
 ############
@@ -108,7 +110,7 @@ sub ping_derived_stats($) {
     unless (open(PINGFH, $pingcmd)) {
         print STDERR ("FATAL: Can't run command: ", $pingcmd,
                       "\nReason: \"", $!, "\"\n");
-        return -1;
+        return (-1, $_LatencyNoConnection);
     }
     my @pingLines = <PINGFH>;
     close(PINGFH);
@@ -122,7 +124,7 @@ sub ping_derived_stats($) {
         }
     }
 
-    my $latency = -1;
+    my $latency = $_LatencyNoConnection;
     my $rate = $bytes;
     if ($msecs) {
         $latency = $msecs / scalar(@pingLines);
@@ -234,6 +236,7 @@ sub read_config(\$\@\@\@;$) {
     while (<IN_FS>) {
         my $line = $_;
         chomp $line; # Remove newline
+        study $line;
 
         # Trim whitespaces from either end of the line
         # (This is faster than the obvious single-regexp way.)
@@ -288,14 +291,20 @@ sub read_config(\$\@\@\@;$) {
     } else {
         @$ref_show_latency = (0) x scalar(@$ref_measurement_targets);
     }
-    if (exists($options{"_ProbeInterval"})) {
-        $_ProbeInterval = $options{"_ProbeInterval"};
+    if (exists($options{"ProbeInterval"})) {
+        $_ProbeInterval = $options{"ProbeInterval"};
     }
-   if (exists($options{"_ConfigUpdateInterval"})) {
-        $_ConfigUpdateInterval = $options{"_ConfigUpdateInterval"};
+    if (exists($options{"ConfigUpdateInterval"})) {
+        $_ConfigUpdateInterval = $options{"ConfigUpdateInterval"};
+    }
+    if (exists($options{"Latency_noConnection"})) {
+        $_LatencyNoConnection = $options{"Latency_noConnection"};
     }
     if (exists($options{"_DaemonLog"})) {
         $_DaemonLog = $options{"_DaemonLog"};
+    }
+    if (exists($ref_options->{"_DataFile"})) {
+        $_DataFile = $ref_options->{"_DataFile"};
     }
 
     if ($isRereading) {
@@ -390,9 +399,10 @@ sub write_config($\@\@\@) {
     print CFGFH ("show_latency = (\n\t",
                  join("\n\t", @$ref_show_latency),
                  "\n)\n");
-    print CFGFH ("_ProbeInterval = ", $_ProbeInterval, "\n");
-    print CFGFH ("_ConfigUpdateInterval = ", $_ConfigUpdateInterval, "\n");
-    print CFGFH ("_DaemonLog = ", $_DaemonLog, "\n");
+    print CFGFH ("ProbeInterval = ", $_ProbeInterval, "\n");
+    print CFGFH ("ConfigUpdateInterval = ", $_ConfigUpdateInterval, "\n");
+    print CFGFH ("DaemonLog = ", $_DaemonLog, "\n");
+    print CFGFH ("Latency_noConnection = ", $_LatencyNoConnection, "\n");
 
     close CFGFH;
     return 1;
@@ -484,7 +494,8 @@ sub retrieve_rates($$) {
         if ($attempts) {
             sleep($_TieWait);
         }
-        $ref_tied = tie(@measurements, 'Tie::File', $_DataFile);
+        $ref_tied = tie(@measurements, 'Tie::File', $_DataFile,
+                        mode => 'O_RDONLY');
         if (!defined($ref_tied) && (($! ne "") || ($@ ne ""))) {
             $failureReason = $!;
             if (($failureReason ne "") && ($@ ne "")) {
@@ -538,13 +549,17 @@ sub retrieve_rates($$) {
 sub daemonize(;$) {
     my $keepParentRunning = (scalar(@_) ? shift() : 0);
 
-    if ($keepParentRunning) {
-        defined(my $pid = fork) or die "Can't fork: $!";
-        return 0 if ($pid);
-        # else:  We're the child, which we'll use to create the daemon.
+    defined(my $pid = fork) or die "Can't fork: $!";
+    if ($pid) {
+        if ($keepParentRunning) {
+            return 1;
+        } else {
+            exit 0;
+        }
     }
+    # else:  We're the child, which we'll use to create the daemon.
 
-    chdir "/tmp"      or die "Can't chdir to /tmp: $!";
+    chdir "/tmp"            or die "Can't chdir to /tmp: $!";
     open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
     open STDOUT, ">>$_DaemonLog"
         or die "Can't write to $_DaemonLog: $!";
@@ -591,10 +606,10 @@ sub no_running_daemon() {
     # On other unix variants, we'd need to use code like this:
     #my @running = `ps -e 2>&1`; # or `ps -ax 2>&1`;
     #my @match = grep(/\b$daemonPid\b/, @running);
-    #return !scalar(@match);
+    #return 0 if (scalar(@match));
     ## Don't use "system()", as it discards the output.
 
-    print STDERR ("Process '", $daemonPid, "'not found.\n");
+    print STDERR ("Process '", $daemonPid, "' not found.\n");
     print STDERR ("Check for dead/stale PID file:  \"", $_DaemonPIDFile,
                   "\"\n");
     return 1;
@@ -604,8 +619,8 @@ sub no_running_daemon() {
 sub daemon_sig_cleanup {
     my $killsig=shift();
 
-    undef($_refDataTieObj);
-    untie(@_Measurements);
+    untie(@g_Measurements);
+    undef($g_refDataTieObj);
     unlink($_DaemonPIDFile, $_DataFile);
 
     if (($killsig == 1) || ($killsig == 2) || ($killsig == 15)) {
@@ -657,9 +672,8 @@ sub daemon_main(\@$\@\@) {
 
     # Tie an array to the data file, retrying as needed.
     #
-    my @_Measurements;
-    $_refDataTieObj = tie(@_Measurements, 'Tie::File', $_DataFile);
-    if (!defined($_refDataTieObj) && (($! ne "") || ($@ ne ""))) {
+    $g_refDataTieObj = tie(@g_Measurements, 'Tie::File', $_DataFile);
+    if (!defined($g_refDataTieObj) && (($! ne "") || ($@ ne ""))) {
         my $failureReason = $!;
         if (($failureReason ne "") && ($@ ne "")) {
             $failureReason .= "\n";
@@ -668,6 +682,7 @@ sub daemon_main(\@$\@\@) {
         print STDERR ("Failed to tie array to file: \"", $_DataFile, "\".\n",
                       "Reason: \"", $failureReason, "\"\n");
     }
+    $g_refDataTieObj->autodefer(0);  # Don't guess when to cache writes.
 
     #
     # The Main Loop
@@ -682,8 +697,8 @@ sub daemon_main(\@$\@\@) {
         foreach my $idx (0 .. $#measurement_targets) {
             ($rate,
              $latency) = ping_derived_stats($measurement_targets[$idx]);
-            $_Measurements[$idx] = ($show_latency[$idx] ? $latency : $rate);
-            $network_state *= $_Measurements[$idx];
+            $g_Measurements[$idx] = ($show_latency[$idx] ? $latency : $rate);
+            $network_state *= $g_Measurements[$idx];
         }
 
         # Rebuild the config from time to time.
@@ -714,7 +729,7 @@ sub start_daemon($\@$\@\@) {
     my $ref_show_latency = shift();
 
     # daemonize() either exits the parent process or returns 0.
-    daemonize($keepParentRunning) or return 1;
+    daemonize($keepParentRunning) or return 0;
 
     # We're the child process if we reach this point.
     renice_self();
@@ -732,8 +747,8 @@ sub usage() {
     print STDERR (" "x7, $_MyName, " [-r] <target#> [<target#>]\n\n");
     print STDERR ("Both <target#> and <hop#> are 1-offset.  <target#> is ",
                   "not the same as <hop#>.\n\n");
-    print STDERR ("In the configfile, \"_ProbeInterval\" is in seconds, ",
-                  "while\n\"_ConfigUpdateInterval\" is in days.\n");
+    print STDERR ("In the configfile, \"ProbeInterval\" is in seconds, ",
+                  "while\n\"ConfigUpdateInterval\" is in days.\n");
     print STDERR ("\nRun Modes:\n\n");
     print STDERR ("'-c':  (Re)creates the configfile.  <host> is the ",
                   "traceroute target,\n");
