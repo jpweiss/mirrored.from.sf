@@ -45,6 +45,7 @@ my $_MRTG_CollisionInterval = 15;
 #
 
 my $_ConfigFile = undef();
+my $_Missing_DefaultVal = -1;
 my $_UpdateInterval_Default = 15*60;
 my $_Stat_Event_MergeInterval = 5*60;
 my $_TieAttempts = 5;
@@ -181,6 +182,9 @@ my $c_Week_Secs = 7*24*3600;
 my $c_dbgTsHdr = '{;[;DebugTimestamp;];}';
 my $c_myTimeFmt = '%Y/%m/%d_%T';
 
+# HTML Parsing
+my $c_UndefRowCol='$undef^';
+
 my $c_EndTag_re = '</[^>\s\n]+>';
 my $c_IgnoredStandalone_re
     = '(?:B(?:ASE(?:FONT)?)|COL|FRAME|HR|LINK|META)\s*/?';
@@ -192,11 +196,11 @@ my $c_Ignored_Tags_re
     = '(?:/?(?:'.$c_IgnoredPlain_re.')|'.$c_IgnoredStandalone_re.')';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
-my $c_VerifyVal='088c7f9c76baf015e2e70dff8456c54e20a4f12aa333c36006a4db84c95'.
-    'bb9354cf6f7ae0dde06b8339fa27b60e869fb2a48bc2a089d18f087e09f54c4295a5971'.
-    'b955fa60f99a6a387e70bf';
+my $c_VerifyVal='3d1d4be73511759d7a93e0357c0daa7ec88c3299bdb9bc1f7b4c89c8a91'.
+    'f27c1df7a56afb15db1603479410f0849363038b93d15024bd67dcfb153bd3f8a26ba59'.
+    '203a9ec625243aafc0a478';
 my $c_ExpectedVal='sub shhhhh($$){ my $c_ExpectedVal="@th350und0fth3t0n3"; ';
-my $c_VersionVal="# 2.0 #";
+my $c_VersionVal="# 3.0 #";
 
 my $c_EvT_startupDflt = 1;
 my $c_EvT_placeholder = 2;
@@ -609,7 +613,7 @@ sub read_config(\%) {
     }
     close IN_FH;
 
-    #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
+    #print STDERR ("#DBG# >>>>>>> ", Dumper($ref_options), "\n");
 }
 
 
@@ -1011,6 +1015,43 @@ sub separateOutOptionSets(\%\%$) {
 }
 
 
+sub processHTMLTableOpt(\%$) {
+    my $ref_opts = shift();
+    my $optType = shift();
+
+    my $exprOptKey = $optType.'_exprs';
+    my $definedSublistKey = '_'.$optType.'_exprList_';
+    my $regexKey = '_'.$optType.'_re_';
+    my $undefKey = '_n_'.$optType.'_undefined_';
+
+
+    my @processedExprList = map({ (($_ eq $c_UndefRowCol) ? undef : $_)
+                                } @{$ref_opts->{$exprOptKey}});
+    my @definedExprSublist = grep(defined, @processedExprList);
+    $ref_opts->{$definedSublistKey} = \@definedExprSublist;
+
+    unless (scalar(@definedExprSublist)) {
+        die_CfgErr(5, "The 'Stats.Table.", $exprOptKey,
+                   "' option cannot contain only placeholders.\n");
+    }
+
+    my $regexpJoined = join(')|(?:', @definedExprSublist);
+    $ref_opts->{$regexKey} = qr/((?:$regexpJoined))/;
+
+    if ($#definedExprSublist < $#processedExprList) {
+        $ref_opts->{$undefKey} = $#processedExprList - $#definedExprSublist;
+        my $counter = 1;
+        map({ unless (defined)
+              {
+                  $_ = sprintf("placeholder_%02d", $counter);
+                  ++$counter;
+              }
+            } @processedExprList);
+        @{$ref_opts->{$exprOptKey}} = @processedExprList;
+    }
+}
+
+
 sub processConfigFile(\%) {
     my $ref_options = shift();
 
@@ -1095,8 +1136,10 @@ sub processConfigFile(\%) {
     # 'Stats.Table.Row_exprs' and 'Stats.Table._Row_re_'
     #
     if (exists($statsTblOpt{'Row_exprs'})) {
-        my $rowExpJoined = join(')|(?:', @{$statsTblOpt{'Row_exprs'}});
-        $statsTblOpt{'_Row_re_'} = qr/((?:$rowExpJoined))/;
+        processHTMLTableOpt(%statsTblOpt, 'Row');
+    }
+    if (exists($statsTblOpt{'Column_exprs'})) {
+        processHTMLTableOpt(%statsTblOpt, 'Column');
     }
 
     # 'Stats.Table.KeepIdx' and 'Stats.Table._KeepColumn_'
@@ -1251,7 +1294,9 @@ sub processConfigFile(\%) {
         }
     }
 
-    #print STDERR ("#DBG# ", Dumper($ref_options), "\n");
+    if ($_DebugLoggingIsActive & 128) {
+        print STDERR ("#DBG# >>>>>>> ", Dumper($ref_options), "\n");
+    }
 
     return 1;
 }
@@ -1355,6 +1400,10 @@ sub parse_syslog($\%\%\@) {
         # Skip empty lines.
         next if (m/^\s*$/);
 
+        if ($_DebugLoggingIsActive & 64) {
+            printDbg(">>>>>> SyslogLine: '", $_, "'\n");
+        }
+
         # The '$time_re' expression contains parens.
         next unless (m/$time_re/o);
 
@@ -1445,6 +1494,10 @@ sub removeOldEventsAndAdjust(\@$$) {
         }
     }
 
+    if ($_DebugLoggingIsActive & 32) {
+        printDbg(">>>>> KeepingNewEvents: (", join(", ", @idxKeep), ")\n");
+    }
+
     # Last, prune the duplicates.  Note that we can't use 'delete' since it
     # doesn't remove elements from the middle of an array (it only sets them
     # to 'undef').
@@ -1482,6 +1535,12 @@ sub resetStaleDropCounts(\@$\@$) {
     my $ts_latestEvent = $event[$c_tsIdx];
     my $ts_nextDropCountInterval = t2DropCountInterval($ts_latestEvent, 1);
     my $resetTime = $ts_nextDropCountInterval + int(0.02*$c_DropCountInterval);
+
+    if ($_DebugLoggingIsActive & 32) {
+        printDbg(">>>>> DropCountReset:  ts(latest)==", $ts_latestEvent,
+                "; ts(nextDropCountInterval)==", $ts_nextDropCountInterval,
+                "; t_reset==", $resetTime, "\n");
+    }
 
     # Do nothing unless the current time is older than the last event's
     # '$c_DropCountInterval'.
@@ -1547,6 +1606,10 @@ sub read_and_clean_webpage($\%\%\@) {
         # Trim crap off of the ends.
         s¦\r$¦¦; s¦^\s+¦¦; s¦\s+$¦¦;
 
+        if ($_DebugLoggingIsActive & 128) {
+            printDbg(">>>>>>> HTML::RAW: '", $_, "'\n");
+        }
+
         # Remove intra-tag spaces, which will make the subsequent regexps
         # simpler.
         s¦/\s+>¦/>¦g;
@@ -1584,15 +1647,25 @@ sub read_and_clean_webpage($\%\%\@) {
     }
 
     close($http_fh);
+
+    if ($_DebugLoggingIsActive & 64) {
+        printDbg(">>>>>> HTML::Cleaned:\n",
+                 join("\n", @$ref_cleanedLines), "\n");
+        printDbg("<<<<<< HTML::Cleaned--End\n");
+    }
 }
 
 
 sub createTableParser(\%) {
     my $ref_opts = shift();
 
-    my %ctorOpts = ('debug' => ($_DebugLoggingIsActive > 1) );
-    if (exists($ref_opts->{'Column_exprs'})) {
-        $ctorOpts{'headers'} = $ref_opts->{'Column_exprs'};
+    # Careful:  the 'debug' flag is value-sensitive.  We don't want to turn on
+    # full debug output, just the very basic stuff.
+    my $dbgHtmlTableParse = (($_DebugLoggingIsActive & 16) ? 1 : 0);
+
+    my %ctorOpts = ('debug' => $dbgHtmlTableParse);
+    if (exists($ref_opts->{'_Column_exprList_'})) {
+        $ctorOpts{'headers'} = $ref_opts->{'_Column_exprList_'};
     }
     if (exists($ref_opts->{'Depth'})) {
         $ctorOpts{'depth'} = $ref_opts->{'Depth'};
@@ -1629,6 +1702,36 @@ sub ensureDefinedHeaders($\$) {
 }
 
 
+sub setHeaders_and_Placeholders(\%\@\@) {
+    my $ref_results = shift();
+    my $ref_hdrExprs = shift();
+    my $ref_seenHeaders = shift();
+
+    my @orderedHeaders = ();
+    foreach my $re (@$ref_hdrExprs) {
+        my @actualHdrs = grep(m/(?:$re)/, @$ref_seenHeaders);
+        if (scalar(@actualHdrs)) {
+            push(@orderedHeaders, @actualHdrs);
+            if ($_DebugLoggingIsActive & 8) {
+                printDbg(">> HeadersSeen: ('", join("', '", @actualHdrs),
+                         "')\n");
+            }
+        } else {
+            push(@orderedHeaders, $re);
+            unless ( exists($ref_results->{$re}) &&
+                     defined($ref_results->{$re}) ) {
+                $ref_results->{$re} = $_Missing_DefaultVal;
+            }
+            if ($_DebugLoggingIsActive & 8) {
+                printDbg(">> MissingHeader: '", $re,"'\n");
+            }
+        }
+    }
+
+    $ref_results->{'_Headers_InOrder_'} = \@orderedHeaders;
+}
+
+
 sub setOrderedUniqHeaders(\%\@) {
     my $ref_results = shift();
     my $ref_headers = shift();
@@ -1639,19 +1742,25 @@ sub setOrderedUniqHeaders(\%\@) {
 }
 
 
-sub setRowHeadersInOrder(\%\@\@) {
+sub setRowHeadersInOrder(\%\@\%) {
     my $ref_results = shift();
-    my $ref_allHeaders = shift();
-    my $ref_rowRe = shift();
+    my $ref_seenHeaders = shift();
+    my $ref_opts = shift();
 
+    my $ref_rowExprs = $ref_opts->{'Row_exprs'};
+    my $nPlaceholders = $ref_opts->{'_n_Row_undefined_'};
 
     # Now, put the headers into the order requested in the config file.
-    my @orderedHeaders = ();
-    foreach my $re (@$ref_rowRe) {
-        push(@orderedHeaders, grep(m/(?:$re)/, @$ref_allHeaders));
+    if ($nPlaceholders) {
+        setHeaders_and_Placeholders(%$ref_results, @$ref_rowExprs,
+                                    @$ref_seenHeaders);
+    } else {
+        my @orderedHeaders = ();
+        foreach my $re (@$ref_rowExprs) {
+            push(@orderedHeaders, grep(m/(?:$re)/, @$ref_seenHeaders));
+        }
+        setOrderedUniqHeaders(%$ref_results, @orderedHeaders);
     }
-
-    setOrderedUniqHeaders(%$ref_results, @orderedHeaders);
 }
 
 
@@ -1666,13 +1775,28 @@ sub parseTables_grid($\%\%) {
     my @slice;
     my $colCount = 0;
 
+    if ($_DebugLoggingIsActive & 16) {
+        printDbg(">>> Table Objects: ", Dumper($parser->tables()), "\n");
+    }
+    if ($_DebugLoggingIsActive & 8) {
+        printDbg(">>> Row Regexp: '", $ref_opts->{'_Row_re_'}, "'\n");
+    }
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> Table Object: '", $table, "'\n");
+        }
 
         # Don't include the first column in the slice.
         @slice = grep($_, $table->column_map());
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> TableColumnSlice: (", join(", ", @slice), ")\n");
+        }
         foreach my $ref_row ($table->rows()) {
             study $ref_row->[0];
+            if ($_DebugLoggingIsActive & 8) {
+                printDbg(">>> Table Row: '", $table, "'\n");
+            }
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
             my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
@@ -1682,9 +1806,10 @@ sub parseTables_grid($\%\%) {
     }
 
     # Now, put the headers into the order requested in the config file.
-    setRowHeadersInOrder(%$ref_results,
-                         @allHeaders,
-                         @{$ref_opts->{'Row_exprs'}});
+    setRowHeadersInOrder(%$ref_results, @allHeaders, %$ref_opts);
+    if ($_DebugLoggingIsActive & 4) {
+        printDbg(">> Extracted: ", Dumper($ref_results), "\n");
+    }
 }
 
 
@@ -1700,11 +1825,23 @@ sub parseTables_rowMajor($\%\%) {
     my @allHeaders = ();
     my $colCount = 0;
 
+    if ($_DebugLoggingIsActive & 16) {
+        printDbg(">>> Table Objects: ", Dumper($parser->tables()), "\n");
+    }
+    if ($_DebugLoggingIsActive & 8) {
+        printDbg(">>> Row Regexp: '", $ref_opts->{'_Row_re_'}, "'\n");
+    }
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> Table Object: '", $table, "'\n");
+        }
 
         foreach my $ref_row ($table->rows()) {
             study $ref_row->[0];
+            if ($_DebugLoggingIsActive & 8) {
+                printDbg(">>> Table Row: '", $table, "'\n");
+            }
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
             my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
@@ -1714,9 +1851,10 @@ sub parseTables_rowMajor($\%\%) {
     }
 
     # Now, put the headers into the order requested in the config file.
-    setRowHeadersInOrder(%$ref_results,
-                         @allHeaders,
-                         @{$ref_opts->{'Row_exprs'}});
+    setRowHeadersInOrder(%$ref_results, @allHeaders, %$ref_opts);
+    if ($_DebugLoggingIsActive & 4) {
+        printDbg(">> Extracted: ", Dumper($ref_results), "\n");
+    }
 }
 
 
@@ -1729,8 +1867,17 @@ sub parseTables_columnMajor($\%\%) {
     my @allHeaders = ();
     my $colCount = 0;
 
+
+    if ($_DebugLoggingIsActive & 16) {
+        printDbg(">>> Table Objects: ", Dumper($parser->tables()), "\n");
+    }
     foreach my $table ($parser->tables()) {
         next unless (defined($table));
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> Table Object: '", $table, "'\n");
+            printDbg(">>> Table Headers: ('",
+                     join("', '", $table->hrow()), "')\n");
+        }
 
         # Get the column headers, replacing any blank or missing headers with
         # a constructed one.
@@ -1743,7 +1890,16 @@ sub parseTables_columnMajor($\%\%) {
         }
     }
 
-    setOrderedUniqHeaders(%$ref_results, @allHeaders);
+    if ($ref_opts->{'_n_Column_undefined_'}) {
+        setHeaders_and_Placeholders(%$ref_results,
+                                    @{$ref_opts->{'Column_exprs'}},
+                                    @allHeaders);
+    } else {
+        setOrderedUniqHeaders(%$ref_results, @allHeaders);
+    }
+    if ($_DebugLoggingIsActive & 4) {
+        printDbg(">> Extracted: ", Dumper($ref_results), "\n");
+    }
 }
 
 
@@ -1805,6 +1961,11 @@ sub splitRequestedFields(\@\%) {
                                $_;
                            }
                           } @$ref_lines);
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> PostSplit(m/", $split_re,"/):\n\t",
+                     join("\n\t", @$ref_lines), "\n");
+            printDbg("<<< PostSplit(m/", $split_re,"/)\n");
+        }
     }
 }
 
@@ -1822,7 +1983,7 @@ sub selectResults(\%\@\%) {
         if (defined($ref_lines->[$v]) && ($ref_lines->[$v] ne '')) {
             $ref_results->{$k} = $ref_lines->[$v];
         } else {
-            $ref_results->{$k} = -1;
+            $ref_results->{$k} = $_Missing_DefaultVal;
         }
         delete $ref_lines->[$v];
     }
@@ -1832,11 +1993,17 @@ sub selectResults(\%\@\%) {
     my @matches;
     while (my ($k, $re) = each(%{$ref_opts->{'_Select_Re_'}})) {
         @matches = grep(m¦(?:$re)¦, @$ref_lines);
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> SelectionMatch(m/", $re,"/):\n#DBG#\t('",
+                     join("', '", @matches), "')\n");
+            printDbg("<<< SelectionMatch(m/", $re,"/)\n");
+        }
+
         if (scalar(@matches) && defined($matches[0]) && ($matches[0] ne ''))
         {
             $ref_results->{$k} = $matches[0];
         } else {
-            $ref_results->{$k} = -1;
+            $ref_results->{$k} = $_Missing_DefaultVal;
         }
     }
 
@@ -1875,17 +2042,31 @@ sub parse_statsPage($\%\%\%) {
         my $ref_exprOpts = $ref_options->{'Manual'};
         my @processed = grep({ applyFilterRegexLists(%$ref_exprOpts)
                              } @content);
+        if ($_DebugLoggingIsActive & 8) {
+            printDbg(">>> FilteredLines:\n'", join("'\n'", @processed),
+                     "'\n");
+            printDbg("<<< FilteredLines\n");
+        }
+
 
         if (hasOption(%$ref_exprOpts, 'CleanupRegexps')) {
             @processed = grep( { (defined && $_)
                                } map({ applyCleanupRegexList(%$ref_exprOpts)
                                      } @processed)
                               );
+            if ($_DebugLoggingIsActive & 8) {
+                printDbg(">>> CleanedLines:\n'", join("'\n'", @processed),
+                         "'\n");
+                printDbg("<<< CleanedLines\n");
+            }
         }
 
         splitRequestedFields(@processed, %$ref_exprOpts);
 
         selectResults(%$ref_statsMap, @processed, %$ref_exprOpts);
+        if ($_DebugLoggingIsActive & 4) {
+            printDbg(">> Extracted: ", Dumper($ref_statsMap), "\n");
+        }
 
     }
     else
@@ -2241,7 +2422,7 @@ sub retrieve_statistics($$) {
                           $_DataFile, "\".\n",
                           "(Is the daemon running?)\n");
         }
-        return (-1, -1);
+        return ($_Missing_DefaultVal, $_Missing_DefaultVal);
     }
 
     # We're ready!  Retrieve the two measurements.
@@ -2255,7 +2436,7 @@ sub retrieve_statistics($$) {
 
     my $nMeasures = scalar(@result);
     if ($nMeasures < 1) {
-        return (-1, -1);
+        return ($_Missing_DefaultVal, $_Missing_DefaultVal);
     }
     if (($targ1 < 0) || ($targ1 > $#result)) {
         $targ1 = 0;
@@ -2424,6 +2605,11 @@ sub findRecordsInRange(\@$$) {
     # "$minIdx" already points to the record in $ref_data that bounds $minTime
     # "from below".  No adjustment needed.
 
+    if ($_DebugLoggingIsActive & 128) {
+        printDbg(">>>>>>> findRecordsInRange(...)==(", $maxIdx, ", ",
+                 $minIdx, ")\n");
+    }
+
     # Again, the MRTG data is in descending chronological order, so
     # $maxIdx <= $minIdx.
     return ($maxIdx, $minIdx);
@@ -2566,7 +2752,16 @@ sub avoidMRTGCollision(\%) {
     return if ( ($t_fromMRTGUpdate < 0) ||
                 ($t_fromMRTGUpdate > $_MRTG_CollisionInterval) );
 
+
+    if ($_DebugLoggingIsActive & 128) {
+        printDbg(">>>>>>> avoidMRTGCollision(...)\n");
+    }
+
     sleep($_MRTG_CollisionInterval+$t_fromMRTGUpdate);
+
+    if ($_DebugLoggingIsActive & 128) {
+        printDbg("<<<<<<< avoidMRTGCollision(...)\n");
+    }
 }
 
 
@@ -2632,6 +2827,11 @@ sub updateMRTGdata(\@\%) {
     my @mergedData = ();
     mergeEventsWithMRTG(@MRTG_Data, $mergeStartIdx, $mergeEndIdx,
                         @$ref_newData, @mergedData);
+    if ($_DebugLoggingIsActive & 128) {
+        printDbg(">>>>>>> mergedData==(", (scalar(@mergedData) ? "'" : ""),
+                 join("', '", @mergedData), (scalar(@mergedData) ? "'" : ""),
+                 ")\n");
+    }
     projectDropCountsForward(@mergedData, @$ref_newData);
 
     #
@@ -2653,16 +2853,32 @@ sub updateMRTGdata(\@\%) {
     #        pre-merge records. and call projectDropCountsForward()
     my @preMergeData = map({ [ split(/\s/, $_) ]
                            } @MRTG_Data[0 .. ($mergeStartIdx - 1)]);
+    if ($_DebugLoggingIsActive & 128) {
+        printDbg(">>>>>>> preMergeData==(",
+                 (scalar(@preMergeData) ? "'" : ""),
+                 join("', '", @preMergeData),
+                 (scalar(@preMergeData) ? "'" : ""),
+                 ")\n");
+    }
 
     # The first record requires special handling:
     my $ref_firstRecord = shift(@preMergeData);
-    if ($mergeStartIdx == 1) {
-        # The first record always matches the first 3 elements of the next
-        # record.  If we merge in data at the top, we need to mimic this.
-        @$ref_firstRecord = @{$mergedData[0]}[(0 .. 2)];
-    } else {
-        # Just copy the drop count from the first merge record.
-        $ref_firstRecord->[2] = $mergedData[0][2];
+    if (scalar(@mergedData)) {
+        # Only attempt to use the merged data if it exists.  You'll get blank
+        # lines in the MRTG data file otherwise.
+        if ($mergeStartIdx == 1) {
+            # The first record always matches the first 3 elements of the next
+            # record.  If we merge in data at the top, we need to mimic this.
+            @$ref_firstRecord = @{$mergedData[0]}[(0 .. 2)];
+        }
+        else {
+            # Just copy the drop count from the first merge record.
+            $ref_firstRecord->[2] = $mergedData[0][2];
+        }
+    } elsif ($#$ref_firstRecord > 2) {
+        # No merge data, but extra stuff in the first record of the MRTG data
+        # file.  Prune off the excess.
+        delete(@$ref_firstRecord[(3 .. $#$ref_firstRecord)]);
     }
     print OUT_FH (join(' ', @$ref_firstRecord), "\n");
 
