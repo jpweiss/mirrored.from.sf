@@ -157,7 +157,8 @@ killBluetooth()
     done
 
     service bluetooth stop
-    rmmodsAll bridge stp bnep hidp input_polldev
+    rmmodsAll rfcomm sco btusb l2cap bluetooth \
+        bridge stp bnep hidp input_polldev
 }
 
 

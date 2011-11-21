@@ -6,17 +6,27 @@
 # and name one of these files.
 # [jpw]
 
+
+LAN_MODULE=e1000
+BLUETOOTH_MODULE=bluetooth
+
+
 . /etc/LocalSys/init.d/functions-laptop
 
+isWakeupEvent=''
+toMem=''
 case "$1" in
-	hibernate|thaw)
+	hibernate)
 		;;
-	suspend|resume)
-		# Remove Bluetooth on suspend-to-ram
-                if [ -d /sys/module/bnep ]; then
-                    killBluetooth
-                fi
-		exit 0
+	thaw)
+		isWakeupEvent='y'
+		;;
+	suspend)
+		toMem='y'
+		;;
+	resume)
+		isWakeupEvent='y'
+		toMem='y'
 		;;
 	*)
 		exit $NA
@@ -24,12 +34,17 @@ case "$1" in
 esac
 
 
+SYS_LAN=/sys/module/$LAN_MODULE
+SYS_BLUETOOTH=/sys/module/$BLUETOOTH_MODULE
+
+
+isInPowersaveMode && savePower='y'
 removeWifiModules
-if [ -d /sys/module/bnep ]; then
+if [ "${toMem},${isWakeupEvent}" != ",y" -a -d $SYS_BLUETOOTH ]; then
     killBluetooth
 fi
-if isInPowersaveMode && [ -d /sys/module/e1000 ]; then
-    rmmod eth1000
+if [ -n "$savePower" -a -d ${SYS_LAN} ]; then
+    rmmod $LAN_MODULE
 fi
 
 exit 0
