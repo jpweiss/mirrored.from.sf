@@ -2,7 +2,7 @@
 #
 # Find and toggle wireless of bluetooth devices on ThinkPads
 #
-# Copyright (C) 2011 by John P. Weiss
+# Copyright (C) 2011-2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -80,22 +80,10 @@ toggleBluetooth()
 
     echo "Checking Bluetooth..."
 
-    rfkill list |\
-        sed -n -e'/tpacpi_bluetooth_sw/,/^[0-9]/p' |\
-        grep -q 'Soft blocked: yes'
-    bluetooth_state=$?
-
     # Sequence is Both on, Both off, Wireless only, Bluetooth only
     if ! isAnyWirelessPoweredOn; then
-        # Wireless was turned off
-        if [ "$bluetooth_state" = 0 ]; then
-            echo "Bluetooth currently turned off; reenabling..."
-            rfkill unblock bluetooth
-        else
-            echo "Disabling Bluetooth..."
-            rfkill block bluetooth
-            #killBluetooth
-        fi
+        # Wireless was turned off; toggle bluetooth.
+        toggleAllBluetoothAdapters
     fi
 }
 

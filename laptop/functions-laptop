@@ -1,6 +1,6 @@
 # -*- shell-script -*-
 #
-# Copyright (C) 2005-2010 by John P. Weiss under the Artistic License
+# Copyright (C) 2005-2012 by John P. Weiss under the Artistic License
 #
 # RCS $Id$
 ############
@@ -135,6 +135,14 @@ loadWifiModules()
     local modlist
     modlist=`getWifiModuleList`
 
+    # Need to add these modules 'by hand'; they aren't loaded with the rest of
+    # the modules, but are needed for wifi encryption.  Also, they need to be
+    # loaded *before* the ipw2200 module, hence why they're at the beginning
+    # of the list.
+    modlist="aes_i586 arc4 michael_mic $modlist"
+    modlist="lib80211_crypt_wep $modlist"
+    modlist="lib80211_crypt_ccmp lib80211_crypt_tkip $modlist"
+
     if [ -n "$modlist" ]; then
         loadModules $modlist
     fi
@@ -145,6 +153,52 @@ killWifi()
 {
     disableAllWireless
     removeWifiModules
+}
+
+
+hasBluetoothAdapter()
+{
+    rfkill list | grep -qi 'bluetooth'
+}
+
+
+isBluetoothOff()
+{
+    # The sed below only outputs lines that appear between 2 lines.  The first
+    # line is the one matching the first regexp.  The last line is the one
+    # before the line matching the second regexp (the one after the ",").
+    #
+    # So, the 'sed' is equivalent to calling 'hasBluetoothAdapter' first.
+    rfkill list |\
+        sed -n -e'/\(tpacpi_bluetooth_sw\|: *Bluetooth\)/,/^[0-9]/p' |\
+        grep -q 'Soft blocked: yes'
+}
+
+
+allBluetoothAdaptersOff()
+{
+    rfkill block bluetooth
+}
+
+
+allBluetoothAdaptersOn()
+{
+    rfkill unblock bluetooth
+}
+
+
+toggleAllBluetoothAdapters()
+{
+    if isBluetoothOff; then
+        echo "Bluetooth currently turned off; reenabling..."
+        allBluetoothAdaptersOn
+    else
+        echo "Disabling Bluetooth..."
+        allBluetoothAdaptersOff
+        if [ "$1" = "killBluetooth" ]; then
+            killBluetooth
+        fi
+    fi
 }
 
 
