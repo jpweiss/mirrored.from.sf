@@ -49,7 +49,7 @@ LOGFILE=/tmp/bluetooth-acpi.log
 
 bluetoothServerIsRunning()
 {
-    service bluetooth status 2>&1 | grep -qi 'running'
+    service bluetooth status 2>&1 | grep -qi 'is running'
 }
 
 
