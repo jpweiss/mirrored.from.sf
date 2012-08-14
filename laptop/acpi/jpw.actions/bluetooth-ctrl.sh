@@ -150,7 +150,9 @@ findBluetoothTrayapp_kde()
     kdeBluetoothAppsRunning && return
 
     local b
-    for b in /usr/bin/{bluedevil,kbluetooth} /opt/trinity/bin/kbluetooth; do
+    for b in /usr/bin/{bluedevil{,-monolithic},kbluetooth} \
+        /opt/trinity/bin/kbluetooth;
+    do
         if [ -x $b ]; then
             echo "$b"
             return 0
@@ -192,6 +194,9 @@ toggleBluetooth()
     # FIXME:  Stop the server?  Hit DBUS with some sort of "disable/enable"
     # message?
     toggleAllBluetoothAdapters
+    # Use this to nuke all of the tray apps, the server, and remove the
+    # modules.
+    #toggleAllBluetoothAdapters "killBluetooth"
 
 
     # DBus files for the blueman-applet.  None appear to contain any useful
