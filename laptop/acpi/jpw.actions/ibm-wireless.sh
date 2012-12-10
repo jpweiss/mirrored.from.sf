@@ -40,7 +40,7 @@ test -f /usr/share/acpi-support/state-funcs || exit 0
 . /usr/share/acpi-support/state-funcs
 
 . /etc/LocalSys/init.d/functions-laptop
-LOGFILE=/tmp/wifi-acpi.log
+LOGFILE=/tmp/logs/wifi-acpi.log
 
 
 ############
@@ -113,7 +113,7 @@ turnWifiOff()
 
     # Return an appropriate status, depending on whether or not we failed to
     # unambiguously turn the antenna off.
-    isWifiUp 
+    isWifiUp
     if [ $? -ne 0 ]; then
         return 1
     fi
@@ -157,7 +157,7 @@ turnWifiOn()
 
     # Return an appropriate status, depending on whether or not we failed to
     # unambiguously turn the antenna on.
-    isWifiUp 
+    isWifiUp
     if [ $? -ne 1 ]; then
         return 1
     fi

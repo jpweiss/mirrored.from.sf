@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2005-2008 by John P. Weiss
+# Copyright (C) 2005-2008, 2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -25,16 +25,16 @@
 
 
 # Instructions:
-# 
+#
 # - Set variables whose value you want to customize
 # - If you want to use the default value of a variable, leave it unset or set
 #   it to "".
 
 
 # List of devices or mountpoints to umount.
-# 
+#
 # A list of directories or device files to umount prior to suspend.
-# 
+#
 # None of the umount'ed devices will be remounted on resume.  The whole point
 # of this feature is to get rid of devices which are removable, since they may
 # not be attached on resume.
@@ -47,13 +47,13 @@
 # always be preprended to the list of devices and mountpoints that you
 # specify.  Even if you specify nothing, "/media/*" is still checked for
 # mounted devices.
-# 
+#
 # Default: /media/*
 #
 REMOVABLE_DEVICES="/mnt/*"
 
 # List of modules that are ill-behaved under any form of suspend.
-# 
+#
 # These modules will be removed (via rmmod) before mem/disk suspend, in the
 # order listed below.  Then, after the resume, each module that was
 # successfully removed will be reinstalled.  The reinstall order is the
@@ -76,7 +76,7 @@ REMOVABLE_DEVICES="/mnt/*"
 #    in this list are reloaded, do that in the "resume_tasks()" function,
 #    below.
 #    It's up to you to customize "resume_tasks()".  Only you know your needs.
-# 
+#
 # Default: None.  An empty list means do nothing.
 #
 ILL_BEHAVED_MODULES="sdhci mmc_block mmc_core"
@@ -87,7 +87,7 @@ ILL_BEHAVED_MODULES="sdhci mmc_block mmc_core"
 ##ILL_BEHAVED_MODULES="uhci_hcd ipw2200 firmware_class"
 
 # List of modules to remove before suspend and not restore on resume.
-# 
+#
 # These modules will be removed (via rmmod) before mem/disk suspend, in the
 # order listed below.  However, unlike the `ILL_BEHAVED_MODULES' list, they
 # will not be restored after the resume.
@@ -99,14 +99,14 @@ ILL_BEHAVED_MODULES="sdhci mmc_block mmc_core"
 # Note:
 # See the notes for `ILL_BEHAVED_MODULES'; all but #3 (which regards resuming)
 # apply to this feature.
-# 
+#
 # Removal order:
 # + First, modules in `MODULES_TO_REMOVE', in the order you specify.
 # + Next, the modules in `ILL_BEHAVED_MODULES', in the order you specify.
 #
 # DO NOT split interdependent modules between this list and
 # `ILL_BEHAVED_MODULES'.
-# 
+#
 # Default: None.  An empty list means do nothing.
 #
 WIFI_MODULES="ipw2200 ieee80211_crypt_wep ieee80211_crypt_tkip"
@@ -124,12 +124,12 @@ MODULES_TO_REMOVE="${MODULES_TO_REMOVE} tpm_atmel tpm tpm_bios"
 #
 # For SWSusp, this setting is required.  It is the name of the swap partition
 # you specified at compile time or via the "resume=" kernel parameter.
-# 
+#
 # In either case, "suspenders.sh" will enable this partition if it isn't
 # already active.
-# 
+#
 # You MUST set this variable, or "suspenders.sh" will do nothing.
-# 
+#
 # Default: *none* -  MUST be set!
 #
 SUSPEND_PARTITION="/dev/sda3"
@@ -194,12 +194,12 @@ X_CONSOLE=""
 # The suspend script will print a copy of all of its screen messages (as well
 # as error messages not output to the scrren) to this file.
 #
-# Default: "/tmp/suspend2any.log"
+# Default: "/tmp/logs/suspend2any.log"
 #
 LOGFILE=""
 
 # The Lock File.  (The default will be fine for most people.)
-# 
+#
 # Prevents the suspend script from running multiple instances at the same
 # time.  Without it, you will enter into a VERY annoying
 # suspend-resume-resuspend-reresume-reresuspend-... loop.
@@ -209,7 +209,7 @@ LOGFILE=""
 LOCKFILE=""
 
 # How long to wait before removing the lockfile.
-# 
+#
 # Depending on your ACPI handler and how it's configured, it may "queue
 # keys".  Hitting that special "Hibernate" key on your laptop more than once
 # may cause a suspend-resume-resuspend-reresume-... loop.
@@ -225,15 +225,15 @@ LOCKFILE=""
 REMOVE_LOCKFILE_AFTER=120
 
 # The Lock Cleanup Control File.  (The default will be fine for most people.)
-# 
+#
 # Forces the suspend script to "clean up" any existing copy of its lockfile.
-# 
+#
 # Specifically, if this file exists, the suspend script will forcibly remove
 # its lockfile and continue running.  This feature permits regular users to
 # clean up dead lockfiles that may be blocking all further suspend attempts.
 # Ordinarily, you'd need to be root to clean up dead lockfiles (since the user
 # running the suspend script --- typically "root" --- owns the lockfile).
-# 
+#
 # Default: "/tmp/suspenders.force-lock-cleanup"
 #
 FORCE_LOCKFILE_CLEANUP=""
@@ -303,7 +303,7 @@ forciblyRemoveWifi() {
 # - Disable "xscreensaver";
 # - "rmmod" any modules listed in the $ILL_BEHAVED_MODULES configuration
 #    variable;
-# 
+#
 # Feel free to add other functions and call them from here.
 #
 pre_suspend() {
@@ -352,7 +352,7 @@ pre_suspend() {
 # other resume tasks, *except* switching back to X.  If you were in X before
 # hibernation, then you'll be switched back to X after this function
 # completes.
-# 
+#
 # Things you won't need to do here:
 # - Switch back to X from another virtual console;
 # - Re-enable "xscreensaver";
@@ -396,7 +396,7 @@ resume_tasks() {
             fi
         done
 
-        if [ "$RUNLEVEL" != "4" ]; then 
+        if [ "$RUNLEVEL" != "4" ]; then
             for svc in NetworkManager NetworkManagerDispatcher; do
                 if [ -f /etc/rc${RUNLEVEL}.d/S*${svc} ]; then
                     /sbin/service ${svc} start
@@ -406,7 +406,7 @@ resume_tasks() {
     fi
 
     # Some extra things to shut down/remove to save power.
-    if [ "$RUNLEVEL" = "4" ]; then 
+    if [ "$RUNLEVEL" = "4" ]; then
         PCMCIA_MODULES="yenta_socket rsrc_nonstatic pcmcia_core"
         modprobe -r -q ${PCMCIA_MODULES} #>/dev/null 2>&1
         /bin/sleep 0.3s
@@ -427,7 +427,7 @@ resume_tasks() {
 
 
 case "$1" in
-    start) 
+    start)
         shift
         pre_suspend "$@"
         ;;

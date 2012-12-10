@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2005-2008 by John P. Weiss
+# Copyright (C) 2005-2008, 2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -25,7 +25,7 @@
 
 
 IFC_NAME=eth1
-LOG=/tmp/wifi-power.log
+LOG=/tmp/logs/wifi-power.log
 
 # Unset this variable if your laptop doesn't use a firmware, or if your laptop
 # doesn't screw up the firmware_class module during suspend/resume.
@@ -152,7 +152,7 @@ load_ifc_module() {
         if [ $? -eq 0 ]; then
             # Give the kernel a breather before continuing.
             sleep 1
-        else 
+        else
             echo "!!! Failed to load module: \"${RELOAD_FIRMWARE_MODULE}\""
             echo "Wifi driver probably won't work."
         fi
@@ -230,10 +230,10 @@ usage() {
 	--ifname
 	    Name of the WiFi network interface to turn on or off.  This
 	    could be the name of the WiFi device's network interface, or it could
-	    be a logical name of a WiFi interface device under a specific 
+	    be a logical name of a WiFi interface device under a specific
 	    network profile.
 
-	By default, this script toggles the state of the WiFi interface.  To 
+	By default, this script toggles the state of the WiFi interface.  To
 	force it to turn on, run:
 	    "touch ${FORCE_WIFI_POWER_ON}"
 	before this script runs.  To force the WiFi interface off, do:
@@ -261,7 +261,7 @@ for pid in `pgrep sync-mode`; do
     if [ $pid -ne $$ ]; then
         kill -15 $pid
     fi
-done 
+done
 
 clearlog='y'
 while [ -n "$1" ]; do
@@ -276,7 +276,7 @@ while [ -n "$1" ]; do
             clearlog=''
             ;;
         *)
-            first_mesg >>$LOG 2>&1 
+            first_mesg >>$LOG 2>&1
             usage | tee -a $LOG
             ;;
     esac
@@ -293,7 +293,7 @@ first_mesg >>$LOG 2>&1
 . $MYPATH/$STATE_SCRIPT
 
 
-# Get the interface device. 
+# Get the interface device.
 ifc_device=`get_actual_ifc_name "${IFC_NAME}"`
 
 

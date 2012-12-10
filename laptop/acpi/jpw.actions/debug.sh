@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2002-2011 by John P. Weiss
+# Copyright (C) 2002-2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -31,7 +31,7 @@
 ############
 
 
-LOGFILE=/tmp/acpi-debug-event.log
+LOGFILE=/tmp/logs/acpi-debug-event.log
 
 
 ############

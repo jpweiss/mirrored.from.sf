@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-2008 by John P. Weiss
+# Copyright (C) 2004-2008, 2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -19,7 +19,7 @@
 
 # Configuration Variable:
 # Only one ... Where to find "rc.suspend"
-# 
+#
 RC_SUSPEND=${RC_SUSPEND:-/etc/rc.d/rc.suspend}
 
 
@@ -41,7 +41,7 @@ L_X_VT=7
 
 L_DEST_CONSVT=8
 
-L_LOG="/tmp/suspend2any.log"
+L_LOG="/tmp/logs/suspend2any.log"
 L_LOCKFILE="/tmp/.suspenders.lock"
 L_RM_LOCKFILE_T=120
 L_FORCE_LOCKFILE_CLEANUP="/tmp/suspenders.force-lock-cleanup"
@@ -113,19 +113,19 @@ on_signal__() {
 
 validate_proc_swap_fmt__() {
     retval=0
-    if [ "$1" != "Filename" ]; 
+    if [ "$1" != "Filename" ];
         then retval=$((retval + 1)); fi
     shift
-    if [ "$1" != "Type" ]; 
+    if [ "$1" != "Type" ];
         then retval=$((retval + 2)); fi
     shift
-    if [ "$1" != "Size" ]; 
+    if [ "$1" != "Size" ];
         then retval=$((retval + 4)); fi
     shift
-    if [ "$1" != "Used" ]; 
+    if [ "$1" != "Used" ];
         then retval=$((retval + 8)); fi
     shift
-    if [ "$1" != "Priority" ]; 
+    if [ "$1" != "Priority" ];
         then retval=$((retval + 16)); fi
     shift
     return $retval
@@ -153,7 +153,7 @@ parse_swap_info__() {
                 mesg="${mesg} /proc/swaps:$nl"
                 mesg="${mesg}          \"${line[@]}\"$nl"
                 mesg="${mesg}          Attempting to proceed normally"
-                mesg="${mesg} (may still fail)." 
+                mesg="${mesg} (may still fail)."
                 echo "${mesg}" >> $L_LOG
             fi
         elif [ "${line[1]}" != "partition" ]; then
@@ -183,7 +183,7 @@ get_swapinfo__() {
 
     # Wrapper function  The real work happens in 'parse_swap_info__' and is
     # stored in global variables.
-    parse_swap_info__ </proc/swaps 
+    parse_swap_info__ </proc/swaps
     RAN_GET_SWAPINFO='y'
 }
 
@@ -193,7 +193,7 @@ enable_swap__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     swappri="$1"
     shift
     swappart="$1"
@@ -217,7 +217,7 @@ disable_swap__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     swappart="$1"
     if [ -n "$pretend" ]; then
         echo ">>> $SWAPOFF \"${swappart}\""
@@ -247,11 +247,11 @@ pmdisk_close_swaps__() {
     # is empty when suspend begins.
     if [ -n "${SUSP_DISK_ENABLED}" ]; then
         disable_swap__ $pretend "${L_SUSP_DISK}" \
-            || { 
+            || {
             SUSP_DISK_ENABLED=''
             print_warning__ \
                 "Suspend will either use a different partition or fail."
-            return 1 
+            return 1
         }
         # Update mem info now that the hibernation partition is out of the
         # way.
@@ -269,12 +269,12 @@ pmdisk_close_swaps__() {
         total_free=$((mem_free + swap_free))
         if [ $swap_free -eq 0 -o -z "${SWAPS_USED[$i]}" ]; then
             continue
-        elif [ $total_free -lt ${SWAPS_USED[$i]} ]; then 
+        elif [ $total_free -lt ${SWAPS_USED[$i]} ]; then
             continue
         fi # else
-        disable_swap__ $pretend "${SWAPS[$i]}" || { 
-            let ++retstat; 
-            continue 
+        disable_swap__ $pretend "${SWAPS[$i]}" || {
+            let ++retstat;
+            continue
         }
         # else
         IDX_DISABLED_SWAPS[$i]=$i
@@ -291,7 +291,7 @@ reenable_swaps__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     if [ -z "$1" -o $1 -ne 0 ]; then
         print_warning__ "Cannot reenable swaps."
     fi
@@ -299,7 +299,7 @@ reenable_swaps__() {
     for i in "${IDX_DISABLED_SWAPS[@]}"; do
         # N.B.:  Leave $pretend unquoted, so that it's not passed as arg[1]
         # when empty.
-        enable_swap__ $pretend ${SWAPS_PRI[$i]} "${SWAPS[$i]}"            
+        enable_swap__ $pretend ${SWAPS_PRI[$i]} "${SWAPS[$i]}"
     done
 }
 
@@ -316,7 +316,7 @@ swsusp_swap_setup__() {
     op_state=0
     if [ -n "${L_PMDISK_SUPPORT}" ]; then
         #PMDisk:  Turn off all swaps but the target swap, if there's enough
-        # room. 
+        # room.
         action_shfn__ "Disabling all (nonfull) swaps" \
             pmdisk_close_swaps__ $pretend \
             || op_state=2
@@ -370,7 +370,7 @@ swsusp_restore_swaps__() {
         bg_action_shfn__ "Restore swaps to original state:" \
             reenable_swaps__ $pretend $swap_close_status
         restat=$?
-        if [ $retstat -eq 0 -a $close_suspdisk_on_wake -eq 0 ]; then 
+        if [ $retstat -eq 0 -a $close_suspdisk_on_wake -eq 0 ]; then
             # Old restore_suspdisk__():
             bg_action_shfn__ "Clean up suspend partition:" \
                 disable_swap__ $pretend ${L_SUSP_DISK}
@@ -379,11 +379,11 @@ swsusp_restore_swaps__() {
                 bg_action_shfn__ "Restore original suspend partition state:" \
                     enable_swap__ $pretend \
                     ${SUSP_DISK_OLDPRIORITY} "${L_SUSP_DISK}"
-                retstat=$?                
+                retstat=$?
             fi
         fi
 
-    else 
+    else
 
         # SWSusp Support:  Just close the hibernation partition if it wasn't
         # originally enabled.
@@ -474,7 +474,7 @@ read_fn_output__() {
     # pipes create subshells, which hoses the variables created by 'read'.
     # - 'export' and 'local' don't work.
     # - Calling 'read' from within a fn. to which you pipe the output doesn't
-    #   work. 
+    #   work.
     # This leaves you with using global variables, or the 'eval'-trickery we
     # perform here.
     output_vars=""
@@ -554,7 +554,7 @@ remove_module__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     module="$1"
     shift
 
@@ -572,7 +572,7 @@ remove_modules_noresume__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
 
     retstat=0
     for m in $L_MODULES_REMOVEONLY; do
@@ -593,14 +593,14 @@ disable_modules__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     retstat=0
     for m in $L_MODULES; do
         remove_module__ $pretend $m
         if [ $? -eq 0 ]; then
             # Re-enable in reverse order.
             DISABLED_MODULES="$m ${DISABLED_MODULES}"
-        else 
+        else
             let ++retstat
         fi
     done
@@ -615,7 +615,7 @@ reenable_modules__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
     retstat=0
     for m in $DISABLED_MODULES; do
         action_shfn__ "Reinstalling module: \"$m\"" \
@@ -691,14 +691,14 @@ umount_removable_devices__() {
     if [ "$1" = "-n" ]; then
         pretend="$1"
         shift
-    fi 
+    fi
 
     retstat=0
     for f in $L_REMOVABLE_DEVS; do
         # Although umount_device__() also performs this check, we do it here
         # for the sake of cosmetic niceness.  Don't want error messages saying
         # a nonexistent device failed to umount.
-        # 
+        #
         # Besides, we could end up with $f containing wildcards or naming
         # a plain file.  Those are both valid situations, not error
         # conditions.
@@ -782,7 +782,7 @@ maybe_changeconsole__() {
         # - Using  /dev/tty${L_DEST_CONSVT} is equivalent to using
         #   /dev/console.  We could use either.
         # - The "2>&1" in the exec below ensures that STDERR is also
-        #   redirected. 
+        #   redirected.
         set -C
         exec >/dev/console 2>&1
         set +C
@@ -920,7 +920,7 @@ action_shfn__() {
     mesg="$1"; shift
     echo -n "$mesg"
     cmd="$1"; shift
-    if [ -z "$cmd" ]; then 
+    if [ -z "$cmd" ]; then
         return 1
     fi
     ##DBG##echo "!!!DBG!!! cmd==\"$cmd\" args=\"$@\"" >>$SILENT
@@ -943,7 +943,7 @@ action_shfn__() {
 bg_action_shfn__() {
     mesg="$1"; shift
     cmd="$1"; shift
-    if [ -z "$cmd" ]; then 
+    if [ -z "$cmd" ]; then
         return 1
     fi
     ##DBG##echo "!!!DBG!!! cmd==\"$cmd\" args=\"$@\"" >>$SILENT
@@ -951,7 +951,7 @@ bg_action_shfn__() {
     rc=$?
     # Lump all console output statements together.  We want to avoid any
     # delays in which another process may print something, messing up our
-    # pretty status message.  ;) 
+    # pretty status message.  ;)
     if [ $rc -eq 0 ]; then
         echo -n " -- $mesg"; echo_success
         echo "  - $mesg" >> $L_LOG
@@ -1011,7 +1011,7 @@ do_unit_tests_basic() {
     echo ""
 
     # 'pmdisk_close_swaps__' calls 'get_swapinfo__'; keep next line for future
-    # use 
+    # use
     echo "Testing \"pmdisk_close_swaps__():\""
     #get_swapinfo__
     pmdisk_close_swaps__ -n
@@ -1138,10 +1138,10 @@ else
         echo "$*	[WARNING]"
         echo "WARNING:  $*" >> $L_LOG
     }
-    echo_success() { 
+    echo_success() {
         echo -n "		[OK]"
     }
-    echo_failure() { 
+    echo_failure() {
         echo -n "		[FAILED]"
     }
 fi
@@ -1175,7 +1175,7 @@ is_running_xscreensaver=$?
 pre_suspend $was_in_x $how
 sleep 1
 
-# N.B.: No need to specify the "pmdisk" kernel option if you suspended to the 
+# N.B.: No need to specify the "pmdisk" kernel option if you suspended to the
 # default pmdisk partition.
 suspend_system__ $how
 

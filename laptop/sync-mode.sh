@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-2009 by John P. Weiss
+# Copyright (C) 2004-2009, 2012 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -46,7 +46,7 @@ NET_PROFILE_NAME=vslannet
 # to deliver its queued mail.
 MAIL_PROFILE_NAME=vslannet
 
-LOG=/tmp/sync-mode.log
+LOG=/tmp/logs/sync-mode.log
 
 # How old the logfile should be in order to trigger an NTP-sync.
 # In units of days.
@@ -108,7 +108,7 @@ check_logfile_age() {
             rm -f ${LOG}--datecheck >/dev/null 2>&1
         else
             # Don't force the trigger in the event of any sort of error.
-            return $retstat            
+            return $retstat
         fi
 
     else
@@ -197,7 +197,7 @@ netoff() {
 
 
 neton() {
-    # Initial quickcheck 
+    # Initial quickcheck
     if `ifc_unavailable 10 3`; then
         sleep 5
         /sbin/ifup ${IFC_NAME}
@@ -399,7 +399,7 @@ for pid in `pgrep sync-mode`; do
     if [ $pid -ne $$ ]; then
         kill -15 $pid
     fi
-done 
+done
 
 # Next, check how old $LOG is before anything starts writing to it.
 check_logfile_age
@@ -462,10 +462,10 @@ if [ -n "$start" ]; then
         rm -f $LOG >/dev/null 2>&1
     fi
 
-    first_mesg "Starting" >>$LOG 2>&1 
+    first_mesg "Starting" >>$LOG 2>&1
     start_tasks $resume >>$LOG 2>&1
 elif [ -n "$stop" ]; then
-    first_mesg "Stopping" >>$LOG 2>&1 
+    first_mesg "Stopping" >>$LOG 2>&1
     stop_tasks >>$LOG 2>&1
 else
     (cat - <<-EOF
@@ -479,7 +479,7 @@ else
 	--ifname
 	    Name of the network interface to activate/deactivate.  This
 	    could be the name of the network interface device, or it could
-	    be a logical name of an interface device under a specific 
+	    be a logical name of an interface device under a specific
 	    network profile.  See the "--profile" option for more info.
 	-H
 	-n
@@ -489,11 +489,11 @@ else
 	    the interface has come up.
 	-c
 	--ping_count
-	    How many times to ping the target network before deciding that 
+	    How many times to ping the target network before deciding that
 	    it's not active.
 	-t
 	--ping_timeout
-	    How long (in seconds) to ping the target network before deciding 
+	    How long (in seconds) to ping the target network before deciding
 	    that it's not active.
 	-p
 	--profile

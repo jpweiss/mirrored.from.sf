@@ -37,7 +37,7 @@ test -f /usr/share/acpi-support/state-funcs || exit 0
 . /usr/share/acpi-support/state-funcs
 
 . /etc/LocalSys/init.d/functions-laptop
-LOGFILE=/tmp/bluetooth-acpi.log
+LOGFILE=/tmp/logs/bluetooth-acpi.log
 
 
 ############
@@ -211,13 +211,13 @@ toggleBluetooth()
     #
     # org.blueman.Applet / org.blueman.Applet.GetBluetoothStatus
     # org.blueman.Applet / org.blueman.Applet.SetBluetoothStatus {true|false}
-    # 
+    #
     # org.kde.BlueDevil.Service /Service org.kde.BlueDevil.Service.isRunning
     # org.kde.BlueDevil.Service /Service org.kde.BlueDevil.Service.launchServer
     # org.kde.BlueDevil.Service /Service org.kde.BlueDevil.Service.stopServer
     #    'launchServer' and 'stopServer' don't seem to start any processes.
     #    They change the return value of 'isRunning' ... but not much else.
-    # org.kde.BlueDevil.Service /MainApplication 
+    # org.kde.BlueDevil.Service /MainApplication
     #    This contains a variety of KDE-specific and QT-specific methods &
     #    properties.  None look all that useful, and I suspect that
     #    'org.kde.BlueDevil.Service' is not the trayapp.
@@ -226,7 +226,7 @@ toggleBluetooth()
     #    Also contains KDE- and QT-specific methods & properties, but nothing
     #    related to turning bluetooth on/off.
     #    However, 'bluedevil-monolithic' *is* the systray-app.
-    # 
+    #
 }
 
 
