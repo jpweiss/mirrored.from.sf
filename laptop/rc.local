@@ -66,7 +66,7 @@ powersaveCommon()
     unset laststat
 
     # Recommended by PowerTOP:
-    sys_cpufreq=/sys/devices/system/cpu/cpu0/cpufreq/ondemand
+    sys_cpufreq=/sys/devices/system/cpu/cpu0/cpufreq
     set_sysfs ondemand $sys_cpufreq/scaling_governor
     c0fod=${sys_cpufreq}/ondemand
     if [ -e $c0fod/sampling_rate_max -a -e $c0fod/sampling_rate ]; then
@@ -85,7 +85,7 @@ powersaveCommon()
             cpu_lim=$sys_cpufreq/cpuinfo_$flim
             gov_lim=$sys_cpufreq/scaling_$flim
             if [ -e $cpu_lim -a $gov_lim ]; then
-                cat $cpu_lim > $gov_lim 
+                cat $cpu_lim > $gov_lim
             fi
         done
     fi
@@ -116,13 +116,13 @@ otherPowersaveStuff()
 
     set_sysfs 1500 /proc/sys/vm/dirty_writeback_centisecs
 
-    # These sysctl's are only available if you have an AHCI compatible SATA 
+    # These sysctl's are only available if you have an AHCI compatible SATA
     # controler.
     for scf in /sys/class/scsi_host/host*/link_power_management_policy; do
         set_sysfs 'min_power' $scf
     done
 
-    # Find some way to perform this via the Fn-buttons.  It supposedly saves 
+    # Find some way to perform this via the Fn-buttons.  It supposedly saves
     # battery power.
     ##echo crt_disable > /proc/acpi/ibm/video
 }
@@ -147,11 +147,11 @@ powersaveTasks()
     unset modlist
 
     # Disable the WiFi adapter.
-    log_begin_msg "| Disabling WiFi antenna to save power : "
+#    log_begin_msg "| Disabling WiFi antenna to save power : "
     #touch /tmp/force-wifi-off
     #/etc/acpi/actions/wifiPower.sh
-    disableAllWireless
-    log_end_msg $?
+#    disableAllWireless
+#    log_end_msg $?
 
     # Use as little disk as possible in powersave mode
     for kernelArg in `cat /proc/cmdline`; do

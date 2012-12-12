@@ -5,7 +5,7 @@
 # Blank lines and lines beginning with a '#' are ignored.  Every other
 # line should be the name of one or more modules, separated by a space.
 #
-# Copyright (C) 2011 by John P. Weiss under the Artistic License
+# Copyright (C) 2011-2012 by John P. Weiss under the Artistic License
 #
 # RCS $Id$
 ############
@@ -16,6 +16,8 @@ vfat fat nls_cp437 nls_iso8859_1
 
 # VirtualBox
 vboxnetadp vboxnetflt vboxdrv
+
+## WARNING:  *Never* remove 'psmouse'.  It's required.
 
 # No joysticks here...
 joydev
@@ -32,7 +34,8 @@ serio_raw
 
 # The tilt/hd sensor and hardware sensor modules (which don't work w/a
 # ThinkPad).
-tpm_atmel tpm tpm_bios tpm_infineon hdaps 
+##tpm_atmel tpm tpm_bios tpm_infineon hdaps
+tpm_atmel tpm_infineon hdaps
 iTCO_wdt iTCO_vendor_support
 i2c_i801
 
@@ -40,15 +43,21 @@ i2c_i801
 snd-intel8x0m
 
 # Don't need the ethernet port driver when I'm mobile.
-eth1000
+e1000
 
 # Why the heck does KUbuntu load bridging modules?!?
-bridge stp 
+bridge stp
 
 # I'm not using any pcmcia cards these days.
 pcmcia yenta_socket rsrc_nonstatic pcmcia_rsrc pcmcia_core
 
 # Disable Bluetooth while on the move, too.
 # Note:  Bluetooth support loads the 'bridge' and 'stp' modules.
-bnep hidp input_polldev
+bnep hidp input_polldev rfcomm bluetooth
+##bnep hidp input_polldev
 
+# What the heck are these?
+#microcode
+#dm_multipath
+#mac_hid
+#uas
