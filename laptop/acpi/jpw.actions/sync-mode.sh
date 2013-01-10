@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2004-2009, 2012 by John P. Weiss
+# Copyright (C) 2004-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -24,7 +24,7 @@
 ############
 
 
-IFC_NAME=eth0_home
+IFC_NAME=eth0
 IFC_HOSTNAME=mloe
 REMOTE_HOSTNAME=uqbar
 PING_TIMEOUT=10
