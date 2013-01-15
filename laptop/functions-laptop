@@ -1,6 +1,6 @@
 # -*- shell-script -*-
 #
-# Copyright (C) 2005-2012 by John P. Weiss under the Artistic License
+# Copyright (C) 2005-2013 by John P. Weiss under the Artistic License
 #
 # RCS $Id$
 ############
@@ -76,7 +76,7 @@ disableAllWireless()
                     # We have a way of controlling the device, lets try
                     if [ "`cat $CONTROL`" = 0 ] ; then
                         # It's powered on. Switch it off.
-                        if echo -n $OFF > $CONTROL; then 
+                        if echo -n $OFF > $CONTROL; then
                             break
                         elif [ "$OFF" = 2 ]; then
                             # Both "echo" commands failed.  Return error
@@ -189,13 +189,26 @@ allBluetoothAdaptersOn()
 
 toggleAllBluetoothAdapters()
 {
+    local startCtrl stopCtrl
+    startCtrl="$1"
+    if [ -n "$2" ]; then
+        shift
+    fi
+    stopCtrl="$1"
+
     if isBluetoothOff; then
         echo "Bluetooth currently turned off; reenabling..."
         allBluetoothAdaptersOn
+        if [ "$startCtrl" = "restartServer" ]; then
+            service bluetooth restart
+        elif [ "$startCtrl" = "serverHardRestart" ]; then
+            service bluetooth stop
+            service bluetooth start
+        fi
     else
         echo "Disabling Bluetooth..."
         allBluetoothAdaptersOff
-        if [ "$1" = "killBluetooth" ]; then
+        if [ "$stopCtrl" = "killBluetooth" ]; then
             killBluetooth
         fi
     fi

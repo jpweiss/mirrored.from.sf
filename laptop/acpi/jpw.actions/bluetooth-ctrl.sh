@@ -2,7 +2,7 @@
 #
 # Control bluetooth services and devices from ACPI.
 #
-# Copyright (C) 2012 by John P. Weiss
+# Copyright (C) 2012-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -49,7 +49,7 @@ LOGFILE=/tmp/logs/bluetooth-acpi.log
 
 bluetoothServerIsRunning()
 {
-    service bluetooth status 2>&1 | grep -qi 'is running'
+    service bluetooth status 2>&1 | grep -qi '\(is \|start/\)running'
 }
 
 
@@ -193,7 +193,7 @@ toggleBluetooth()
 {
     # FIXME:  Stop the server?  Hit DBUS with some sort of "disable/enable"
     # message?
-    toggleAllBluetoothAdapters
+    toggleAllBluetoothAdapters serverHardRestart
     # Use this to nuke all of the tray apps, the server, and remove the
     # modules.
     #toggleAllBluetoothAdapters "killBluetooth"
