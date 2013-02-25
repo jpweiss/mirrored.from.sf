@@ -1,9 +1,5 @@
-# /etc/acpi/events/ibmwireless
-# This is called when the user presses the wireless button and calls
-# /etc/acpi/wireless.sh for further processing.
-
-# [jpw] This file will override the default 'ibm-wireless' file, given its
-#       name, lexically.
+# ThinkPad X40 ACPI Event: Use Fn+F6 to enable/disable a (any/all)
+# bluetooth adapter(s).
 
 event=ibm/hotkey HKEY 00000080 00001006
 action=/etc/acpi/jpw.actions/bluetooth-ctrl.sh

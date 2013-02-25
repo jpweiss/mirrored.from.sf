@@ -8,46 +8,46 @@ translateKeycode()
 
     case "${acpiKey##0000}" in
         1001)
-            echo $KEY_F13
+            echo "$KEY_F13 (F13)"
             ;;
         1002)
-            echo $KEY_F14
+            echo "$KEY_F14 (F14)"
             ;;
         1003)
-            echo $KEY_COFFEE
+            echo "$KEY_LOCK (LOCK)"
             ;;
         1004)
-            echo $KEY_SLEEP
+            echo "$KEY_SLEEP (SLEEP)"
             ;;
         1005)
-            echo $KEY_CONNECT
+            echo "$KEY_CONNECT (CONNECT)"
             ;;
         1006)
-            echo $KEY_F15
+            echo "$KEY_F15 (F15)"
             ;;
         1007)
-            echo $KEY_VIDEOMODECYCLE
+            echo "$KEY_VIDEOMODECYCLE (VIDEOMODECYCLE)"
             ;;
         1008)
-            echo $KEY_F16
+            echo "$KEY_F16 (F16)"
             ;;
         1009)
-            echo $KEY_F24
+            echo "$KEY_F24 (F24)"
             ;;
         100[aA])
-            echo $KEY_F17
+            echo "$KEY_F17 (F17)"
             ;;
         100[bB])
-            echo $KEY_F18
+            echo "$KEY_F18 (F18)"
             ;;
         100[cC])
-            echo $KEY_SUSPEND
+            echo "$KEY_SUSPEND (SUSPEND)"
             ;;
         1014)
-            echo $KEY_PROG1
+            echo "$KEY_PROG1 (PROG1)"
             ;;
         1018)
-            echo $KEY_SETUP
+            echo "$KEY_SETUP (SETUP)"
             ;;
         *)
             return 1

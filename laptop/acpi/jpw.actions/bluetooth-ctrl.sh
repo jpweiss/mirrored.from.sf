@@ -265,6 +265,7 @@ if hasBluetoothAdapter; then
         doFullStart >>$LOGFILE 2>&1
     fi
 else
+    echo "No Bluetooth adapter found." >>$LOGFILE
     removeStaleBluetooth >>$LOGFILE 2>&1
 fi
 

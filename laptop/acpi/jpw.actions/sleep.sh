@@ -1,5 +1,4 @@
 #!/bin/bash
-# TODO:  Change above to /bin/sh
 
 # This script HANDLES the sleep button (does not TRANSLATE it). It is part
 # of the *suspend* side of acpi-support, not the special keys translation
@@ -27,6 +26,11 @@ test -f /usr/share/acpi-support/key-constants || exit 0
 #fi
 
 
-date > /tmp/last-suspend-attempt
+if [ ! -d /tmp/logs ]; then
+    mkdir /tmp/logs
+    chown root.users /tmp/logs
+    chmod ug+rw,+t /tmp/logs
+fi
+date > /tmp/logs/last-suspend-attempt
 
 pm-suspend
