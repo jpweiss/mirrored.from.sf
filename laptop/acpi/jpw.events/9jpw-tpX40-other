@@ -1,5 +1,8 @@
 # ThinkPad X40 ACPI Event: Trap all other Fn+F* combinations and log.
 
-event=ibm/hotkey HKEY 00000080 .*
+# [jpw] For some reason, including a '[^1]...' alternative captures
+#       everything.
+#event=ibm/hotkey.* 0000(100[^134568ac]|101[^01567]|10[^01].|1[^0]..|[^1]...)
+event=ibm/hotkey.* 0000(100[^134568ac]|101[^01567]|10[^01].|1[^0]..)
 action=/etc/acpi/jpw.actions/fakekey.sh %e
 

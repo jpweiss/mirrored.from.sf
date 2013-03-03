@@ -71,8 +71,6 @@ fi
 
 set -- $*
 
-echo "DBG(fakekey):  $@" >>$LOGFILE
-
 eventType="$1"
 keycode="$4"
 
@@ -83,3 +81,5 @@ if [ $? -eq 0 ]; then
 else
     echo "fakekey:  Cannot forward:  $keycode" >>$LOGFILE
 fi
+echo "fakekey:      orig_event=='$@'" >>$LOGFILE
+

@@ -49,18 +49,6 @@ fi
 ############
 
 
-reset_brightness()
-{
-    set -- $(grep '^level:' $BRIGHTNESS_CTRL)
-    local cur_lvl="$2"
-
-    # We can't just feed the current level back in.  The kernel ignores it.
-    # So, we need to set it to something else, first.
-    echo "level 0" >$BRIGHTNESS_CTRL
-    echo "level $cur_lvl" >$BRIGHTNESS_CTRL
-}
-
-
 cpufreq_set_powersave()
 {
     echo "powersave" >>${SYS_CPUFREQ}/scaling_governor
@@ -116,6 +104,7 @@ test -f /usr/share/acpi-support/state-funcs || exit 0
 
 [ -x /etc/acpi/local/lid.sh.pre ] && /etc/acpi/local/lid.sh.pre
 
+# DBG:  Comment out when not in use.
 ##echo "Running $0" >>/tmp/logs/acpi-debug-event.log
 grep -q closed /proc/acpi/button/lid/*/state
 if [ $? = 0 ]; then

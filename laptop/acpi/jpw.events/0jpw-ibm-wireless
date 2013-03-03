@@ -8,6 +8,6 @@
 #
 #       ThinkPad X40 ACPI Event: Use Fn+F5 to toggle WiFi (only).
 
-event=ibm/hotkey HKEY 00000080 00001005
+event=ibm/hotkey.* 00001005
 action=/etc/acpi/jpw.actions/ibm-wireless.sh
 

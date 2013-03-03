@@ -52,6 +52,18 @@ fi
 ############
 
 
+reset_brightness()
+{
+    set -- $(grep '^level:' $BRIGHTNESS_CTRL)
+    local cur_lvl="$2"
+
+    # We can't just feed the current level back in.  The kernel ignores it.
+    # So, we need to set it to something else, first.
+    echo "level 0" >$BRIGHTNESS_CTRL
+    echo "level $cur_lvl" >$BRIGHTNESS_CTRL
+}
+
+
 toggle_blank_via_xset()
 {
     if [ -n "$*" ]; then
@@ -61,8 +73,7 @@ toggle_blank_via_xset()
             "xset s blank" \
             "xset s on"
 
-        # FIXME:  Add something to reset the brightness to whatever is in the
-        # ROM.
+        reset_brightness
     fi
 }
 
@@ -184,6 +195,7 @@ if [ -n "$file_was_sourced" ]; then
 else
     # Was run as a script.  Blank the screen using one of the functions.
 
+    # DBG:  Comment out when not in use.
     ##echo "Running $0" >>/tmp/logs/acpi-debug-event.log
     ctrl_screenblank "on"
 fi

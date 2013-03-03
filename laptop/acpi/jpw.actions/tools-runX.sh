@@ -66,7 +66,8 @@ wrapper__runX()
     fi
 
     for cmd in "$@"; do
-        echo "wrapper__runX:  su $xuser -c \"$cmd\"" >>$DBGLOG
+        # DBG:  Comment out when not in use.
+        #echo "wrapper__runX:  su $xuser -c \"$cmd\"" >>$DBGLOG
         su $xuser -c "$cmd"
     done
 }
@@ -83,7 +84,8 @@ runXCmd()
         shift
         cmd_fn="$1"
         shift
-        echo "runXCmd:  \"$cmd_fn $@\"" >>$DBGLOG
+        # DBG:  Comment out when not in use.
+        #echo "runXCmd:  \"$cmd_fn $@\"" >>$DBGLOG
         $cmd_fn  "$DISPLAY" "$user" "$XAUTHORITY" "$@"
     else
         wrapper__runX "$DISPLAY" "$user" "$XAUTHORITY" "$@"
@@ -104,7 +106,8 @@ runXCmd_allXServers()
             shift
             cmd_fn="$1"
             shift
-            echo "runXCmd_allXServers:  \"$cmd_fn $@\"" >>$DBGLOG
+            # DBG:  Comment out when not in use.
+            #echo "runXCmd_allXServers:  \"$cmd_fn $@\"" >>$DBGLOG
             $cmd_fn  ":$displaynum" "$user" "$XAUTHORITY" "$@"
         else
             wrapper__runX ":$displaynum" "$user" "$XAUTHORITY" "$@"

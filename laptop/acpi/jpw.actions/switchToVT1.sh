@@ -51,7 +51,8 @@ myPath=`dirname $0`
 ############
 
 
-echo "Running $0" >>/tmp/logs/acpi-debug-event.log
+# DBG:  Comment out when not in use.
+##echo "Running $0" >>/tmp/logs/acpi-debug-event.log
 toggle_vt "y"
 
 
