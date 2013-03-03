@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2009 by John P. Weiss
+# Copyright (C) 2009-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -32,7 +32,9 @@
 
 
 myPath=`dirname $0`
-resetScreen="${myPath}/tpX40_ResetDisplay.sh"
+
+
+. $myPath/screenblanker.sh
 
 
 ############
@@ -49,10 +51,8 @@ resetScreen="${myPath}/tpX40_ResetDisplay.sh"
 ############
 
 
-/usr/bin/chvt 1
-if [ -x $resetScreen ]; then
-   $resetScreen
-fi
+echo "Running $0" >>/tmp/logs/acpi-debug-event.log
+toggle_vt "y"
 
 
 #################

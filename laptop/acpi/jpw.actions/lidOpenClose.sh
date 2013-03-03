@@ -24,24 +24,22 @@
 ############
 
 
-if [ ! -f /etc/acpi/jpw.actions/tools-runX.sh ]; then
-    echo "$0 FAILED!  Could not find /etc/acpi/jpw.actions/tools-runX.sh" \
-        >>/tmp/logs/acpi-errors.log
-    exit 1
-fi
-. /etc/acpi/jpw.actions/tools-runX.sh
+myPath=`dirname $0`
 
 
-if type -t getXuser; then
+BRIGHTNESS_CTRL=/proc/acpi/ibm/brightness
+SYS_CPUFREQ=/sys/devices/system/cpu/cpu0/cpufreq/
+
+
+. $myPath/screenblanker.sh
+. /usr/share/acpi-support/policy-funcs
+. /etc/default/acpi-support
+
+if type -t getState >/dev/null; then
     :
 else
     . /usr/share/acpi-support/power-funcs
 fi
-. /usr/share/acpi-support/policy-funcs
-. /etc/default/acpi-support
-
-
-LASTCONSOLE_FILE=/var/local/lidClose-lastConsole
 
 
 ############
@@ -51,91 +49,57 @@ LASTCONSOLE_FILE=/var/local/lidClose-lastConsole
 ############
 
 
-toggle_screenblank()
+reset_brightness()
 {
-    if [ -n "$*" ]; then
-        runXCmd_allXServers "xset s activate"
-    else
-        runXCmd_allXServers "xset s reset" \
-             "xset s blank" \
-             "xset s on"
+    set -- $(grep '^level:' $BRIGHTNESS_CTRL)
+    local cur_lvl="$2"
 
-        # FIXME:  Add something to reset the brightness to whatever is in the
-        # ROM.
-    fi
+    # We can't just feed the current level back in.  The kernel ignores it.
+    # So, we need to set it to something else, first.
+    echo "level 0" >$BRIGHTNESS_CTRL
+    echo "level $cur_lvl" >$BRIGHTNESS_CTRL
 }
 
 
-toggle_vbe_dpms()
+cpufreq_set_powersave()
 {
-    if [ -n "$*" ]; then
-        touch /tmp/logs/running-vbetool_dpms_off
-        vbetool dpms off
-    else
-        touch /tmp/logs/running-vbetool_dpms_on
-        vbetool dpms on
-    fi
+    echo "powersave" >>${SYS_CPUFREQ}/scaling_governor
 }
 
 
-reenable_vt()
+cpufreq_set_autoAdjusting()
 {
-    DISPLAY="$1"
-    shift
-    local user="$1"
-    shift
-    XAUTHORITY="$1"
-    shift
-    is_off_line="$1"
-    shift
+    local governor="ondemand"
+    local powersrc=$(getState)
 
-    export DISPLAY
-    export XAUTHORITY
+    if [ "${powersrc}" = "BATTERY" ]; then
+        governor="conservative"
+    fi
+    echo "${governor}" >>${SYS_CPUFREQ}/scaling_governor
 
-    if [ -z "$user" ]; then
-        return 1
+    local min max
+    min=$(< ${SYS_CPUFREQ}/scaling_min_freq)
+    max=$(< ${SYS_CPUFREQ}/scaling_max_freq)
+
+    if [ "$min" != "$max" ]; then
+        cat ${SYS_CPUFREQ}/cpuinfo_min_freq >>${SYS_CPUFREQ}/scaling_min_freq
+        cat ${SYS_CPUFREQ}/cpuinfo_max_freq >>${SYS_CPUFREQ}/scaling_max_freq
     fi
 
-    pidof xscreensaver >/dev/null && xscreensaver_running=y
-
-    # 'is_off_line' set from the exitval of
-    # `grep -q off-line /proc/acpi/ac_adapter/*/state`
-    if [ "$is_off_line" = "1" ]; then
-        if [ -n "$xscreensaver_running" ]; then
-            su $user -c "xscreensaver-command -unthrottle"
+    if [ -d ${SYS_CPUFREQ}/ondemand ]; then
+        if [ -w ${SYS_CPUFREQ}/ondemand/up_threshold ]; then
+            echo $ONDEMAND_UP_THRESH >>${SYS_CPUFREQ}/ondemand/up_threshold
         fi
     fi
-
-    if [ -n "$xscreensaver_running" ]; then
-        su $user -c "xscreensaver-command -deactivate"
-    fi
-
-    su $user -c "xset dpms force on"
 }
 
 
-toggle_vt()
+toggle_low_power()
 {
     if [ -n "$*" ]; then
-
-        fgconsole >$LASTCONSOLE_FILE
-        chvt 1
-
-        runXCmd_allXServers "xset dpms force off"
-
+        cpufreq_set_powersave
     else
-
-        lastConsole=7
-        if [ -r $LASTCONSOLE_FILE ]; then
-            lastConsole=`cat $LASTCONSOLE_FILE`
-        fi
-        chvt $lastConsole
-        if [ `CheckPolicy` = 0 ]; then exit; fi
-
-        grep -q off-line /proc/acpi/ac_adapter/*/state
-        is_off_line="$?"
-        runXCmd_allXServers -f reenable_vt $is_off_line
-
+        cpufreq_set_autoAdjusting
     fi
 }
 
@@ -152,19 +116,17 @@ test -f /usr/share/acpi-support/state-funcs || exit 0
 
 [ -x /etc/acpi/local/lid.sh.pre ] && /etc/acpi/local/lid.sh.pre
 
+##echo "Running $0" >>/tmp/logs/acpi-debug-event.log
 grep -q closed /proc/acpi/button/lid/*/state
 if [ $? = 0 ]; then
-    :
-    #toggle_vt "closed"
-    #toggle_vbe_dpms "closed"
-    #toggle_dpms "closed"
-    toggle_screenblank "closed"
+    ctrl_screenblank "closed"
+    toggle_low_power "closed"
 else
-    :
-    #toggle_vt
-    #toggle_vbe_dpms
-    #toggle_dpms
-    toggle_screenblank
+    toggle_low_power
+    sleep 1
+    ctrl_screenblank
+    sleep 1
+    reset_brightness
 fi
 
 [ -x /etc/acpi/local/lid.sh.post ] && /etc/acpi/local/lid.sh.post
