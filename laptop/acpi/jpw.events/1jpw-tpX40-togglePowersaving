@@ -1,0 +1,5 @@
+# ThinkPad X40 ACPI Event: Use Fn+F10 to perform various powersaving tasks.
+
+event=ibm/hotkey.* 0000100a
+action=/etc/acpi/jpw.actions/enablePowersaving.sh %e
+
