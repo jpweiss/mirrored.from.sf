@@ -24,6 +24,9 @@
 ############
 
 
+KEEP_MODULES="bluetooth bnep hidp input_polldev rfcomm"
+
+
 ############
 #
 # Includes & Other Global Variables
@@ -31,9 +34,14 @@
 ############
 
 
-#. some.include.sh
-LOGFILE=/tmp/logs/swapOnOff-acpi.log
-SWAPINFO=/proc/swaps
+LOGFILE=/tmp/logs/enablePowersaving.log
+
+POWERSAVE_FNS=""
+if [ -e /etc/rc.local ]; then
+    POWERSAVE_FNS="/etc/rc.local"
+elif [ -e /etc/LocalSys/init.d/rc.local ]; then
+    POWERSAVE_FNS="/etc/LocalSys/init.d/rc.local"
+fi
 
 
 ############
@@ -43,65 +51,38 @@ SWAPINFO=/proc/swaps
 ############
 
 
-get_n_swaps()
+get_powersave_modules()
 {
-    local n=0
-    set -- $(< $SWAPINFO)
-
-    local fn t sz u pri
-    while [ -n "$1" ]; do
-        fn="$1"
-        shift
-        t="$1"
-        shift
-        sz="$1"
-        shift
-        u="$1"
-        shift
-        pri="$1"
-        shift
-
-        case "$t" in
-            Type)
-                :
-                ;;
-            *)
-                let ++n
-                ;;
-        esac
-    done
-
-    echo "$n"
+    if [ -e /etc/LocalSys/init.d/rc.powersave-modules ]; then
+        grep -v -e '^$' -e '^#.*' \
+            /etc/LocalSys/init.d/rc.powersave-modules |\
+            grep -v -e "${KEEP_MODULES// /\\|}"
+    fi
 }
 
 
-toggle_swap()
+save_power()
 {
-    local triggeringEvent="$*"
+    . /etc/LocalSys/init.d/functions-laptop
+    if [ -n "$POWERSAVE_FNS" ]; then
+        . $POWERSAVE_FNS
 
-    local force=""
-    case "$triggeringEvent" in
-        *100[eE]|[oO][nN])
-            # Fn+Insert
-            force="on"
-            ;;
-        *100[fF])
-            # Fn+Delete
-            force=""
-            #force="off"
-            ;;
-        [oO][fF][fF])
-            force="off"
-            ;;
-    esac
+        POWERSAVE="y"
+        MUTE="y"
+        export POWERSAVE MUTE
 
-    local nSwaps=$(get_n_swaps)
-    if [ $nSwaps -gt 0 -a "$force" != "on" ]; then
-        echo "Swap space on.  Disabling..."
-        swapoff -a
-    elif [ $nSwaps -lt 1 -a "$force" != "off" ]; then
-        echo "No swap memory.  Enabling..."
-        swapon -a
+        powersaveCommon
+        otherPowersaveStuff
+    fi
+
+    if [ -x /etc/acpi/jpw.actions/swapOnOff.sh ]; then
+        /etc/acpi/jpw.actions/swapOnOff.sh off
+    fi
+
+    # Remove defunct and/or unused modules.
+    modlist=`get_powersave_modules`
+    if [ -n "$modlist" ]; then
+        rmmodsAll $modlist
     fi
 }
 
@@ -139,7 +120,7 @@ else
     echo "" >>$LOGFILE
     chmod a+r $LOGFILE
 
-    toggle_swap "$@" >>$LOGFILE 2>&1
+    save_power "$@" >>$LOGFILE 2>&1
 fi
 
 

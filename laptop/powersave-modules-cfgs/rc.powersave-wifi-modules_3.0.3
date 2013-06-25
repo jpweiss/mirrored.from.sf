@@ -1,0 +1,36 @@
+# -*- shell-script -*-
+#
+# List of modules to be removed to save power.
+#
+# Blank lines and lines beginning with a '#' are ignored.  Every other
+# line should be the name of one or more modules, separated by a space.
+#
+# Copyright (C) 2011 by John P. Weiss under the Artistic License
+#
+# RCS $Id: rc.powersave-wifi-modules 2153 2011-05-16 04:05:20Z candide $
+############
+
+
+# Turn off wifi to save power
+# [2011/05] Note:  Don't remove 'libipw' or 'lib80211', since doing that 
+#           seems to cause the v2.6.35 kernel headaches.
+##ipw2200 libipw lib80211
+
+# [2011/05] Removing these two seems to cause the v2.6.38 kernel to get
+#           confused and think that it no longer has any encryption.
+##lib80211_crypt_ccmp lib80211_crypt_tkip lib80211_crypt_wep
+
+# Prune the cryptographic modules used by the wifi.
+# [jpw; 2011/05] No, leave them.  I'm having trouble connecting due
+#                to an invalid password, and it's a crypto-level failure.
+
+##aes_i586 aes_generic michael_mic arc4 cryptd
+
+# [jpw; 2012/02] Cryptographic modules not loaded by the 3.0.3 kernel when
+#                not booted in powersave mode.
+deflate zlib_deflate 
+twofish_generic twofish_i586 twofish_common
+ctr camellia serpent blowfish cast5 des_generic xcbc rmd160 
+sha512_generic  sha256_generic sha1_generic
+crypto_null af_key
+

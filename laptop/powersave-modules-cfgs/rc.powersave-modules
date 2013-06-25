@@ -5,7 +5,7 @@
 # Blank lines and lines beginning with a '#' are ignored.  Every other
 # line should be the name of one or more modules, separated by a space.
 #
-# Copyright (C) 2011-2012 by John P. Weiss under the Artistic License
+# Copyright (C) 2011, 2013 by John P. Weiss under the Artistic License
 #
 # RCS $Id$
 ############
@@ -23,7 +23,8 @@ vboxnetadp vboxnetflt vboxdrv
 joydev
 
 # Useless Graphics Framebuffer Crap
-vesafb vga16fb vgastate
+##vesafb vga16fb vgastate
+vga16fb vgastate
 
 # This is for certain hot-pluggable devices that we don't need to worry about.
 shpchp
@@ -34,10 +35,12 @@ serio_raw
 
 # The tilt/hd sensor and hardware sensor modules (which don't work w/a
 # ThinkPad).
-##tpm_atmel tpm tpm_bios tpm_infineon hdaps
+##tpm tpm_bios tpm_atmel tpm_infineon hdaps
 tpm_atmel tpm_infineon hdaps
 iTCO_wdt iTCO_vendor_support
-i2c_i801
+
+# This is now builtin in v3.9 and beyond.
+#i2c_i801
 
 # Modem
 snd-intel8x0m
@@ -54,10 +57,11 @@ pcmcia yenta_socket rsrc_nonstatic pcmcia_rsrc pcmcia_core
 # Disable Bluetooth while on the move, too.
 # Note:  Bluetooth support loads the 'bridge' and 'stp' modules.
 bnep hidp input_polldev rfcomm bluetooth
-##bnep hidp input_polldev
+##hidp input_polldev rfcomm
 
 # What the heck are these?
 #microcode
 #dm_multipath
 #mac_hid
 #uas
+

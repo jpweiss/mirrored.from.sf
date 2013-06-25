@@ -2,7 +2,7 @@
 #
 # Find and toggle wireless of bluetooth devices on ThinkPads
 #
-# Copyright (C) 2011-2012 by John P. Weiss
+# Copyright (C) 2011-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -50,11 +50,65 @@ LOGFILE=/tmp/logs/wifi-acpi.log
 ############
 
 
+unblockWiFi_RF()
+{
+    if [ -x /usr/sbin/rfkill ] || type -ft rfkill >/dev/null 2>&1; then
+        rfkill unblock wifi
+    fi
+}
+
+
+blockWiFi_RF()
+{
+    if [ -x /usr/sbin/rfkill ] || type -ft rfkill >/dev/null 2>&1; then
+        rfkill block wifi
+    fi
+}
+
+
+iwconfig_txpower()
+{
+    local dev="$1"
+    shift
+    local powerState="$1"
+    shift
+
+    # Default for "on":  isWifiUp :== 0
+    local expectedWifiStatus=0
+    if [ "$powerState" = "off" ]; then
+        expectedWifiStatus=1
+    fi
+
+    local iwconfig_failed
+    iwconfig $dev txpower $powerState || return 1
+
+    # else:
+    # 'iwconfig' ran successfully.  Check if the wifi came up.
+
+    isWifiUp
+    local wifiStatus=$?
+    # If the wifi isn't unambiguously down, then iwconfig failed to
+    # work.
+    if [ $wifiStatus -ne $expectedWifiStatus ]; then
+        echo "    'iwconfig' exited with status \"OK\" but ..."
+        if [ $wifiStatus -eq 10 ]; then
+            echo "    wifi status is ambiguous"
+        fi
+        return 1
+    fi
+
+    # else
+    return 0
+}
+
+
 isWifiUp()
 {
+    local ambiguity="$1"
+
     # Set the default.
-    local isOn=0
-    isAnyWirelessPoweredOn && isOn=1
+    local isOn=1
+    isAnyWirelessPoweredOn && isOn=0
 
     local isUp=1
     local opStF="/sys/class/net/${WIFI_DEV}/device/rf_kill"
@@ -64,10 +118,14 @@ isWifiUp()
         isUp=$isOn
     fi
 
-    [ "$isOn$isUp" = "00" ] && return 1
-    [ "$isOn$isUp" = "11" ] && return 0
+    [ "$isOn$isUp" = "00" ] && return 0
+    [ "$isOn$isUp" = "11" ] && return 1
     # else:  Ambiguous result.  Return a slightly different code.
-    return 10
+    [ "$ambiguity" != "resolveAmbiguity" ] && return 10
+
+    # else:  Resolve the ambiguity by using the status of the rf_kill kernel
+    #        parameter.
+    return $isUp
 }
 
 
@@ -90,23 +148,15 @@ toggleBluetooth()
 
 turnWifiOff()
 {
-    local iwconfig_failed rfk
-    iwconfig_failed='n'
+    local iwconfig_failed='n'
 
     echo "Found active WiFi; disabling..."
-    iwconfig $WIFI_DEV txpower off || iwconfig_failed='y'
-    if [ "$iwconfig_failed" != "y" ]; then
-        isWifiUp
-        # If the wifi isn't unambiguously down, then iwconfig failed to
-        # work.
-        if [ $? -ne 0 ]; then
-            iwconfig_failed='y'
-        fi
-    fi
+    iwconfig_txpower ${WIFI_DEV} off || iwconfig_failed='y'
 
     if [ "$iwconfig_failed" = "y" ]; then
-        echo "    'iwconfig' failed to disable TX power!"
-        echo "    Attempting direct kernel param manipulation"
+        echo "    'iwconfig' failed to disable TX power."
+        echo "    Attempting direct kernel manipulation (params & module"
+        echo "    removal)."
 
         killWifi
     fi
@@ -114,7 +164,7 @@ turnWifiOff()
     # Return an appropriate status, depending on whether or not we failed to
     # unambiguously turn the antenna off.
     isWifiUp
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 1 ]; then
         return 1
     fi
     #else
@@ -124,21 +174,13 @@ turnWifiOff()
 
 turnWifiOn()
 {
-    local iwconfig_failed
-    iwconfig_failed='n'
+    local iwconfig_failed='n'
 
     echo "Enabling WiFi..."
     loadWifiModules
 
-    iwconfig ${WIFI_DEV} txpower on || iwconfig_failed='y'
-    if [ "$iwconfig_failed" != "y" ]; then
-        isWifiUp
-        # If the wifi isn't unambiguously up, then iwconfig failed to
-        # work.
-        if [ $? -ne 1 ]; then
-            iwconfig_failed='y'
-        fi
-    fi
+    unblockWiFi_RF
+    iwconfig_txpower ${WIFI_DEV} on || iwconfig_failed='y'
 
     if [ "$iwconfig_failed" = "y" ]; then
         echo "    'iwconfig' failed to reenable TX power!"
@@ -158,7 +200,7 @@ turnWifiOn()
     # Return an appropriate status, depending on whether or not we failed to
     # unambiguously turn the antenna on.
     isWifiUp
-    if [ $? -ne 1 ]; then
+    if [ $? -ne 0 ]; then
         return 1
     fi
     #else
@@ -168,6 +210,7 @@ turnWifiOn()
 
 toggleWifi()
 {
+set -x
     # FIXME::[jpw;2010-11-13]
     # Something else is running when Fn-F5 is hit, in addition to this script.
     # Soooo... we'll let it run, then we'll ... um ... Wait.  If we then run
@@ -177,9 +220,9 @@ toggleWifi()
     # The upshot is:  we have a race-condition between this script and whatever
     # else is running.
 
-    local succeeded
+    local succeeded wifiStatus
 
-    if isAnyWirelessPoweredOn; then
+    if isWifiUp resolveAmbiguity; then
         turnWifiOff && succeeded=y
     else
         turnWifiOn && succeeded=y
@@ -192,6 +235,7 @@ toggleWifi()
         echo "Still no success!  Trying to just toggle the antenna state..."
         toggleAllWirelessStates
     fi
+set +x
 }
 
 
