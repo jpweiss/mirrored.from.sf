@@ -1,6 +1,6 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 #
-# Copyright (C) 2004 by John P. Weiss
+# Copyright (C) 2004-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -70,42 +70,80 @@ use Time::HiRes qw(sleep);
 ############
 
 
-sub read_cpu_speed {
+sub read_sysfs_var($) {
+    my $sysfsFile=shift;
+
+    open(ICS, "$sysfsFile")
+        or die("Unable to open file for reading: \"$sysfsFile\"\n".
+               "Reason:\"$!\"\n");
+    my $sysfsVarValue=<ICS>;
+    close ICS;
+
+    return($sysfsVarValue);
+}
+
+
+sub get_cpufreq_dir {
     my $cpuNumber=shift;
     # Kernel v2.4
-    ##my $speedFile="/proc/sys/cpu/$cpuNumber/speed";
+    ##my $cpufreqDir="/proc/sys/cpu/$cpuNumber/speed";
     # Kernel v2.6
-    my $speedFile
-        ="/sys/devices/system/cpu/cpu$cpuNumber/cpufreq/scaling_cur_freq";
+    my $cpufreqDir="/sys/devices/system/cpu/cpu$cpuNumber/cpufreq";
+
+    return $cpufreqDir;
+}
+
+
+sub read_cpu_speed {
+    my $cpufreqDir=get_cpufreq_dir(shift());
+    my $speedFile = $cpufreqDir."/scaling_cur_freq";
 
     # Wait a teensy bit to let the system calm down after starting up perl.
     # I've been seeing a step-up in speed on my ThinkPad just due to running
     # this script.
     sleep(0.25);
 
-    open(ICS, "$speedFile")
-        or die("Unable to open file for reading: \"$speedFile\"\n".
-               "Reason:\"$!\"\n");
-    my $speed=<ICS>;
-    close ICS;
-
+    my $speed=read_sysfs_var($speedFile);
     return $speed/1000.0;
+}
+
+
+sub read_cpufreq_state {
+    my $cpufreqDir=get_cpufreq_dir(shift());
+
+
+    my $governor = read_sysfs_var($cpufreqDir."/scaling_governor");
+    chomp($governor);
+
+    my $governor_minFreq = read_sysfs_var($cpufreqDir."/scaling_min_freq");
+    chomp($governor_minFreq);
+
+    my $governor_maxFreq = read_sysfs_var($cpufreqDir."/scaling_max_freq");
+    chomp($governor_maxFreq);
+
+    return($governor, $governor_minFreq/1000.0, $governor_maxFreq/1000.0);
+}
+
+
+sub read_cpu_temp_olderKernels {
+    my $cpuNumber=shift;
+    my $tempFile="/proc/acpi/thermal_zone/THM$cpuNumber/temperature";
+
+    my $temp=read_sysfs_var($tempFile);
+    $temp =~ s/\s\s+/  /g;
+    $temp =~ s/^t//;
+    $temp =~ s/C\s*$//;
+    return $temp;
 }
 
 
 sub read_cpu_temp {
     my $cpuNumber=shift;
-    my $tempFile="/proc/acpi/thermal_zone/THM$cpuNumber/temperature";
+    # Kernels v3.2 and later
+    my $tempFile="/sys/devices/virtual/thermal/thermal_zone$cpuNumber/temp";
 
-    open(ICS, "$tempFile")
-        or die("Unable to open file for reading: \"$tempFile\"\n".
-               "Reason:\"$!\"\n");
-
-    my $temp=<ICS>;
-    close ICS;
-    $temp =~ s/\s\s+/  /g;
-    $temp =~ s/^t/CPU T/;
-    $temp =~ s/C\s*$/°C/;
+    my $temp=read_sysfs_var($tempFile);
+    $temp /= 1000.0;
     return $temp;
 }
 
@@ -188,6 +226,7 @@ sub main {
     my $cpu_n=0;
     my $showTemp=0;
     my $showCpuSpeed=0;
+    my $showCpufreqState=0;
     while (scalar(@ARGV)) {
         my $arg = shift(@ARGV);
         if ($arg =~ m/-hr/) {
@@ -209,24 +248,36 @@ sub main {
             }
             next;
         }
+        if ($arg =~ m/-g/) {
+            ++$showCpufreqState;
+            if (scalar(@ARGV) && ($ARGV[0] !~ m/\D/)) {
+                $cpu_n = 0 + shift(@ARGV);
+            }
+            next;
+        }
         # else:  Usage
-        print ("usage: ", $_MyName, 
-               " [-c [cpu_num]|--hr|-b [bat_num]|-t]\n");
+        print ("usage: ", $_MyName,
+               " [-c [cpu_num]|-g [cpu_num]|--hr|-b [bat_num]|-t]\n",
+               "\n",
+               "<cpu_num> only needs to be specified once.\n");
         exit 0;
     }
 
-    my ($batteryState, 
-        $usageRate, 
-        $remaining, 
-        $capacity, 
+    my ($batteryState,
+        $usageRate,
+        $remaining,
+        $capacity,
         $max_capacity) = read_battery_info($bat_n);
     unless ($capacity) { $capacity = -1; }
     unless ($usageRate) { $usageRate = -1; }
 
     my $hrs_remaining = int($remaining/$usageRate);
     my $min_remaining = int(($remaining/$usageRate - $hrs_remaining)*60);
-    printf ("State:  %-10s  ", $batteryState);
+
     my $lineSpaceRemaining=80;
+    printf ("State:  %-10s  ", $batteryState);
+    $lineSpaceRemaining -= 20;
+
     if ($t_in_hrs) {
         printf ("Remaining:  %.2f hrs", $remaining/$usageRate);
     } else {
@@ -240,7 +291,8 @@ sub main {
         printf (" (%d%%)    ", 100.0*$remaining/$capacity);
         $lineSpaceRemaining -= 11;
     }
-    if ($lineSpaceRemaining < 25) {
+
+    if ($lineSpaceRemaining < 23) {
         print "\n";
         $lineSpaceRemaining = 80;
     }
@@ -248,14 +300,25 @@ sub main {
         printf ("CPU Speed:  %dMHz    ", read_cpu_speed($cpu_n));
         $lineSpaceRemaining -= 23;
     }
-    if ($lineSpaceRemaining < 25) {
+
+    if ($lineSpaceRemaining < 21) {
         print "\n";
         $lineSpaceRemaining = 80;
     }
     if ($showTemp) {
-        printf read_cpu_temp($cpu_n);
-        $lineSpaceRemaining -= 23;
+        printf ("CPU T:  %.2fÂ°C    ", read_cpu_temp($cpu_n));
+        $lineSpaceRemaining -= 21;
     }
+
+    if ($showCpufreqState) {
+        my ($governor,
+            $lowestSpeed,
+            $highestSpeed) = read_cpufreq_state($cpu_n);
+        my $mesgFmt = "\nCurrent CPU Governor:  %-14s  ";
+        $mesgFmt .= "Current Speed Range:  %d - %d MHz\n";
+        printf ($mesgFmt, $governor, $lowestSpeed, $highestSpeed);
+    }
+
     print "\n\n";
 }
 
