@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2006-2011 by John P. Weiss
+# Copyright (C) 2006-2013 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -31,9 +31,10 @@ my $_TieWait = 1;
 my $_PostDaemonizeWait = 5;
 my $_DaemonPIDFile = "/var/run/mrtg-ping-bandwidth.pid";
 my $_DaemonLog = "/var/log/mrtg-ping-bandwidth.log";
-my $_LatencyNoConnection = -1;
+my $_LatencyNoConnection = 0;
 my $_ProbeInterval = 5*60;
 my $_ConfigUpdateInterval = 7;
+my $_Verbose=1;
 
 
 ############
@@ -83,10 +84,16 @@ use POSIX qw(nice setsid);
 # We could also use the '-I' option to do ICMP, but '-U' will always work
 # through a firewall.
 my $_TracerouteCmd = "traceroute -4 -n -w 1 -N 1 -U ";
-# WARMING:  A packet size above 1k will not work with all hosts.
+# WARNING:  A packet size above 1k will not work with all hosts.
 my $_PingCmd = "/bin/ping -A -n -c 5 -w 5 -s 1024 ";
 my @g_Measurements;
 my $g_refDataTieObj;
+
+
+# Stash the defaults of certain config variables.
+my $dfl_DataFile = $_DataFile;
+my $dfl_DaemonPIDFile = $_DaemonPIDFile;
+my $dfl_DaemonLog = $_DaemonLog;
 
 
 ############
@@ -94,6 +101,34 @@ my $g_refDataTieObj;
 # Functions
 #
 ############
+
+
+#
+# Basic Utilities
+#
+
+
+sub log2stderr(@) {
+    if ($_Verbose) {
+        print STDERR @_;
+    }
+}
+
+
+sub getErrInfo() {
+    my $errno = 0;
+    my $errReason = "";
+    if (defined($!)) {
+        $errno = $! + 0;
+        $errReason = "\nReason: \"".$!."\"";
+    }
+
+    my $exitVal = ($? >> 8);
+    my $sigNum = ($? & 0x7F);
+    my $hasCoredump = ($? & 0x80);
+
+    return ($errno, $errReason, $exitVal, $sigNum, $hasCoredump);
+}
 
 
 #
@@ -106,7 +141,7 @@ sub ping_derived_stats($) {
     my $pingcmd=$_PingCmd;
     $pingcmd .= $host;
     $pingcmd .= " 2>&1 |";
-    #print STDERR ("#DBG#  Running:  $pingcmd\n");
+    #log2stderr("#DBG#  Running:  $pingcmd\n");
     unless (open(PINGFH, $pingcmd)) {
         print STDERR ("FATAL: Can't run command: ", $pingcmd,
                       "\nReason: \"", $!, "\"\n");
@@ -117,17 +152,19 @@ sub ping_derived_stats($) {
 
     my $bytes = 0;
     my $msecs = 0;
+    my $n_pings = 0;
     foreach (@pingLines) {
         if (m/(\d+) bytes from .* time=([[:digit:].]+) ms/) {
             $bytes += $1;
             $msecs += $2;
+            ++$n_pings;
         }
     }
 
     my $latency = $_LatencyNoConnection;
     my $rate = $bytes;
-    if ($msecs) {
-        $latency = $msecs / scalar(@pingLines);
+    if ($msecs && $n_pings) {
+        $latency = $msecs / $n_pings;
         $rate /= $msecs;
         $rate *= 1000;
     } else {
@@ -153,13 +190,7 @@ sub get_hop_ips($\@) {
         return ();
     }
 
-    my @traceroute_output = <TRTFH>;
-
-    close(TRTFH)
-        or warn("Error closing pipe to command:\n\t", $cmd,
-                (defined($!) ? "\nReason: \"".$!."\"\n" : "\n"));
-
-    foreach (@traceroute_output) {
+    while (<TRTFH>) {
         chomp;
         next unless (m/^\s*\d+\s/);
         my @fields = split();
@@ -168,6 +199,39 @@ sub get_hop_ips($\@) {
         } else {
              $hops[$fields[0]] = $fields[1];
         }
+    }
+
+    my $closedOk = close(TRTFH);
+    my @errInfo = getErrInfo();
+    my $check4DataErrs = 0;
+    unless($closedOk && ($errInfo[0] != 10)) {
+        my ($errno, $errReason, $exitVal, $sigNum) = @errInfo;
+        unless($exitVal == 0) {
+            log2stderr("Error closing pipe to command:\n\t",
+                       $cmd, $errReason,
+                       "\n[Command exit value==", $exitVal, "]\n");
+            if ($sigNum < 64) {
+                log2stderr("[Command died from signal-", $sigNum, "]\n");
+                return ();
+            } else {
+                log2stderr("\nWarning:  Command died from unknown ",
+                           "signal:  ", $sigNum, ".   Attempting\n",
+                           "to continue...\n");
+                $check4DataErrs = 1;
+            }
+        }
+    }
+
+    if ($check4DataErrs) {
+        my $maxHopNum = (sort({$b <=> $a} @$ref_hop_numbers))[0];
+        if (scalar(@hops) <= $maxHopNum) {
+            log2stderr("Data missing.  Cowardly refusing to return ",
+                       "incomplete data.\n");
+            return ();
+        }
+        # N.B.  The caller, 'update_config()' handles 'undef' hop-IPs, reusing
+        # the existing value.  So there's no need to check that there are
+        # enough defined items in '@hops'.  Missing IPs are even logged.
     }
 
     return @hops[@$ref_hop_numbers];
@@ -226,7 +290,7 @@ sub read_config(\$\@\@\@;$) {
     my $array_option="";
 
     if ($isRereading) {
-        print STDERR ("Rereading config file:  ", $_ConfigFile, "\n");
+        log2stderr("Rereading config file:  ", $_ConfigFile, "\n");
     }
 
     open(IN_FS, "$_ConfigFile")
@@ -281,7 +345,7 @@ sub read_config(\$\@\@\@;$) {
     }
     close IN_FS;
 
-    #print STDERR ("#DBG# ", Dumper(\%options), "\n");
+    #log2stderr("#DBG# ", Dumper(\%options), "\n");
 
     $$ref_remote_host = $options{"remote_host"};
     @$ref_hop_numbers = @{$options{"hop_numbers"}};
@@ -300,24 +364,30 @@ sub read_config(\$\@\@\@;$) {
     if (exists($options{"Latency_noConnection"})) {
         $_LatencyNoConnection = $options{"Latency_noConnection"};
     }
-    if (exists($options{"_DaemonLog"})) {
-        $_DaemonLog = $options{"_DaemonLog"};
+    if (exists($options{"VerboseLogging"})) {
+        $_Verbose = $options{"VerboseLogging"};
+    }
+    if (exists($options{"DaemonLog"})) {
+        $_DaemonLog = $options{"DaemonLog"};
     }
     if (exists($options{"_DataFile"})) {
         $_DataFile = $options{"_DataFile"};
     }
+    if (exists($options{"_DaemonPIDFile"})) {
+        $_DaemonPIDFile = $options{"_DaemonPIDFile"};
+    }
 
     if ($isRereading) {
-        print STDERR ("\tFinished rereading configuration.\n");
-        print STDERR ("\tNew values:\n");
+        log2stderr("\tFinished rereading configuration.\n");
+        log2stderr("\tNew values:\n");
         foreach my $k (keys(%options)) {
-            print STDERR ("\t\t", $k, " = ");
+            log2stderr("\t\t", $k, " = ");
             if (ref($options{$k})) {
-                print STDERR ("(\n\t\t\t",
-                              join("\n\t\t\t", @{$options{$k}}),
-                              "\n\t\t)\n");
+                log2stderr("(\n\t\t\t",
+                           join("\n\t\t\t", @{$options{$k}}),
+                           "\n\t\t)\n");
             } else {
-                print STDERR ("\"", $options{$k}, "\"\n");
+                log2stderr("\"", $options{$k}, "\"\n");
             }
         }
     }
@@ -351,26 +421,26 @@ sub log_config_changes(\@\@) {
     my $noTargsChanged = 1;
     foreach my $targ_idx (0 .. $min_n) {
         if ($ref_old->[$targ_idx] ne $ref_new->[$targ_idx]) {
-            print STDERR ("Target #", $targ_idx + 1, " Changed:\t",
-                          $ref_old->[$targ_idx],
-                          "   -->   ",
-                          $ref_new->[$targ_idx], "\n");
+            log2stderr("Target #", $targ_idx + 1, " Changed:\t",
+                       $ref_old->[$targ_idx],
+                       "   -->   ",
+                       $ref_new->[$targ_idx], "\n");
             $noTargsChanged = 0;
         }
     }
 
     foreach my $targ_idx (($min_n+1) .. $max_n) {
-        print STDERR ("Target #", $targ_idx + 1, " ",
-                      $targChangetypeMsg, ":\t",
-                      ( ($targAdded > 0)
-                        ? $ref_new->[$targ_idx]
-                        : $ref_old->[$targ_idx] ),
-                      "\n");
+        log2stderr("Target #", $targ_idx + 1, " ",
+                   $targChangetypeMsg, ":\t",
+                   ( ($targAdded > 0)
+                     ? $ref_new->[$targ_idx]
+                     : $ref_old->[$targ_idx] ),
+                   "\n");
     }
 
     if ($noTargsChanged && ($targAdded == 0)) {
-        print STDERR ("No Target hosts changed.  No configuration ",
-                      "update needed.\n");
+        log2stderr("No Target hosts changed.  No configuration ",
+                   "update needed.\n");
     }
 }
 
@@ -401,8 +471,21 @@ sub write_config($\@\@\@) {
                  "\n)\n");
     print CFGFH ("ProbeInterval = ", $_ProbeInterval, "\n");
     print CFGFH ("ConfigUpdateInterval = ", $_ConfigUpdateInterval, "\n");
-    print CFGFH ("DaemonLog = ", $_DaemonLog, "\n");
     print CFGFH ("Latency_noConnection = ", $_LatencyNoConnection, "\n");
+    print CFGFH ("VerboseLogging = ", $_Verbose, "\n");
+
+    # For the next 3 settings, save it to the configfile *only* if it's
+    # changed from the default.
+
+    if ($_DaemonLog ne $dfl_DaemonLog) {
+        print CFGFH ("DaemonLog = ", $_DaemonLog, "\n");
+    }
+    if ($_DaemonPIDFile ne $dfl_DaemonPIDFile) {
+        print CFGFH ("_DaemonPIDFile = ", $_DaemonPIDFile, "\n");
+    }
+    if ($_DataFile ne $dfl_DataFile) {
+        print CFGFH ("_DataFile = ", $_DataFile, "\n");
+    }
 
     close CFGFH;
     return 1;
@@ -419,7 +502,7 @@ sub update_config($\@\@;\@) {
         usage();
     }
 
-    print STDERR ("Updating configuration file with route changes...\n");
+    log2stderr("Updating configuration file with route changes...\n");
     my @measurement_targets = get_hop_ips($remote_host, @$ref_hop_numbers);
 
     my $errmsg = "";
@@ -428,19 +511,20 @@ sub update_config($\@\@;\@) {
         foreach my $idx (0 .. $#measurement_targets) {
             unless (defined($measurement_targets[$idx])) {
                 if ($warnStart) {
-                    print STDERR ("Failed to retrieve all hops from host: ",
-                                  $remote_host, "\n");
+                    log2stderr("Failed to retrieve all hops from host: ",
+                               $remote_host, "\n");
                     $warnStart = 0;
                 }
-                print STDERR ("\tMissing hop \#",
-                              $ref_hop_numbers->[$idx]);
+                log2stderr("\tMissing hop \#",
+                           $ref_hop_numbers->[$idx]);
                 if (defined($ref_orig_targets->[$idx])) {
-                    print STDERR (".  Reusing:  ",
-                                  $ref_orig_targets->[$idx]);
-                } else {
-                    print STDERR (".");
+                    log2stderr(".  Reusing:  ",
+                               $ref_orig_targets->[$idx]);
                 }
-                print STDERR ("\n");
+                else {
+                    log2stderr(".");
+                }
+                log2stderr("\n");
                 $measurement_targets[$idx] .= $ref_orig_targets->[$idx];
             }
         }
@@ -460,9 +544,9 @@ sub update_config($\@\@;\@) {
         }
         write_config($remote_host, @$ref_hop_numbers,
                      @measurement_targets, @$ref_show_latency);
-        print STDERR ("Configuration update complete.\n");
+        log2stderr("Configuration update complete.\n");
     } else {
-        print STDERR ($errmsg, "\n");
+        log2stderr($errmsg, "\n");
         if (defined($ref_orig_targets)) {
             @measurement_targets = @$ref_orig_targets;
         }
@@ -587,12 +671,14 @@ sub renice_self(;$) {
 }
 
 
-sub no_running_daemon() {
+sub check_for_no_running_daemon($) {
+    my $daemonPIDFile = shift();
+
     # Check that the PID file exists.
-    return 1 unless (-e $_DaemonPIDFile);
+    return 1 unless (-e $daemonPIDFile);
 
     # Check if the process is running.
-    open(PIDFH, "<", $_DaemonPIDFile) or return 1;
+    open(PIDFH, "<", $daemonPIDFile) or return 1;
     my $daemonPid = <PIDFH>;
     close(PIDFH);
     chomp $daemonPid;
@@ -610,9 +696,24 @@ sub no_running_daemon() {
     ## Don't use "system()", as it discards the output.
 
     print STDERR ("Process '", $daemonPid, "' not found.\n");
-    print STDERR ("Check for dead/stale PID file:  \"", $_DaemonPIDFile,
+    print STDERR ("Check for dead/stale PID file:  \"", $daemonPIDFile,
                   "\"\n");
     return 1;
+}
+
+
+sub no_running_daemon() {
+    my $notRunning = check_for_no_running_daemon($_DaemonPIDFile);
+    if ($dfl_DaemonLog ne $_DaemonPIDFile) {
+        # We need to check for both PID files, regardless what the first check
+        # returned.  (There might be a dead PID file with the default name
+        # kicking around, after all.)
+        my $dflCheck = check_for_no_running_daemon($dfl_DaemonPIDFile);
+        # We MUST do this seperately, to avoid the side-effects of the '&&'
+        # operator.
+        $notRunning = $notRunning && $dflCheck;
+    }
+    return $notRunning;
 }
 
 
@@ -787,7 +888,9 @@ sub usage() {
                   "kill \$(\< ", $_DaemonPIDFile, ")\n");
     print STDERR ("\nTo list the througput of all targets, in order, ",
                   "use:\n\t",
-                  "cat ", $_DataFile, "\n");
+                  "cat ", $_DataFile,
+                  "\n...or whatever you've set \"_DataFile\" to in the ",
+                  "configuration file.\n");
     exit 1;
 }
 
