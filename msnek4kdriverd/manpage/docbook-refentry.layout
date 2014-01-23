@@ -1,0 +1,508 @@
+#% D not delete the line below; configure depends on this
+#  \DeclareDocBookClass[article]{DocBook article w/RefEntry support (SGML)}
+# Docbook textclass definition file for a RefEntry.
+# Author : John Weiss <jpwcandide@sourceforge.net>
+
+
+# Input general definitions
+Input db_stdclass.inc
+
+
+# The top-level environment
+#
+Style Reference
+    Category              "refentry-meta"
+
+    LatexType             Command
+    LatexName             refentry
+    KeepEmpty             1
+    CommandDepth          0
+
+    LabelType             Static
+    LabelString           "New Reference Entry:"
+
+	Margin                Dynamic
+	ParSkip               0.4
+	TopSep                4
+	BottomSep             0.8
+	ParSep                0.8
+
+    Font
+      Size            Tiny
+      Series          Medium
+    EndFont
+
+    LabelFont
+      Family          Roman
+      Series          Bold
+      Size            Huge
+      Color           Blue
+    EndFont
+End
+
+
+######################
+#
+# The <refmeta> block
+#
+######################
+
+
+Style Ref_Title
+    CopyStyle             Subsubsection*
+
+    Category              "refentry"
+
+    LatexType             Command
+    LatexName             refmeta
+    LatexParam            ""
+    InnerTag              refentrytitle
+    CommandDepth          1
+
+    LabelType             Static
+    LabelString           "Entry Title:"
+    Labelsep              xxx
+    LeftMargin            MMMMMMMMMM
+    Align                 Left
+
+    Font
+      Size            Largest
+    EndFont
+
+    LabelFont
+      Size            Large
+      Color           Blue
+    EndFont
+End
+
+Style Ref_ManpageSection
+    CopyStyle             Ref_Title
+
+    Category              "refentry"
+
+    LatexType             Paragraph
+    LatexName             manvolnum
+    InnerTag              ""
+    CommandDepth          2
+
+    LabelType             Static
+    LabelString           "Manpage Section Number:"
+    Labelsep              xxx
+    LeftMargin            MMMMMMMMMMMMMMMMMMMMM
+    Align                 Left
+
+    Font
+      Size            Normal
+      Series          Medium
+    EndFont
+
+    LabelFont
+      Size            Large
+      Color           Blue
+    EndFont
+End
+
+
+#########################
+#
+# The <refnamediv> block
+#
+#########################
+
+
+Style Ref_Name
+    CopyStyle             Section*
+
+    Category              "refentry"
+
+    LatexType             Command
+    LatexName             refnamediv
+    LatexParam            ""
+    CommandDepth          1
+
+    LabelType             Top_Environment
+    LabelString           "NAME"
+    LabelBottomSep        0.5
+
+    BottomSep             0
+    ParSep                1
+    Align                 Left
+
+    Font
+      Size            Normal
+      Series          Medium
+    EndFont
+
+    LabelFont
+      Size            Larger
+      Series          Bold
+      Color           Blue
+    EndFont
+End
+
+InsetLayout RefName:TheName
+    LyXType               custom
+    Decoration            classic
+
+    LatexType             Command
+    LatexName             refname
+
+    LabelString           "Name"
+
+    Font
+      Series          Bold
+    EndFont
+
+    LabelFont
+      Shape           Up
+      Color           Green
+    EndFont
+End
+
+InsetLayout RefName:ShortDescr
+    LyXType               custom
+
+    CopyStyle             RefName:TheName
+
+    LatexType             Command
+    LatexName             refpurpose
+
+    LabelString           "ShortDescription"
+
+    Font
+      Series          Medium
+    EndFont
+End
+
+
+#############################
+#
+# The <refsynopsisdiv> block
+#
+#############################
+
+
+Style Ref_Synopsis
+    CopyStyle             Ref_Name
+
+    LatexType             Command
+    LatexName             refsynopsisdiv
+    InnerTag              cmdsynopsis
+    KeepEmpty             1
+
+    LabelString           "SYNOPSIS"
+End
+
+Style Ref_CmdSynopsis
+    CopyStyle             Ref_Name
+
+    LatexType             Paragraph
+    LatexName             cmdsynopsis
+    InnerTag              ""
+    KeepEmpty             0
+
+    LabelString           ""
+    LabelType             No_Label
+
+    Align                 Left
+End
+
+InsetLayout RefCmdSyn:Arg
+    LyXType               custom
+
+    CopyStyle             RefName:ShortDescr
+
+    LatexType             Command
+    LatexName             arg
+    LatexParam            "choice=<plain>"
+
+    LabelString           "CmdArg"
+
+    Font
+      Series          Medium
+    EndFont
+
+    LabelFont
+      Size            Tiny
+      Color           Magenta
+    EndFont
+End
+
+InsetLayout RefCmdSyn:OptArg
+    LyXType               custom
+
+    CopyStyle             RefCmdSyn:Arg
+
+    LatexParam            "choice=<opt>"
+    LabelString           "Option"
+End
+
+InsetLayout RefCmdSyn:RepeatingArg
+    LyXType               custom
+
+    CopyStyle             RefCmdSyn:Arg
+
+    LatexParam            "choice=<plain> rep=<repeat>"
+    LabelString           "RepArg"
+End
+
+InsetLayout RefCmdSyn:OptionalGroup
+    LyXType               custom
+
+    CopyStyle             RefCmdSyn:Arg
+
+    LatexName             group
+    LatexParam            "choice=<opt>"
+
+    LabelString           "OptGroup"
+End
+
+InsetLayout RefCmdSyn:RequiredGroup
+    LyXType               custom
+
+    CopyStyle             RefCmdSyn:OptionalGroup
+
+    LatexParam            "choice=<req>"
+
+    LabelString           "ReqGrp"
+End
+
+
+###########################
+#
+# The <citerefentry> block
+#
+###########################
+
+
+InsetLayout Ref:SeeAlso
+    LyXType               custom
+
+    CopyStyle             RefName:ShortDescr
+
+    LatexType             Command
+    LatexName             citerefentry
+
+    LabelString           "See_Also:"
+End
+
+InsetLayout RefSA:Manpage
+    LyXType               custom
+    Decoration            classic
+
+    CopyStyle             Ref:SeeAlso
+
+    LatexType             Command
+    LatexName             refentrytitle
+
+    LabelString           "reference"
+
+    LabelFont
+      Size            Tiny
+    EndFont
+End
+
+InsetLayout RefSA:Section
+    LyXType               custom
+
+    CopyStyle             RefSA:Manpage
+
+    LatexName             manvolnum
+    LabelString           "section"
+End
+
+
+#####################
+#
+# The Section Blocks
+#
+#####################
+
+
+Style RefSection
+    CopyStyle             Section*
+
+    Category              "refentry"
+
+    LatexType             Command
+    LatexName             refsect1
+    LatexParam            ""
+    InnerTag              title
+    CommandDepth          1
+End
+
+Style RefSubsection
+    CopyStyle             Subsection*
+
+    Category              "refentry"
+
+    LatexType             Command
+    LatexName             refsect2
+    LatexParam            ""
+    InnerTag              title
+    CommandDepth          2
+End
+
+Style RefSubsubsection
+    CopyStyle             Subsubsection*
+
+    Category              "refentry"
+
+    LatexType             Command
+    LatexName             refsect3
+    LatexParam            ""
+    InnerTag              title
+    CommandDepth          3
+End
+
+
+InsetLayout Ref:Literal
+    LyXType               custom
+    Decoration            classic
+
+	LatexType             Environment
+    LatexName             literallayout
+	LabelString           "LiteralLayout"
+
+	BgColor               listingsbg
+	MultiPar              true
+	KeepEmpty             true
+	FreeSpacing           true
+	ForceLTR              true
+
+	Font
+	  Color               foreground
+	  Family              typewriter
+	EndFont
+
+	LabelFont
+	  Color               latex
+	  Size                Small
+	EndFont
+End
+
+
+#######################################
+#
+# Some common logical character styles
+#
+#######################################
+
+
+InsetLayout Ref:Option
+    LyXType               element
+
+    LatexType             Command
+    LatexName             option
+
+	LabelString           "opt"
+
+    Font
+      Family          Typewriter
+      Series          Medium
+    EndFont
+
+    LabelFont
+      Size            Small
+      Color           Blue
+    EndFont
+End
+
+InsetLayout Ref:Envar
+    LyXType               element
+
+    CopyStyle             Ref:Option
+    LatexName             envar
+	LabelString           "envvar"
+End
+
+InsetLayout Ref:Filename
+    LyXType               element
+
+    LatexType             Command
+    LatexName             filename
+
+	LabelString           "fname"
+
+    Font
+      Family          Roman
+      Series          Medium
+      Misc            "underbar"
+    EndFont
+
+    LabelFont
+      Size            Small
+      Color           Blue
+    EndFont
+End
+
+InsetLayout Ref:Value
+    LyXType               element
+
+    CopyStyle             Ref:Option
+    LatexName             replaceable
+	LabelString           "val"
+
+    Font
+      Family          Sans
+      Shape           Italic
+    EndFont
+
+    LabelFont
+      Size            Small
+      Color           Blue
+    EndFont
+End
+
+InsetLayout Ref:OptVal
+    LyXType               element
+
+    CopyStyle             Ref:Value
+    LatexParam            "class=<option>"
+	LabelString           "optval"
+End
+
+InsetLayout Ref:Prompt
+    LyXType               element
+
+    LatexType             Command
+    LatexName             prompt
+
+	LabelString           "prompt"
+
+    Font
+      Family          Typewriter
+      Series          Bold
+      Color           Green
+    EndFont
+
+    LabelFont
+      Size            Small
+      Color           Blue
+    EndFont
+End
+
+InsetLayout Ref:Command
+    LyXType               element
+
+    LatexType             Command
+    LatexName             command
+
+	LabelString           "cmd"
+
+    Font
+      Family          Roman
+      Series          Bold
+    EndFont
+
+    LabelFont
+      Size            Small
+      Color           Blue
+    EndFont
+End
+
+
+#############
+# End  File
+#
+

@@ -1,0 +1,18 @@
+Note to Developers (and others interested in the source code):
+
+    All ChangeLog entries use the revision numbers from my local
+    source code repository.
+
+    I try to keep this project's Subversion repository on Sourceforge
+    closely "in-sync" with my local one.  That is, use a shell script
+    to auto-patch my local Sourceforge-working-directory with each
+    commit to my local repository.  I then commit those patched
+    changes using the same log entry from the local repos.  So, only
+    the revision numbers differ between the two repositories.
+
+    Occasionally, there will also be changes to only the Sourceforge
+    repository.  So, the sequence of revision changes in my local
+    repository won't completely match the ones you'll be able to see
+    on Sourceforge.
+
+--John Weiss

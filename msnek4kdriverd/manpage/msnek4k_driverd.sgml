@@ -1,0 +1,209 @@
+<!DOCTYPE article  PUBLIC "-//OASIS//DTD DocBook V4.2//EN"
+ [ <!ENTITY % output.print.png "IGNORE">
+<!ENTITY % output.print.pdf "IGNORE">
+<!ENTITY % output.print.eps "IGNORE">
+<!ENTITY % output.print.bmp "IGNORE">
+ ]>
+
+<!-- SGML file was created by LyX 1.6.5
+  See http://www.lyx.org/ for more information -->
+<article lang="en">
+<refentry>
+
+<refmeta>
+<refentrytitle>msnek4k_driverd</refentrytitle>
+<manvolnum>1</manvolnum></refmeta><refnamediv>
+<refname>msnek4k_driverd</refname> <refpurpose>Driver for the MS Natural® Ergonomic Keyboard 4000</refpurpose>
+</refnamediv><refsynopsisdiv>
+<cmdsynopsis><command>msnek4k_driverd</command> <arg choice="opt"><option>--config=</option><replaceable class="option">file</replaceable></arg><arg choice="opt"><option>...Other Options...</option></arg></cmdsynopsis>
+</refsynopsisdiv><refsect1>
+<title>DESCRIPTION</title>
+<para>Currently, the Linux kernel supports all of the keys on the MS Natural® Ergonomic Keyboard 4000 (a.&nbsp;k.&nbsp;a.&nbsp;the "msnek4k") except for 3:</para><itemizedlist>
+<listitem><para>The "Spell" key.</para></listitem><listitem><para>Zoom Up</para></listitem><listitem><para>Zoom Down</para></listitem></itemizedlist><para>The <command>msnek4k_driverd</command> daemon bridges the gap by converting the raw device scancodes to X11 keycodes and/or mouse button events (via the XTest extension). When installed as packaged, you shouldn't need to do anything to run <command>msnek4k_driverd</command>. X11 should run it as part of its normal session-startup tasks.</para>
+<para>Note: the remainder of this manual refers to the ... thing ... in the middle of the keyboard that generates the "Zoom Up" and "Zoom Down" scancodes as "the 'Zoom'-Rocker".</para><refsect2>
+<title>Scancodes? Keycodes? Keysyms? X11?!?</title>
+<para>For those who already know what X11 is, how it handles the keyboard, and how it recieves keyboard input from the kernel, skip this section. Everyone else should read on.</para>
+<para>Most casual users of Ubuntu, Fedora, SUSE, etc. know what GNOME and KDE are, but may be scratching their heads when they read "X11". Simply put, "X11" is a low-level, raw graphical user interface platform that GNOME and KDE are built on top of. If we compared Ubuntu/Fedora/SUSE/etc. to an automobile, GNOME and KDE are the plush interior and accessories; X11 is the drive-train.</para>
+<para>X11 assigns a number (usually) between 8 and 255 to every key on the keyboard. These are the "keycodes". Note the emphasis on key, not letter. The "<keycap>Shift</keycap>" and "<keycap>Alt</keycap>" keys have their own keycodes. The '@' character does not; it and the '2' character are on the same key on US keyboards.</para>
+<para>This is where "keysyms" come in. X11 contains a user-configurable mapping from combinations of keycodes to keysyms. A unique (set of) keycode(s) translates to one keysym, and vice-versa. For example, X11 traditionally converts the keycode, "9", to the keysym "<keycap>Tab</keycap>". "<keycap>XF86AudioPlay</keycap>" is a keysym. So are "<keycap>q</keycap>" and "<keycap>Q</keycap>" (i.&nbsp;e.&nbsp;there's a keysym for every letter and number). When you set KDE and GNOME shortcuts, you're actually telling them what to do when they get a <emphasis>keysym</emphasis>.</para>
+<para>A "scancode" is an integer number that the <emphasis>keyboard itself</emphasis> sends to the OS. The Linux kernel (not X11) may change these raw codes, but usually it passes them along unchanged. (The Linux kernel, incidentally, converts the scancodes to the keycodes used by X11 and most other programs.) In the case of the Microsoft Natural® Ergonomic Keyboard 4000, Linux <emphasis>has to</emphasis> change the raw scancodes for certain keys from a number above 255 to an unused scancode in the range from 0 to 255. (Linux can't handle raw scancodes above 255.)</para></refsect2><refsect2>
+<title>Quickstart</title>
+<para>If you installed <command>msnek4k_driverd</command> from a "<literal>.deb</literal>" or "<literal>.rpm</literal>" package, the package's built-in postinstall script will start it for you. It comes preconfigured with sane defaults. The EXAMPLES section below has another fairly common configuration (as well as some uncommon ones).</para>
+<para>Merely running <command>msnek4k_driverd</command> will not automagically map the "Zoom"-Rocker and "Spell" key to keysyms. You'll need to do that, yourself, either by using the "<command>xmodmap</command>" utility or by customizing one of the "<literal>msnek4k_driverd.xmodmap</literal>" files (see the FILES section below). Lastly, you'll obviously need to fire up your KDE/GNOME/whatever settings tool to create those keyboard shortcuts for the "Zoom"-Rocker and the "Spell" key.</para></refsect2></refsect1><refsect1>
+<title>OPTIONS</title>
+<para>You generally won't need to deal with the commandline options. They're provided to allow you tweak a setting, testing it before modifying the configuration file. For most people, the defaults in the configuration file should work fine.</para>
+<para>Many of these options correspond to a configuration file setting which the option overrides. Those options are not fully documented in this section. See the description of the corresponding configuration file settings, instead.</para><variablelist>
+<varlistentry><term><option>--help</option></term><listitem><para>Prints the usage message</para></listitem></varlistentry><varlistentry><term><option>-v</option>&nbsp;[<replaceable class="option">level</replaceable>]</term><term><option>--verbose</option>[<replaceable class="option">=level</replaceable>]</term><listitem><para>Makes <command>msnek4k_driverd</command> generate more output to its log file.</para></listitem></varlistentry><varlistentry><term><option>--config=</option>[<replaceable class="option">file</replaceable>]</term><listitem><para>The configuration file.</para>
+<para>If <command>msnek4k_driverd</command> cannot find its default configuration file (see the "FILES" section), this option becomes required.</para></listitem></varlistentry><varlistentry><term><option>--help-config</option></term><listitem><para>Prints a message describing the configuration file settings. Using this option together with <option>--verbose</option> outputs a sample configuration file.</para>
+<para>You can generate a configuration file template by running the following:<literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>msnek4k_driverd&nbsp;--help-config&nbsp;-v&nbsp;\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&gt;my-msnek4k-driverd.conf&nbsp;</literallayout></para></listitem></varlistentry><varlistentry><term><option>--dbg</option></term><listitem><para>Causes <command>msnek4k_driverd</command> to run in the foreground instead of daemonizing itself. Generally only useful for development or serious debuggins.</para></listitem></varlistentry><varlistentry><term><option>-l</option>&nbsp;<replaceable class="option">logfile</replaceable></term><term><option>--logfile=</option><replaceable>logfile</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>logfile</option>".</para>
+<para>(This option is ignored when the <option>--dbg</option> option is specified.)</para></listitem></varlistentry><varlistentry><term><option>-d</option>&nbsp;<replaceable class="option">X11-display</replaceable></term><term><option>--display=</option><replaceable class="option">X11-display</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>display</option>".</para>
+<para>This option is required if neither the <envar>DISPLAY</envar> environment variable nor the <option>display</option> setting in the configuration file are set.</para></listitem></varlistentry><varlistentry><term><option>-k</option>&nbsp;<replaceable class="option">device</replaceable></term><term><option>--kbd-dev=</option><replaceable>device</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>kbd-dev</option>".</para></listitem></varlistentry><varlistentry><term><option>-S</option>&nbsp;<replaceable class="option">keycode</replaceable></term><term><option>--spell=</option><replaceable>keycode</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>Spell.x11Keycode</option>".</para></listitem></varlistentry><varlistentry><term><option>-U</option>&nbsp;<replaceable class="option">keycode</replaceable></term><term><option>--zoom-up=</option><replaceable>keycode</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>ZoomUp.x11Keycode</option>".</para></listitem></varlistentry><varlistentry><term><option>-D</option>&nbsp;<replaceable class="option">keycode</replaceable></term><term><option>--zoom-down=</option><replaceable>keycode</replaceable></term><listitem><para>Same as  the configuration file setting, "<option>ZoomDown.x11Keycode</option>".</para></listitem></varlistentry><varlistentry><term><option>-b</option></term><term><option>--Zoom.isMouseButton</option></term><listitem><para>Same as  the configuration file setting, "<option>Zoom.isMouseButton</option>".</para></listitem></varlistentry><varlistentry><term><option>-w</option></term><term><option>--Zoom.isMouseWheel</option></term><listitem><para>Same as  the configuration file setting, "<option>Zoom.isMouseWheel</option>".</para></listitem></varlistentry></variablelist></refsect1><refsect1>
+<title>THE CONFIGURATION FILE</title>
+<para>As noted in the previous section, there are commandline options corresponding to some of <command>msnek4k_driverd</command>'s configuration file settings. Those options override the the corresponding setting. There are also settings that only appear in the configuration file.</para>
+<para><command>msnek4k_driverd</command> requires a configuration file (at least at present). If you installed from a "<literal>.deb</literal>" or "<literal>.rpm</literal>" package, the default configuration file is (most likely) "<literal>/etc/msnek4k_driverd.conf</literal>". (See the "FILES" section for more details.) Use the "<option>--config</option>" commandline option to specify an alternate configuration file.</para>
+<para>The configuration file follows a rather standard syntax. Settings have the form: "<option>setting</option>&nbsp;=&nbsp;<replaceable>value</replaceable>". Any whitespace surrounding the '=' delimiter is ignored. (It isn't required, either). Every "<replaceable>value</replaceable>" must begin with a non-whitespace character (after that, a "<replaceable>value</replaceable>" can contain as much whitespace as you wish). The "<replaceable>value</replaceable>" ends at the end of the line or the first '#' character. The '#' character marks the beginning of a comment. Comments end at the end of the line. A comment can start anyplace in the line, not just at the beginning. Unfortunately, this also means that a '#' character can never appear in a "<replaceable>value</replaceable>".</para>
+<para>After modifying the configuration file, you can use "<literal>SIGUSR1</literal>" to reread it without restarting <command>msnek4k_driverd</command>. This only works with the configuration file that <command>msnek4k_driverd</command> read when it started, however. See the "SIGNALS" section for more details.</para>
+<para>The valid configuration file settings are as follows:<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>display = </option>&nbsp;<replaceable>X11-display</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>Send the keyboard events to the X11 display, "<replaceable class="option">X11-display</replaceable>".</para>
+<para>Normally not needed, since <command>msnek4k_driverd</command> tries to use the value of the <envar>DISPLAY</envar> environment variable. Use this setting to specify an alternate X11 display, if needed. (It overrides <envar>DISPLAY</envar>.)
+This setting is required if the <envar>DISPLAY</envar> environment variable is not set. Alterntatively, one could use the <option>--display</option> commandline option.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>kbd-dev = </option><replaceable>device</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>The keyboard device that <command>msnek4k_driverd</command> reads keyboard scancodes from.</para>
+<para>"<replaceable>device</replaceable>" should be the full pathname of the device, or the special keyword "<literal>auto</literal>". Specifying "<literal>auto</literal>" causes <command>msnek4k_driverd</command> to scan all of the "<literal>/dev/input/event*</literal>" devices. It stops when it finds the first one matching all of the following criteria:</para><itemizedlist>
+<listitem><para>The device is manufactured by Microsoft.</para></listitem><listitem><para>The device ID is the one for the MS Natural® Ergonomic Keyboard 4000.</para></listitem><listitem><para>The device's features, as specified by the kernel, indicate that it (probably) generates the scancodes for the "Zoom"-Rocker.</para></listitem></itemizedlist><para>For the times when this auto-scanning mechanism fails, use this option (or its related configuration file variable) to manually set the correct device. You should be able to find it by doing the following:</para><orderedlist>
+<listitem><para>Select a promising-looking device in "<literal>/dev/input/by-id</literal>".</para></listitem><listitem><para>Run the following as root in a terminal (<command>xterm</command>, <command>konsole</command>, <command>gnome-terminal</command>...):<literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>root@myhost:/root# </prompt>ls&nbsp;-l&nbsp;/dev/input/by-id/<replaceable class="option">&lt;test-candidate&gt;</replaceable>
+&nbsp;&nbsp;&nbsp;&nbsp;<prompt>root@myhost:/root# </prompt>input-events&nbsp;<replaceable class="option">&lt;n&gt;</replaceable></literallayout></para><para>...replacing <replaceable class="option">&lt;test-candidate&gt;</replaceable> with the promising-looking device you chose, which will be a symlink. Use the output of the first command to find symlinked-to file, "<literal>/dev/input/event</literal><replaceable class="option">&lt;n&gt;</replaceable>". That gives the value of <replaceable class="option">&lt;n&gt;</replaceable>.</para></listitem><listitem><para>Move the "Zoom"-Rocker. If you get a response, you've found the correct device.</para><para>Use the symlink under "<literal>/dev/input/by-id</literal>" as the value for this option. (That's preferred to the "<literal>/dev/input/event</literal><replaceable class="option">&lt;n&gt;</replaceable>" device.)</para></listitem><listitem><para>If you had no response, kill the running <literal>input-events</literal> process and repeat from step-1.<literallayout>
+</literallayout></para></listitem></orderedlist><variablelist>
+<varlistentry><term><option>logfile = </option><replaceable>filename</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>The name of the log file. Ignored if "<option>--dbg</option>" is passed on the commandline. <replaceable>filename</replaceable> is overwritten if it exists.</para>
+<para>The <replaceable>filename</replaceable> should contain an absolute path. Relative paths (or no path at all) are valid, but not advisable.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>Spell.scancode = </option><replaceable>val</replaceable></term><listitem><para>The raw keyboard scancode generated by the "Spell" key.</para></listitem></varlistentry><varlistentry><term><option>ZoomUp.scancode = </option><replaceable>val</replaceable></term><listitem><para>The raw keyboard scancode generated by moving the "Zoom"-Rocker up.</para></listitem></varlistentry><varlistentry><term><option>ZoomDown.scancode = </option><replaceable>val</replaceable></term><listitem><para>The raw keyboard scancode generated by moving the "Zoom"-Rocker down.</para></listitem></varlistentry></variablelist><para>For all 3 of these settings, <replaceable>val</replaceable> should be an integer, in base-10. An octal won't be recognized as such, and a hexadecimal value will be treated as a string and cause a parsing error.</para>
+<para>Almost everyone can safely<emphasis> </emphasis>ignore these 3 settings. Feel free to skip to the documentation for the next setting.</para>
+<para>These settings are configurable solely for user convenience. If some new release of the Linux kernel remapped the raw hardware scancodes to something else, you could continue using <command>msnek4k_driverd</command> without needing to wait for a new binary release. </para>
+<para>To find the new scancodes, or to check if they've changed, run the "<command>input-events</command>" command as described in step-2 of the previous documentation for the <option>kbd-dev</option> setting. (Be sure to use the correct "<literal>/dev/input/event</literal><replaceable class="option">&lt;n&gt;</replaceable>" device when doing so.) Move the "Zoom"-Rocker and hit the "Spell"-key and look at the output in the terminal. You should see lines containing "<literal>EV_KEY KEY_</literal><replaceable>&lt;keynm&gt;</replaceable><literal>&nbsp;(</literal><replaceable>&lt;hexint&gt;</replaceable><literal>)&nbsp;pressed</literal>". "<replaceable>&lt;keynm&gt;</replaceable>" will be the name of the key (as "<command>input-events</command>" knows it), while the "<replaceable>&lt;hexint&gt;</replaceable>" will be its scancode, in hexadecimal.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>Spell.x11Keycode = </option><replaceable>val</replaceable></term><listitem><para>The X11 keycode to map the Spell key to.</para></listitem></varlistentry><varlistentry><term><option>ZoomUp.x11Keycode = </option><replaceable>val</replaceable></term><listitem><para>What to generate when the "Zoom"-Rocker is moved up. Will be either an X11 keycode or mouse button number.</para></listitem></varlistentry><varlistentry><term><option>ZoomDown.x11Keycode = </option><replaceable>val</replaceable></term><listitem><para>What to generate when the "Zoom"-Rocker is moved up. Will be either an X11 keycode or mouse button number.</para></listitem></varlistentry></variablelist><para><replaceable>val</replaceable> must be a keycode (between 1 and 255) that isn't already in use by X11. For most users, the defaults are sufficient.</para>
+<para>(You <emphasis>could</emphasis> use a keycode that is already in use by another key, causing both keys to identically. But then, why map it at all?)</para>
+<para>To find unused keycodes, run the following from a terminal: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;xmodmap -pke | grep ' = *$' | less
+</literallayout></para>
+<para>Picking one of the higher unused keycodes should insulate you from future XFree86/Xorg or kernel changes.</para>
+<para>Additionally, <option>ZoomUp.x11Keycode</option> and <option>ZoomDown.x11Keycode</option> can also be a mouse button number. See the description for the <option>Zoom.isMouseButton</option> and <option>Zoom.isMouseWheel</option> settings for how to use the "Zoom"-Rocker as mouse buttons.</para>
+<para>Note: These 3 settings are for X11 keycodes (<command>msnek4k_driverd</command> has no effect on the (virtual) console(s)). Furthermore, these are not keysyms, but keycodes. (Refer back to the section, "Scancodes? Keycodes? Keysyms? X11?!?" if you've forgotten the difference.)<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>Zoom.isMouseButton = </option><replaceable>val</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>When <replaceable>val</replaceable>="true", <command>msnek4k_driverd</command> maps the "Zoom"-Rocker to a pair of mouse buttons. The <option>ZoomUp.x11Keycode</option> and <option>ZoomDown.x11Keycode</option> settings will be treated as mouse button numbers. <emphasis>Be sure to change them accordingly.</emphasis> Mouse button numbers range from 1 to 10.</para>
+<para>Because the "Zoom"-Rocker is really a key, it autorepeats. So, holding it up or down will produce repeated "mouse-button&nbsp;pressed" events. Letting it return to the neutral position produces a single "mouse-button&nbsp;released" event, however.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>Zoom.isMouseWheel = </option><replaceable>val</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>When <replaceable>val</replaceable>="true" <emphasis>and</emphasis> "<option>Zoom.isMouseButton</option>&nbsp;=&nbsp;true", <command>msnek4k_driverd</command> makes the "Zoom"-Rocker behave like a mouse-wheel.</para>
+<para>X11 typically maps buttons "4" and "5" to the mouse-wheel (one button for each wheel direction). So, what's this additional setting for?</para>
+<para>Normally, holding down a mouse button generates a single event. Releasing it generates another, separate event. A mouse wheel, in contrast, produces button <emphasis>clicks</emphasis> under X11 (not a separate press and release events). If you want to use the "Zoom"-Rocker as a mouse wheel, this becomes a problem. Holding the "Zoom"-Rocker up or down produces only a "mouse-pressed" event when <command>msnek4k_driverd</command> maps the "Zoom"-Rocker to a pair of mouse buttons. This might produce the same effect as moving the mouse-wheel once (or it might do nothing at all). The main reason for mapping the "Zoom"-Rocker to a mouse-wheel, however, is to use it as an "auto-rolling" mouse-wheel.</para>
+<para>Setting "<option>Zoom.isMouseWheel</option>&nbsp;=&nbsp;true" causes <command>msnek4k_driverd</command> to generate a mouse <emphasis>click,</emphasis> rather than a separate "mouse-button&nbsp;pressed" or "mouse-button&nbsp;released" event. When held in the up (or down) position, the "Zoom"-Rocker will produce repeated clicks, acting as if you're spinning the mouse wheel nonstop.</para>
+<para>Remember: <option>Zoom.isMouseWheel</option> is ignored unless "<option>Zoom.isMouseButton</option>&nbsp;=&nbsp;true".<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>ZoomUp.isMouseButton = </option><replaceable>val</replaceable></term><term><option>ZoomUp.isMouseWheel = </option><replaceable>val</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>Like <option>Zoom.isMouseButton</option> and <option>Zoom.isMouseWheel</option>, respectively, but for the up-direction only. Provides finer-grained control over the behavior of the "Zoom"-Rocker.</para>
+<para>You will almost never need to use these two settings. They're only provided for expert users with a unusual system setup.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><option>ZoomDown.isMouseButton = </option><replaceable>val</replaceable></term><term><option>ZoomDown.isMouseWheel = </option><replaceable>val</replaceable></term><listitem><para></para></listitem></varlistentry></variablelist><para>Like <option>Zoom.isMouseButton</option> and <option>Zoom.isMouseWheel</option>, respectively, but for the up-direction only. Provides finer-grained control over the behavior of the "Zoom"-Rocker.</para>
+<para>You will almost never need to use these two settings. They're only provided for expert users with a unusual system setup.<literallayout>
+</literallayout></para></refsect1><refsect1>
+<title>ENVIRONMENT</title>
+<para>There is only one environment variable that <command>msnek4k_driverd</command> uses: <envar>DISPLAY</envar>. The <option>display</option> configuration file setting overrides it, while the <option>--display</option> commandline option overrides them both.</para>
+<para>Feel free to modify <envar>DISPLAY</envar> in lieu of using the <option>display</option> configuration file setting or the <option>--display</option> commandline option to change which X11 display <command>msnek4k_driverd</command> sends keyboard (and/or mouse) events to.</para></refsect1><refsect1>
+<title>SIGNALS</title>
+<para><command>msnek4k_driverd</command> handles the following signals specially:</para><itemizedlist>
+<listitem><para><literal>SIGUSR1</literal></para><para>When <command>msnek4k_driverd</command> receives this signal, it rereads the configuration file that it was started with. This allows you to modify your configuration file and have the changes take effect immediately. Simply run the following from a terminal: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>sudo&nbsp;pkill&nbsp;-SIGUSR1&nbsp;msnek4k_driverd
+</literallayout></para>
+<para>If you don't have <command>pkill</command> installed on your system, you can send a "<literal>SIGUSR1</literal>" to <command>msnek4k_driverd</command> using the following set of commands: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>msnek4k_pid=`ps&nbsp;-ew&nbsp;|&nbsp;grep&nbsp;-v&nbsp;grep&nbsp;|&nbsp;\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grep&nbsp;msnek4k_driverd&nbsp;|&nbsp;awk&nbsp;'{print&nbsp;$1}'`
+&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>sudo&nbsp;kill&nbsp;-SIGUSR1&nbsp;$msnek4k_pid
+</literallayout></para></listitem><listitem><para><literal>SIGHUP</literal></para></listitem><listitem><para><literal>SIGINT</literal></para></listitem><listitem><para><literal>SIGUSR2</literal></para></listitem><listitem><para><literal>SIGPIPE</literal></para><para><command>msnek4k_driverd</command> ignores these 4 signals.</para></listitem></itemizedlist></refsect1><refsect1>
+<title>FILES</title>
+<variablelist>
+<varlistentry><term><filename>/etc/msnek4k_driverd.conf</filename></term><term><replaceable class="option">{prefix}</replaceable><filename>/etc/msnek4k_driverd.conf</filename></term><listitem><para>The default configuration file.</para></listitem></varlistentry></variablelist><para>"<replaceable class="option">{prefix}</replaceable>" represents the base path where the <command>msnek4k_driverd</command> binary was installed. I.&nbsp;e.&nbsp;the binary's <emphasis>path</emphasis> will be "<replaceable class="option">{prefix}</replaceable><literal>/bin/msnek4k_driverd</literal>". The first file is the one used when the base installation path is "<literal>/usr</literal>", which is often the case for most software packages.</para>
+<para>Unless you created a custom installation (or your Linux distribution is weird), the default configuration file should be "<filename>/etc/msnek4k_driverd.conf</filename>".<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><filename>/etc/X11/Xsession.d/90x11-msnek4k_driverd</filename></term><listitem><para>The startup script.</para></listitem></varlistentry></variablelist><para>This is the default name and path of the X11 startup script for <command>msnek4k_driverd</command>. (Note that Linux distributions are free to change the "<literal>90</literal>" to another prefix.)<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><filename>/etc/X11/msnek4k_driverd.xmodmap</filename></term><listitem><para>Systemwide keysym definitions for <command>msnek4k_driverd</command>.</para></listitem></varlistentry></variablelist><para>This file map the X11 keycodes generated by <command>msnek4k_driverd</command> to X11 keysyms. The <filename>/etc/X11/Xsession.d/90x11-msnek4k_driverd</filename> script runs the <command>xmodmap</command> utility on this file followed by "<filename>$HOME/.msnek4k_driverd.xmodmap</filename>" if it exists.</para>
+<para>The <filename>/etc/X11/msnek4k_driverd.xmodmap</filename> file distributed with <command>msnek4k_driverd</command> defines the following keycode-to-keysym bindings:</para><itemizedlist>
+<listitem><para>keycode&nbsp;250&nbsp;->&nbsp;XF86Spell</para><para>&nbsp;"&nbsp;&nbsp;+ Shift&nbsp;->&nbsp;F10</para></listitem><listitem><para>keycode&nbsp;251&nbsp;->&nbsp;XF86ZoomIn</para><para>&nbsp;"&nbsp;&nbsp;+ Shift&nbsp;->&nbsp;XF86RockerUp</para></listitem><listitem><para>keycode&nbsp;252&nbsp;->&nbsp;XF86ZoomOut</para><para>&nbsp;"&nbsp;&nbsp;+ Shift&nbsp;->&nbsp;XF86RockerDown</para></listitem></itemizedlist><para>The keycodes shown are the default values of the <option>Spell.x11Keycode</option>, <option>ZoomUp.x11Keycode</option> and <option>ZoomDown.x11Keycode</option> settings.<literallayout>
+</literallayout></para><variablelist>
+<varlistentry><term><filename>$HOME/.msnek4k_driverd.xmodmap</filename></term><listitem><para>User keysym definitions for <command>msnek4k_driverd</command>.</para></listitem></varlistentry></variablelist><para>This is the user's personal "override" file. (You have to create it; it won't automagically poof into existence.)</para>
+<para>Non-expert users should refer to the manpage for the <command>xmodmap</command> utility and look at the file, "<filename>/etc/X11/msnek4k_driverd.xmodmap</filename>", as an example of how to define their own "<filename>$HOME/.msnek4k_driverd.xmodmap</filename>".</para></refsect1><refsect1>
+<title>EXAMPLES</title>
+<refsect2>
+<title>Notes for the Less-Experienced User:</title>
+<para>(Power-users, please skip this subsection.)</para>
+<para>Customizing <command>msnek4k_driverd</command> requires you to use the terminal. If the word "terminal" or the idea of a commandline prompt means nothing to you or is intimidating, you <emphasis>might</emphasis> be able to get away with the following:</para><itemizedlist>
+<listitem><para>If your desktop menu(s) have an editor that you can, "run as Administrator", you can use that to edit the configuration file, "<filename>/etc/msnek4k_driverd.conf</filename>".</para></listitem><listitem><para>You can "restart" <command>msnek4k_driverd</command> by logging out and logging back in.</para></listitem></itemizedlist><para>But why go through the hassle of logging out &amp; logging back in?</para>
+<para>&nbsp;</para>
+<para>If you're <emphasis>not intimidated</emphasis> by the commandline, open your favorite terminal program (<command>gnome-terminal</command>, <command>konsole</command>, <command>xterm</command>, ...) now. (You'll usually find it in the "System" or "Settings" menu of your desktop.)</para>
+<para>To edit the configuration file, "<filename>/etc/msnek4k_driverd.conf</filename>" as the system administrator (a.k.a. "running as root"), use one of the following: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>sudo&nbsp;gnome-text-editor&nbsp;/etc/msnek4k_driverd.conf</literallayout></para>
+<para>or: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>su&nbsp;root&nbsp;gnome-text-editor&nbsp;/etc/msnek4k_driverd.conf</literallayout></para>
+<para>On most Linux distributions, including Debian and Ubuntu, you'll use the first one. If, however, your Linux distribution does not have the <command>sudo</command> command installed (or if it's not configured), use the command <command>su&nbsp;root</command> in its place. (Also, feel free to replace <command>gnome-text-editor</command> with your favorite text editor. If you don't have a favorite and <command>gnome-text-editor</command> isn't installed on your system, try <command>kate</command>, <command>nedit</command>, <command>xedit</command>, or even a non-GUI editor like <command>nano</command> or <command>pico</command>. <emphasis>Do not use a word processor</emphasis>, however.)</para>
+<para>To reload the configuration file, you will send <command>msnek4k_driverd</command> the "<literal>SIGUSR1</literal>" signal, by running the following command in the terminal:<literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>sudo&nbsp;pkill&nbsp;-SIGUSR1&nbsp;msnek4k_driverd</literallayout></para>
+<para>If you don't have <command>pkill</command> installed on your system, you'll have to do a little bit more typing: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;<prompt>me@myhost:$ </prompt>sudo&nbsp;kill&nbsp;-SIGUSR1&nbsp;`ps&nbsp;-ew&nbsp;|&nbsp;grep&nbsp;-v&nbsp;grep&nbsp;|&nbsp;\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grep&nbsp;msnek4k_driverd&nbsp;|&nbsp;awk&nbsp;'{print&nbsp;$1}'`
+</literallayout></para></refsect2><refsect2>
+<title>"Zoom"-Rocker Mouse-Wheel</title>
+<para>The first example is how to use the "Zoom"-Rocker as a mouse-wheel, which is, besides the default configuration, another common configuration.</para>
+<para>Start by opening the configuration file, "<filename>/etc/msnek4k_driverd.conf</filename>", in your favorite editor, running as "root". </para>
+<para>Change or add the settings shown below to the following: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;ZoomUp.x11Keycode = 4
+&nbsp;&nbsp;&nbsp;&nbsp;ZoomDown.x11Keycode = 5
+
+&nbsp;&nbsp;&nbsp;&nbsp;Zoom.isMouseButton = true
+&nbsp;&nbsp;&nbsp;&nbsp;Zoom.isMouseWheel = true</literallayout></para>
+<para>Save the file and reload the configuration file by sending <command>msnek4k_driverd</command> the "<literal>SIGUSR1</literal>" signal (as described above). After <command>msnek4k_driverd</command> reloads the configuration file, the "Zoom"-Rocker should now act like the mouse-wheel.</para></refsect2><refsect2>
+<title>"Zoom"-Rocker as Left &amp; Right Mouse Buttons</title>
+<para>The next example is a tad contrived, but potentially useful for artists or anyone else who has to hold down a mouse button for extended periods of time. The steps are nearly identical to those in the previous example, with one exception. When you edit "<filename>/etc/msnek4k_driverd.conf</filename>", make these changes: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;ZoomUp.x11Keycode = 1
+&nbsp;&nbsp;&nbsp;&nbsp;ZoomDown.x11Keycode = 3
+
+&nbsp;&nbsp;&nbsp;&nbsp;Zoom.isMouseButton = true
+&nbsp;&nbsp;&nbsp;&nbsp;Zoom.isMouseWheel = false</literallayout></para>
+<para>(The last line isn't strictly required. You could also delete or comment out any existing lines containing the <option>Zoom.isMouseWheel</option> setting.)</para>
+<para>Save the modified "<filename>/etc/msnek4k_driverd.conf</filename>" and send "<literal>SIGUSR1</literal>" to <command>msnek4k_driverd</command> using the steps from the previous example.</para>
+<para>Holding "Zoom"-Rocker up or down will now be the same as pressing and holding the left or right mouse button, respectively. Releasing the "Zoom"-Rocker acts like releasing either button.</para></refsect2><refsect2>
+<title>Changing the X11 Keysyms</title>
+<para>Lastly, here is an example for customizing keysyms.</para>
+<para>Suppose the file "<filename>/etc/msnek4k_driverd.conf</filename>" contains the following settings:<literallayout>&nbsp;&nbsp;&nbsp;&nbsp;Spell.x11Keycode = 154
+&nbsp;&nbsp;&nbsp;&nbsp;ZoomUp.x11Keycode = 183
+&nbsp;&nbsp;&nbsp;&nbsp;ZoomDown.x11Keycode = 252</literallayout></para>
+<para>One could create a "<filename>$HOME/.msnek4k_driverd.xmodmap</filename>" file containing these keycode-to-keysym mappings:<literallayout>&nbsp;&nbsp;&nbsp;&nbsp;keycode 154 = XF86Spell NoSymbol
+&nbsp;&nbsp;&nbsp;&nbsp;keycode 183 = XF86RockerUp NoSymbol
+&nbsp;&nbsp;&nbsp;&nbsp;keycode 184 = XF86RockerDown NoSymbol
+</literallayout></para>
+<para>Don't forget to run "<literal>xmodmap&nbsp;$HOME/.msnek4k_driverd.xmodmap</literal>" to make these changes take effect. (Notice that you don't need to send "<literal>SIGUSR1</literal>" to <command>msnek4k_driverd</command> if you didn't change "<filename>/etc/msnek4k_driverd.conf</filename>".)</para>
+<para>Next, run <command>xev</command> in a terminal, move the "Zoom"-Rocker up, then down, then hit the "Spell" key. You should see output in the terminal like this: <literallayout>&nbsp;&nbsp;&nbsp;&nbsp;KeyPress event, serial 34, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1402508986, (-354,436),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(484,458),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 251 (keysym 0x1008ff23, XF86RockerUp),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XmbLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False
+
+&nbsp;&nbsp;&nbsp;&nbsp;KeyRelease event, serial 35, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1402509114, (-354,436),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(484,458),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 251 (keysym 0x1008ff23, XF86RockerUp),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False
+
+&nbsp;&nbsp;&nbsp;&nbsp;KeyPress event, serial 35, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1402510050, (-354,436),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(484,458),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 252 (keysym 0x1008ff24, XF86RockerDown),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XmbLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False
+
+&nbsp;&nbsp;&nbsp;&nbsp;KeyRelease event, serial 35, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1402510178, (-354,436),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(484,458),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 252 (keysym 0x1008ff24, XF86RockerDown),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False
+
+&nbsp;&nbsp;&nbsp;&nbsp;KeyPress event, serial 46, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1404289170, (67,104),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(905,126),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 250 (keysym 0x1008ff7c, XF86Spell),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XmbLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False
+
+&nbsp;&nbsp;&nbsp;&nbsp;KeyRelease event, serial 47, synthetic NO, window 0x6200001,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root 0x15a, subw 0x0, time 1404289274, (67,104),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root:(905,126),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state 0x10, keycode 250 (keysym 0x1008ff7c, XF86Spell),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;same_screen YES,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XLookupString gives 0 bytes:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XFilterEvent returns: False </literallayout></para>
+<para>If any output is missing, check for typos in the "<filename>/etc/msnek4k_driverd.conf</filename>" or "<filename>$HOME/.msnek4k_driverd.xmodmap</filename>" file.</para></refsect2></refsect1><refsect1>
+<title>SEE ALSO</title>
+<para><citerefentry><refentrytitle>xmodmap</refentrytitle><manvolnum>1</manvolnum></citerefentry>, <citerefentry><refentrytitle>xev</refentrytitle><manvolnum>1</manvolnum></citerefentry></para></refsect1></refentry></article>

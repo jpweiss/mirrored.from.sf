@@ -1,0 +1,1124 @@
+<?xml version='1.0' encoding='ISO-8859-1' standalone='yes' ?>
+<tagfile>
+  <compound kind="class">
+    <name>jpwTools::LibTrace</name>
+    <filename>a00008.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>LibTrace</name>
+      <anchorfile>a00008.html</anchorfile>
+      <anchor>a2e451a12506ded9c78a30bf7f81dccb0</anchor>
+      <arglist>(const char *)</arglist>
+    </member>
+    <member kind="function" static="yes">
+      <type>static void</type>
+      <name>Debug</name>
+      <anchorfile>a00008.html</anchorfile>
+      <anchor>a77781da38315ac4b0961e24c45c4d0c8</anchor>
+      <arglist>(const char *)</arglist>
+    </member>
+    <member kind="function" static="yes">
+      <type>static void</type>
+      <name>Debug</name>
+      <anchorfile>a00008.html</anchorfile>
+      <anchor>a78b8fc2870d314d61f5dd427f2daa0e3</anchor>
+      <arglist>(const char *, const T &amp;)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::LibTraceObj</name>
+    <filename>a00009.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>LibTraceObj</name>
+      <anchorfile>a00009.html</anchorfile>
+      <anchor>ad7055f5172f28df555022734502589f8</anchor>
+      <arglist>(void *, const char *)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>Debug</name>
+      <anchorfile>a00009.html</anchorfile>
+      <anchor>a2eb71ec851c6833c85ac7e2e5d23637e</anchor>
+      <arglist>(const char *)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>Debug</name>
+      <anchorfile>a00009.html</anchorfile>
+      <anchor>a0d44f263c7ff9c2b43097f33b9387177</anchor>
+      <arglist>(const char *, const T &amp;)</arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>jpwTools::LinuxInputDevice</name>
+    <filename>a00010.html</filename>
+    <member kind="typedef">
+      <type>std::vector&lt; uint32_t &gt;</type>
+      <name>cap_flag_vec_t</name>
+      <anchorfile>a00010.html</anchorfile>
+      <anchor>a0365e49908abef9da4287c771e43e9c7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>LinuxInputDevice</name>
+      <anchorfile>a00010.html</anchorfile>
+      <anchor>a327eb5dac561851daa2e42d58cf26c00</anchor>
+      <arglist>(const string &amp;filename, uint16_t targVendor=0, uint16_t targProduct=0, const string &amp;fallback_byName=&quot;&quot;, const cap_flag_vec_t &amp;requiredCapabilities=m__NULL_VEC, const cap_flag_vec_t &amp;forbiddenCapabilities=m__NULL_VEC)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>~LinuxInputDevice</name>
+      <anchorfile>a00010.html</anchorfile>
+      <anchor>ae774f4bef7e4c71056ab3ad2e23079d5</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type>ssize_t</type>
+      <name>reinterpret_read</name>
+      <anchorfile>a00010.html</anchorfile>
+      <anchor>abd28d30342a05c8df0cb11130dcca916</anchor>
+      <arglist>(T *objPtr)</arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const cap_flag_vec_t</type>
+      <name>m__NULL_VEC</name>
+      <anchorfile>a00010.html</anchorfile>
+      <anchor>ae8fd34c733cf5e284ca9d1fbaa517435</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>jpwTools::LinuxInputEvent</name>
+    <filename>a00011.html</filename>
+    <member kind="function">
+      <type>bool</type>
+      <name>read</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>acf84e92a8fb3b0e448ce138f0f79807a</anchor>
+      <arglist>(LinuxInputDevice &amp;ufd)</arglist>
+    </member>
+    <member kind="variable">
+      <type>timeval</type>
+      <name>evTime</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>ae04d898e65d40b5c6fb578578cfdcaaf</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint16_t</type>
+      <name>evType</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a080a7c9b02b2cfe5c7f42d0f92f1d09b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint16_t</type>
+      <name>evCode</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a1d2706e2fa380be9b538cc5d5e9547d1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint32_t</type>
+      <name>evValue</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>abc1b35bc2a47ad3bd78be12562931c35</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_SYNCHRONIZE</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a7fc621d12609274523c454e53bddde9c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_KEY</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a9435e3cc2d20742572a8efd674350c96</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_RELATIVE_MOTION</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>ab6d078ddbced658568b5a61294c1c0d2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_ABSOLUTE_MOTION</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a09c022a2d6122737c83609f7bc49e4ec</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_MISC</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a51bab49d4366c048abd173b986eaf956</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_SWITCH</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a32ad1f5d703b460c3fe2c131718bf382</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_LED</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a110e77a3453928c999d0a4595248ea2c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_SOUND</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a17eaacb92debe0103991b26f726e8a64</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_AUTOREPEAT</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a69d0ba7713d573d9d057c36e9dda0149</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_FORCE_FEEDBACK</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>a12f1b955c220b9e4bf51a3bbe740f0c9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_POWER</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>ac89cbd17f356627ea2dfaabc48cdc151</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_FORCE_FEEDBACK_STATUS</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>afe6272141b6ff48d728cc059451b10af</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static const uint16_t</type>
+      <name>evt_MAX</name>
+      <anchorfile>a00011.html</anchorfile>
+      <anchor>adad31344cb73dd8b6bd9a9efb098e22a</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::Trace</name>
+    <filename>a00017.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>Trace</name>
+      <anchorfile>a00017.html</anchorfile>
+      <anchor>ac6aa772c3d5ba3b65d75a8b42cd57602</anchor>
+      <arglist>(const char *functionName)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>~Trace</name>
+      <anchorfile>a00017.html</anchorfile>
+      <anchor>aaa705be9a3c16665ee9c94ec27bd2321</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function" static="yes">
+      <type>static void</type>
+      <name>Debug</name>
+      <anchorfile>a00017.html</anchorfile>
+      <anchor>aaccdccd05d10c66df866242fa0e654f2</anchor>
+      <arglist>(const char *mesg)</arglist>
+    </member>
+    <member kind="function" static="yes">
+      <type>static void</type>
+      <name>Debug</name>
+      <anchorfile>a00017.html</anchorfile>
+      <anchor>ae0c5c32fb025b7f91ebebd5c4f05a621</anchor>
+      <arglist>(const char *mesg, const T &amp;arg)</arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static bool</type>
+      <name>tracingEnabled</name>
+      <anchorfile>a00017.html</anchorfile>
+      <anchor>a470c1be03255221a15654c3c55434ce9</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::TraceObj</name>
+    <filename>a00019.html</filename>
+    <base protection="private">jpwTools::details::Trace_ObjId_Tool</base>
+    <base>jpwTools::Trace</base>
+    <member kind="function">
+      <type></type>
+      <name>TraceObj</name>
+      <anchorfile>a00019.html</anchorfile>
+      <anchor>a4d15beab68a1a30558d9a4dd6cba8012</anchor>
+      <arglist>(void *objThis, const char *functionName)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>Debug</name>
+      <anchorfile>a00019.html</anchorfile>
+      <anchor>a57d5fa4d6896645be23037d9827358b1</anchor>
+      <arglist>(const char *mesg)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>Debug</name>
+      <anchorfile>a00019.html</anchorfile>
+      <anchor>aff5e7bd3c2c21db775f29092071ed167</anchor>
+      <arglist>(const char *mesg, const T &amp;arg)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>~TraceObj</name>
+      <anchorfile>a00019.html</anchorfile>
+      <anchor>a0fed2c90e4a2d0d01fd7bd54c3952670</anchor>
+      <arglist>()</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::X11Display</name>
+    <filename>a00020.html</filename>
+    <class kind="struct">jpwTools::X11Display::FailToOpen</class>
+    <member kind="function">
+      <type></type>
+      <name>X11Display</name>
+      <anchorfile>a00020.html</anchorfile>
+      <anchor>a1f916229f38304cf596547d4ea11fcc7</anchor>
+      <arglist>(const string &amp;displayName)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>~X11Display</name>
+      <anchorfile>a00020.html</anchorfile>
+      <anchor>a5b36b1d1e5c9a8a4f5fe59e7b9664d41</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>operator Display *</name>
+      <anchorfile>a00020.html</anchorfile>
+      <anchor>a066b62cce9fcb282d67b742efda0dd40</anchor>
+      <arglist>()</arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>jpwTools::X11Display::FailToOpen</name>
+    <filename>a00007.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>FailToOpen</name>
+      <anchorfile>a00007.html</anchorfile>
+      <anchor>a80af6779cf8e0143312a75546eba869d</anchor>
+      <arglist>(const string &amp;how)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::boost_helpers::ProgramOptions_Base</name>
+    <filename>a00015.html</filename>
+    <member kind="enumeration">
+      <name>optFlavor_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="enumvalue">
+      <name>DEFAULT</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994a88ec7d5086d2469ba843c7fcceade8a6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="enumvalue">
+      <name>COMMANDLINE</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994a7623adee188be5ac8f02780273b96059</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="enumvalue">
+      <name>CONFIG_FILE</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994a412fc1f23a5704f2adcd28372e7d1cae</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="enumvalue">
+      <name>SHARED</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994a9c46e16a4ab019339596acadeefc8c53</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="enumvalue">
+      <name>HIDDEN</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a9ddb5002f8aa14e59aff09ea888d3994a41ae0a505430bf564b119bc82db7592d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::options_description</type>
+      <name>b_po_opt_descr_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>abade35690de0846651a836129327c916</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::options_description_easy_init</type>
+      <name>b_po_opt_init_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a3816f031839efee61a87ecbc6fa0a619</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::value_semantic</type>
+      <name>b_po_value_semantic_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a5365ad21415574894ef9ab9adef17487</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::variables_map</type>
+      <name>b_po_varmap_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>af3d0c55150b57d0cdce33cc2bcf6e78c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::variable_value</type>
+      <name>b_po_varval_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a2b7c160558f4ba311539f756651ac018</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>boost::program_options::positional_options_description</type>
+      <name>b_po_posnopt_descr_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a209736781e5d3427d4773c936317b14d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>std::map&lt; std::string, b_po_varval_t &gt;</type>
+      <name>optval_map_t</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a57da0e6a334de09e49102db3eaef670f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>setVersion</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a841a864ae80a014cb2d29afcd87893d8</anchor>
+      <arglist>(const string &amp;ver, const string &amp;copyrightMesg=&quot;&quot;)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual void</type>
+      <name>displayExtraHelp</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>ac67f98ca5a4cd94b6d71b708d0d8abea</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual bool</type>
+      <name>validateParsedOptions</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a0171d93a3331a2fec23f5c47ebf96cb7</anchor>
+      <arglist>(b_po_varmap_t &amp;)</arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>parse</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>abcb430111b94150aae4d2093714d235e</anchor>
+      <arglist>(int argc, char *argv[])</arglist>
+    </member>
+    <member kind="function">
+      <type>const b_po_varval_t &amp;</type>
+      <name>operator[]</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>ae2549dda8eafc1d5dd1207c5930cde6f</anchor>
+      <arglist>(const string &amp;varName) const </arglist>
+    </member>
+    <member kind="function">
+      <type>unsigned</type>
+      <name>usageLineLength</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a233f388ca8e9391e5c374062f024e4be</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>const string &amp;</type>
+      <name>programName</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a699f7f9dccbe2bb8f5e7bd0d3a09ea8d</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>const string &amp;</type>
+      <name>defaultConfigurationFile</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>ad66cf57ae3d594c1d34d2096adecb7d5</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>const string &amp;</type>
+      <name>configurationFile</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a0279ea5707a72d95348b16ed5400b626</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>configurationFile</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a15fc2c59a14b8d91c4f12fc4d7883b8c</anchor>
+      <arglist>(const string &amp;cfgFile)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type></type>
+      <name>ProgramOptions_Base</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>aeaa433a63e7b53b435d2ff567c68db0b</anchor>
+      <arglist>(const string &amp;theProgramName, const string &amp;defaultCfgfile=&quot;&quot;, int lineLength=78)</arglist>
+    </member>
+    <member kind="function" protection="protected" virtualness="pure">
+      <type>virtual void</type>
+      <name>defineOptionsAndVariables</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a87a94c23653e5d16982edfd2d9e6d4b1</anchor>
+      <arglist>()=0</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>b_po_opt_init_t</type>
+      <name>addOpts</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a0e9cc8a58ebcb66dc3e1d180f511ce82</anchor>
+      <arglist>(optFlavor_t how=DEFAULT)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>b_po_opt_descr_t &amp;</type>
+      <name>addOpts</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a7e23bd9a84cd7897bfca02aa3d027d38</anchor>
+      <arglist>(const b_po_opt_descr_t &amp;b_po_optdefns, optFlavor_t how=DEFAULT)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>details::PositionParams &amp;</type>
+      <name>addPosnParam</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a19c65f8e5994eaa7aa6ab07f2cc3eec3</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>b_po_opt_init_t</type>
+      <name>addCfgVars</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a400f5cbecdc6ad67e62f89bb6b8d313d</anchor>
+      <arglist>(optFlavor_t how=DEFAULT)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>b_po_opt_descr_t &amp;</type>
+      <name>addCfgVars</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a2a8f8ff8821997f9c4541e9b6f2ddeca</anchor>
+      <arglist>(const b_po_opt_descr_t &amp;b_po_optdefns, optFlavor_t how=DEFAULT)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>void</type>
+      <name>addConfigHelpDetails</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>af8609c89f15f08b0bff519e2ac15c9da</anchor>
+      <arglist>(const char *docstr)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>details::EnvvarOptions &amp;</type>
+      <name>addEnvvars</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a7c5b8a92e7c745dc0d0b3c3186b340f1</anchor>
+      <arglist>(optFlavor_t how=DEFAULT)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>void</type>
+      <name>require8BitSize</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>addc5c803783fa4c3f48581dff4b4d564</anchor>
+      <arglist>(uint16_t val, const char *varName, bool nonzero=false)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>void</type>
+      <name>print_variables_map</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a62b9e8ba52d895b910f49ce66776573d</anchor>
+      <arglist>(std::ostream &amp;ost)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>void</type>
+      <name>parse_cfgfile</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a377ee05efc9083a94577eee7e806eb4a</anchor>
+      <arglist>(const string &amp;configfile, b_po_varmap_t &amp;vMap, bool notifyRequired=false)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>bool</type>
+      <name>updateVariables</name>
+      <anchorfile>a00015.html</anchorfile>
+      <anchor>a705194ca73d3417572474f203645f47d</anchor>
+      <arglist>(b_po_varmap_t &amp;vMap)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::boost_helpers::ReloadableProgramOptions_Base</name>
+    <filename>a00016.html</filename>
+    <base>jpwTools::boost_helpers::ProgramOptions_Base</base>
+    <member kind="function">
+      <type></type>
+      <name>~ReloadableProgramOptions_Base</name>
+      <anchorfile>a00016.html</anchorfile>
+      <anchor>a1ef9caf92a83cd47d3d92a94db915f9f</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>reparse</name>
+      <anchorfile>a00016.html</anchorfile>
+      <anchor>a96151242a3fadac95b55307d3c7d4fed</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>handleAnyRequiredReparse</name>
+      <anchorfile>a00016.html</anchorfile>
+      <anchor>af4c69d1f2860b20f8273b3b6fab89c06</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>handleAnyRequiredReparse</name>
+      <anchorfile>a00016.html</anchorfile>
+      <anchor>a1fe8e6b625e180fa611b064b1b31ce72</anchor>
+      <arglist>(std::ostream &amp;ost)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type></type>
+      <name>ReloadableProgramOptions_Base</name>
+      <anchorfile>a00016.html</anchorfile>
+      <anchor>a769e8ab4cda71f10966bcee13c4e3e86</anchor>
+      <arglist>(int reloadSignal, const string &amp;theProgramName, const string &amp;defaultCfgfile=&quot;&quot;, int lineLength=78)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::boost_helpers::boost_any::BadLexicalAnyCast</name>
+    <filename>a00001.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>BadLexicalAnyCast</name>
+      <anchorfile>a00001.html</anchorfile>
+      <anchor>a05c2653852a2144397fdef0166cb4dfd</anchor>
+      <arglist>(const any &amp;arg)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual const char *</type>
+      <name>what</name>
+      <anchorfile>a00001.html</anchorfile>
+      <anchor>aff06f49065b54a8a86e02e9a2441a8ba</anchor>
+      <arglist>() const </arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::boost_helpers::details::PositionParams</name>
+    <filename>a00014.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>PositionParams</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>a40978e68df147a2cb57c60278496c61f</anchor>
+      <arglist>(unsigned lineLen=b_po_opt_descr_t::m_default_line_length)</arglist>
+    </member>
+    <member kind="function">
+      <type>unsigned</type>
+      <name>size</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>acdb549c592f948a9d973d4d84b02ef87</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>empty</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>ac6e61de369e994009e36f344f99c15ad</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>PositionParams &amp;</type>
+      <name>operator()</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>a5462731868a8c2441796b63a8cc47f34</anchor>
+      <arglist>(const char *paramName, const char *paramDocstring, int count=1)</arglist>
+    </member>
+    <member kind="function">
+      <type>PositionParams &amp;</type>
+      <name>operator()</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>a90f2f9bcd702fcdbcccfb7714ce18cf9</anchor>
+      <arglist>(const char *paramName, const b_po_value_semantic_t *value_obj, const char *paramDocstring, int count=1)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>addMeToThe</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>adf1d44b29b4a5bacfa87d2423f4d7a34</anchor>
+      <arglist>(b_po_parser_t &amp;parser) const </arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>addMeToThe</name>
+      <anchorfile>a00014.html</anchorfile>
+      <anchor>afd4a8426f7914326ec98aa95fc6f9f67</anchor>
+      <arglist>(b_po_opt_descr_t &amp;opts) const </arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::boost_helpers::details::EnvvarOptions</name>
+    <filename>a00006.html</filename>
+    <class kind="struct">jpwTools::boost_helpers::details::EnvvarOptions::MapperFunctor</class>
+    <member kind="function">
+      <type></type>
+      <name>EnvvarOptions</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a3f4b04b55397ef024026293897afafcf</anchor>
+      <arglist>(unsigned lineLen=b_po_opt_descr_t::m_default_line_length)</arglist>
+    </member>
+    <member kind="function">
+      <type>unsigned</type>
+      <name>size</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>acdb549c592f948a9d973d4d84b02ef87</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>bool</type>
+      <name>empty</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>ac6e61de369e994009e36f344f99c15ad</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>set_pairedWithCmdCfg</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>aa0d777c9bd73cc21ee1bfcf5d554331a</anchor>
+      <arglist>(bool cmdlineOpt=false, bool cfgVar=false)</arglist>
+    </member>
+    <member kind="function">
+      <type>EnvvarOptions &amp;</type>
+      <name>operator()</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>acb19ae47a60215faa309c9c3362de9b1</anchor>
+      <arglist>(const char *name, const char *envvarDocstring)</arglist>
+    </member>
+    <member kind="function">
+      <type>EnvvarOptions &amp;</type>
+      <name>operator()</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a46af5f720834ecf0791c96b6bebcdf7e</anchor>
+      <arglist>(const char *name, const b_po_value_semantic_t *value_obj)</arglist>
+    </member>
+    <member kind="function">
+      <type>EnvvarOptions &amp;</type>
+      <name>operator()</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a3f81c8595cd1e0ad88b5ce12414a7092</anchor>
+      <arglist>(const char *name, const b_po_value_semantic_t *value_obj, const char *envvarDocstring)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>addMyCmdlineOptsToThe</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>ab352d45bb7bb34278da56978ebb61d85</anchor>
+      <arglist>(b_po_opt_descr_t &amp;opts) const </arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>addMyCfgVarsToThe</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a46e3f5666c9f64b6c8e3d78af9e288b5</anchor>
+      <arglist>(b_po_opt_descr_t &amp;opts) const </arglist>
+    </member>
+    <member kind="function">
+      <type>const b_po_opt_descr_t &amp;</type>
+      <name>options_description</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a4df55f048db7358c8af2b3a0476fd045</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function">
+      <type>MapperFunctor</type>
+      <name>mapper</name>
+      <anchorfile>a00006.html</anchorfile>
+      <anchor>a0344ec80e70beb1a648b49520f1297fd</anchor>
+      <arglist>() const </arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>jpwTools::boost_helpers::details::EnvvarOptions::MapperFunctor</name>
+    <filename>a00013.html</filename>
+    <member kind="typedef">
+      <type>EnvvarOptions::stringmap_t</type>
+      <name>name_map_t</name>
+      <anchorfile>a00013.html</anchorfile>
+      <anchor>a9f419e461ee44d72a78ab897d4ee8546</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>MapperFunctor</name>
+      <anchorfile>a00013.html</anchorfile>
+      <anchor>a4818c2fab0f31cb4f23a5dc41dfcdb6b</anchor>
+      <arglist>(const name_map_t &amp;envvarNames)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>MapperFunctor</name>
+      <anchorfile>a00013.html</anchorfile>
+      <anchor>a768c25a589f89b0af4fd2ccc846b2e44</anchor>
+      <arglist>(const MapperFunctor &amp;other)</arglist>
+    </member>
+    <member kind="function">
+      <type>string</type>
+      <name>operator()</name>
+      <anchorfile>a00013.html</anchorfile>
+      <anchor>a83292698315488b02efb7399db0aae9b</anchor>
+      <arglist>(const string &amp;s)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::details::Trace_ObjId_Tool</name>
+    <filename>a00018.html</filename>
+    <member kind="function" protection="protected">
+      <type>void</type>
+      <name>IdStamp</name>
+      <anchorfile>a00018.html</anchorfile>
+      <anchor>af6bf1e5c32f53c48e8fb5ce7814fe41b</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type></type>
+      <name>Trace_ObjId_Tool</name>
+      <anchorfile>a00018.html</anchorfile>
+      <anchor>a909e282e1935311dafc0d53b1f0ccee9</anchor>
+      <arglist>(void *objThis)</arglist>
+    </member>
+  </compound>
+  <compound kind="namespace">
+    <name>jpwTools::process</name>
+    <filename>a00034.html</filename>
+    <class kind="class">jpwTools::process::DiabLogStream</class>
+    <class kind="class">jpwTools::process::DaemonizationFailure</class>
+    <class kind="class">jpwTools::process::LogfileOpenError</class>
+    <member kind="function">
+      <type>pid_t</type>
+      <name>daemonize</name>
+      <anchorfile>a00034.html</anchorfile>
+      <anchor>a5496a24a1c1c494a7999231fdc3f7c16</anchor>
+      <arglist>(details::DiabLogStream_Base &amp;daemonLog_st=details::DiabLogDevStream::dev_null_st, const string &amp;newCwd=details::daemon_default::NEW_WD, details::DiabLogStream_Base &amp;cerrTarg_st=DiabLogStream::empty_st)</arglist>
+    </member>
+    <member kind="function">
+      <type>pid_t</type>
+      <name>daemonize</name>
+      <anchorfile>a00034.html</anchorfile>
+      <anchor>a0fd4f6a2a5794abc06fbd32df63c8a24</anchor>
+      <arglist>(const string &amp;logFile, const string &amp;newCwd=details::daemon_default::NEW_WD)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::process::DiabLogStream</name>
+    <filename>a00004.html</filename>
+    <base>jpwTools::process::details::DiabLogStream_Base</base>
+    <member kind="typedef">
+      <type>details::DiabLogStream_Base::basic_char_ios_t</type>
+      <name>basic_char_ios_t</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>af1188c50a079f28963cf1e57dcecde6b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DiabLogStream</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a9debe88049a519d3cd38b68fd0c021a1</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DiabLogStream</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a0394a10da3857851e425bff117f3fc20</anchor>
+      <arglist>(bool baseClassCtorArg)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DiabLogStream</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>aca5997badbd9bd77bce6f73a7a6bd675</anchor>
+      <arglist>(const string &amp;fname)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>open</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a98004e90c00c5888d08add212ba80980</anchor>
+      <arglist>(const string &amp;fname, bool deleteExisting=true)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a0e356237e51b5585fadf1325bbc5b6ad</anchor>
+      <arglist>(std::ostream &amp;out_st)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a4c2db65b3c7fa39087d7e12f46fdb72e</anchor>
+      <arglist>(std::istream &amp;in_st)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual bool</type>
+      <name>operator==</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a73c05c8153f19dbe328775fd8d3c2b7a</anchor>
+      <arglist>(const DiabLogStream_Base &amp;other) const </arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static DiabLogStream</type>
+      <name>empty_st</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>a8ed10120da1b6592abcb224433b773a0</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function" protection="protected" virtualness="virtual">
+      <type>virtual bool</type>
+      <name>rdbuf_equals</name>
+      <anchorfile>a00004.html</anchorfile>
+      <anchor>ad168457e1dea4bd41c3548e06af8101b</anchor>
+      <arglist>(const basic_char_ios_t &amp;other) const </arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::process::DaemonizationFailure</name>
+    <filename>a00002.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>DaemonizationFailure</name>
+      <anchorfile>a00002.html</anchorfile>
+      <anchor>a17934021f929602e992e9161b660b8a6</anchor>
+      <arglist>(const string &amp;why)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::process::LogfileOpenError</name>
+    <filename>a00012.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>LogfileOpenError</name>
+      <anchorfile>a00012.html</anchorfile>
+      <anchor>a35d82301830101ae413e520f972c54e6</anchor>
+      <arglist>(const string &amp;why)</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::process::details::DiabLogStream_Base</name>
+    <filename>a00005.html</filename>
+    <member kind="typedef">
+      <type>std::basic_ios&lt; char &gt;</type>
+      <name>basic_char_ios_t</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a31a3ee32cd20bc652b3d83faa066737f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual</type>
+      <name>~DiabLogStream_Base</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a8faa26d80d2f58ffad980059ea62b65c</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function" virtualness="pure">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>ad8de85762b636cca7be1f347a6007574</anchor>
+      <arglist>(std::ostream &amp;out_st)=0</arglist>
+    </member>
+    <member kind="function" virtualness="pure">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a21ee0a40828dcb79cde89d13ea6d3a5a</anchor>
+      <arglist>(std::istream &amp;in_st)=0</arglist>
+    </member>
+    <member kind="function" virtualness="pure">
+      <type>virtual bool</type>
+      <name>operator==</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>aee1c4bc0f4f75ae09f174fc2b7d8b268</anchor>
+      <arglist>(const DiabLogStream_Base &amp;other) const =0</arglist>
+    </member>
+    <member kind="function">
+      <type>const string &amp;</type>
+      <name>filename</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a55127c7ccb636ec309bfd9d0504f7dca</anchor>
+      <arglist>() const </arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type></type>
+      <name>DiabLogStream_Base</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a820a568fc9a50ea124966eafbe9e31c3</anchor>
+      <arglist>(bool isSentinel=false)</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type></type>
+      <name>DiabLogStream_Base</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a73e49f9f38e46bf32e20e108c99b01b6</anchor>
+      <arglist>(const string &amp;filename0)</arglist>
+    </member>
+    <member kind="function" protection="protected" virtualness="pure">
+      <type>virtual bool</type>
+      <name>rdbuf_equals</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a56ab2ac9f8b871e253372c0ebe372028</anchor>
+      <arglist>(const basic_char_ios_t &amp;other) const =0</arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>bool</type>
+      <name>hasSameType</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a289c42dc1e1d0a101630ecd8b9d50ddc</anchor>
+      <arglist>(const DiabLogStream_Base &amp;other) const </arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>bool</type>
+      <name>equals</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a7c2ee1c2dcfd747968011f6026bf8a30</anchor>
+      <arglist>(const DiabLogStream_Base &amp;other, const basic_char_ios_t &amp;self_as_st) const </arglist>
+    </member>
+    <member kind="function" protection="protected">
+      <type>std::streambuf *</type>
+      <name>redirect</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a76ab5e5e052d93f7819b29de9257cf6c</anchor>
+      <arglist>(FROM_STREAM_T &amp;from, TO_STREAM_T &amp;to)</arglist>
+    </member>
+    <member kind="variable" protection="protected">
+      <type>string</type>
+      <name>m__filename</name>
+      <anchorfile>a00005.html</anchorfile>
+      <anchor>a373ca7b4ebc94e883ed248f2f3b331e1</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>jpwTools::process::details::DiabLogDevStream</name>
+    <filename>a00003.html</filename>
+    <base>jpwTools::process::details::DiabLogStream_Base</base>
+    <member kind="typedef">
+      <type>DiabLogStream_Base::basic_char_ios_t</type>
+      <name>basic_char_ios_t</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a0c8b462c3f6b0eb9f614f769a3c7af86</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DiabLogDevStream</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a1a89bb95fc7352e933dd4e7e87c107d0</anchor>
+      <arglist>()</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DiabLogDevStream</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a2df03ca676ddb1dfb7fcc376b5f8e235</anchor>
+      <arglist>(const string &amp;fname)</arglist>
+    </member>
+    <member kind="function">
+      <type>void</type>
+      <name>open</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>afc8300c8299a25abb38f9868bb064211</anchor>
+      <arglist>(const string &amp;fname)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a0e356237e51b5585fadf1325bbc5b6ad</anchor>
+      <arglist>(std::ostream &amp;out_st)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual void</type>
+      <name>redirectToMe</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a4c2db65b3c7fa39087d7e12f46fdb72e</anchor>
+      <arglist>(std::istream &amp;in_st)</arglist>
+    </member>
+    <member kind="function" virtualness="virtual">
+      <type>virtual bool</type>
+      <name>operator==</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>a73c05c8153f19dbe328775fd8d3c2b7a</anchor>
+      <arglist>(const DiabLogStream_Base &amp;other) const </arglist>
+    </member>
+    <member kind="variable" static="yes">
+      <type>static DiabLogDevStream</type>
+      <name>dev_null_st</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>af22e1a34982169db9528721e65e7fd82</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="function" protection="protected" virtualness="virtual">
+      <type>virtual bool</type>
+      <name>rdbuf_equals</name>
+      <anchorfile>a00003.html</anchorfile>
+      <anchor>ad168457e1dea4bd41c3548e06af8101b</anchor>
+      <arglist>(const basic_char_ios_t &amp;other) const </arglist>
+    </member>
+  </compound>
+  <compound kind="namespace">
+    <name>jpwTools::process::details::daemon_default</name>
+    <filename>a00036.html</filename>
+    <member kind="variable">
+      <type>const string</type>
+      <name>NEW_WD</name>
+      <anchorfile>a00036.html</anchorfile>
+      <anchor>afb53028667d3559299fe572c4e7c00a2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>const string</type>
+      <name>FALLBACK_WD</name>
+      <anchorfile>a00036.html</anchorfile>
+      <anchor>a187643d77cc5872c47c2eefc7e5da809</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

@@ -1,0 +1,75 @@
+# This file is sourced by Xsession(5), not executed.
+# The "|| true" is to ensure that the Xsession script does not
+# terminate on error.
+#
+# Start the "msnek4k_driverd" daemon, then load a custom Xmodmap for
+# the X11 keybindings to the keys remapped by "msnek4k_driverd".
+#
+# Checks for a system-wide "/etc/X11/msnek4k_driverd.xmodmap" file and
+# a user-specific "~/.msnek4k_driverd.xmodmap" file.  The system-wide
+# one is loaded first (if present), followed by the user-specific one
+# (if present).
+#
+#
+# Copyright (C) 2010-2011 by John P. Weiss
+#
+# This package is free software; you can redistribute it and/or modify
+# it under the terms of the Artistic License, included as the file
+# "LICENSE" in the source code archive.
+#
+# This package is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# You should have received a copy of the file "LICENSE", containing
+# the License John Weiss originally placed this program under.
+#
+# $Id$
+############
+
+
+# These next two variables are only required due to the behavior of the
+# 'configure' script
+prefix="@prefix@"
+exec_prefix="@exec_prefix@"
+
+# Configuration Variables.  Feel free to modify these.
+#
+DAEMON="@bindir@/msnek4k_driverd"
+CFGFILE="@sysconfdir@/msnek4k_driverd.conf"
+
+
+############
+#
+# No User-Servicable Parts Below
+#
+############
+
+
+SYSMODMAP=/etc/X11/msnek4k_driverd.xmodmap
+USRMODMAP="$HOME/.msnek4k_driverd.xmodmap"
+
+
+startedOk='y'
+if [ -x $DAEMON ]; then
+    # Start the daemon
+    $DAEMON --conf=$CFGFILE || startedOk=''
+fi
+
+if [ -n "$startedOk" ]; then
+    # Load the system-wide and user-specific xmodmap, if they exist.
+    if [ -x /usr/bin/xmodmap ]; then
+        if [ -r "$SYSMODMAP" ]; then
+            /usr/bin/xmodmap "$SYSMODMAP" || true
+        fi
+        if [ -r "$USRMODMAP" ]; then
+            /usr/bin/xmodmap "$USRMODMAP" || true
+        fi
+    fi
+fi
+
+
+#################
+# Local Variables:
+# mode: sh
+# End:

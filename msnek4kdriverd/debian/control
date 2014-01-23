@@ -1,0 +1,25 @@
+# -*- Debian-control -*-
+
+Source: msnek4k-driverd
+Section: x11
+Priority: optional
+Maintainer: John Weiss <jpwcandide@sourceforge.net>
+Build-Depends: debhelper (>= 7), autotools-dev, libxtst-dev, libboost-program-options1.42-dev|libboost-program-options1.40-dev|libboost-program-options1.38-dev|libboost-program-options1.34-dev|libboost-program-options-dev
+Standards-Version: 3.8.3
+Homepage: http://sourceforge.net/projects/msnek4kdriverd
+
+Package: msnek4k-driverd
+Architecture: any
+#Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: libgcc1, libstdc++6, libx11-6 (>= 0), libxtst6, ${misc:Depends}
+Description: A driver for the MS Natural Ergo Keyboard 4000
+ There are 3 keys on the Microsoft Natural© Ergonomic Keyboard 4000 which
+ the linux kernel cannot handle (yet):
+    The "Spell" function key
+    Zoom-Up
+    Zoom-Down
+ .
+ This is a daemon which listens on a "/dev/input/event*" device for scancodes
+ from those 3 keys and generates X11 keycodes for them using the XTest
+ extension.  You can also map the Zoom keys to mouse-button events (say, to
+ turn the Zoom-jog into a scroll-wheel).

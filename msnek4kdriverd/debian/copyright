@@ -1,0 +1,32 @@
+This work was packaged for Debian by:
+
+    John Weiss <jpwcandide@sourceforge.net> on Thu, 11 Nov 2010 11:45:43 -0500
+
+It was downloaded from <http://sourceforge.net/projects/msnek4kdriverd/>
+
+Upstream Author(s):
+
+    John Weiss <jpwcandide@sourceforge.net>
+
+Copyright:
+
+    <Copyright (C) 2010-2011 by John Weiss>
+
+License:
+
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the "Artistic License" which comes with Debian.
+
+    THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+    WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES
+    OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+On Debian systems, the complete text of the Artistic License
+can be found in `/usr/share/common-licenses/Artistic'.
+
+The Debian packaging is:
+
+    Copyright (C) 2010-2011 John Weiss <jpwcandide@sourceforge.net>
+
+and is licensed under the Artistic License, 
+see `/usr/share/common-licenses/Artistic'.

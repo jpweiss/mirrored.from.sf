@@ -1,0 +1,14 @@
+!!!!
+!!
+!! This XModmap defines keysyms to accompany the example keycodes in
+!! msnek4k_driverd.conf.  Modify accordingly.
+!!
+!!!!
+
+
+! Spell & F10
+keycode 250 = XF86Spell F10 XF86Spell F10 XF86Spell F10
+
+keycode 251 = XF86ZoomIn XF86RockerUp XF86ZoomIn XF86RockerUp XF86ZoomIn XF86RockerUp
+keycode 252 = XF86ZoomOut XF86RockerDown XF86ZoomOut XF86RockerDown XF86ZoomOut XF86RockerDown
+

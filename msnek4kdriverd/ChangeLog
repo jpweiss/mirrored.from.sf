@@ -1,0 +1,597 @@
+2011-05-17 18:31  John Weiss
+
+	* [r2172] ChangeLog:
+	  - Updated this file with v1.0.0 pre-release bugfixes.
+
+2011-05-18 18:26  John Weiss
+
+	* [r2171] debian/changelog, debian/postinst, debian/prerm,
+	  msnek4k-driverd.spec, pkgTemplates/debian.postinst.in,
+	  pkgTemplates/msnek4k-driverd.spec.in, src/Makefile.am,
+	  src/Makefile.in:
+	  - Bugfix:  New file, "Timer.h", not added to the source package.
+	  - Added status messages to the package install/remove scriptlets.
+	    Not only tracks what's going on for users, but aids debugging
+	    the packages themselves.
+	  - Wrong version number on the debian package.
+
+2011-05-17 20:48  John Weiss
+
+	* [r2170] ChangeLog, README:
+	  - Removed the boilerplate from the README and added a note for
+	    developers and anyone else interested in (a) the SF source
+	    code repository; (b) the ChangeLog.
+
+2011-05-17 20:23  John Weiss
+
+	* [r2169] ChangeLog, configure, debian/changelog,
+	  msnek4k-driverd.spec, pkgTemplates/msnek4k-driverd.spec.in:
+	  - Updates to changelogs and version numbers, in preparation for
+	    the v1.0.0 release.
+
+2011-05-17 19:24  John Weiss
+
+	* [r2168] ChangeLog, configure.ac:
+	  - Updates to this file.
+	  - Preparation for the v1.0.0 release.
+
+2011-05-17 18:53  John Weiss
+
+	* [r2166] ChangeLog, aclocal.m4, ax_jpwTools.m4, config.h.in,
+	  configure, configure.ac, debian/control, msnek4k-driverd.spec,
+	  pkgTemplates/debian.control.in,
+	  pkgTemplates/msnek4k-driverd.spec.in, src/Makefile.am,
+	  src/Makefile.in, src/msnek4k_driverd.cc:
+	  - Cosmetic fixups to the ChangeLog.
+	  - Updates to autoconf-, automake-, and configure-generated
+	    files.
+	  - New Autoconf macros added, mainly around static linking
+	    support.
+	  - Now statically-linking the boost::program_options library,
+	    eliminating a runtime dependency from the *.rpm and *.deb
+	    packages.
+	  - In "ReloadableProgramOptions_Base", renamed
+	    'handleAnyRequiredReparse()' to 'reparseIfPending()', which
+	    makes a bit more sense from a code-readability-perspective.
+
+2011-05-04 11:04  John Weiss
+
+	* [r2149] ChangeLog, src/LinuxInputDevice.cc,
+	  src/LinuxInputDevice.h, src/Timer.h, src/msnek4k_driverd.cc:
+	  - Modified the main loop:  Now uses polling to check if there is
+	    data on the kbd device.  By polling and timing out
+	    periodically, msnek4k_driverd can "remain active" w/o
+	    consuming much CPU.  This, in turn, makes msnek4k_driverd more
+	    responsive after long periods of inactivity.
+	    .
+	    The call to 'poll' has a timeout 2 times the X keyboard
+	    auto-repeat activation delay, (A) making it tunable, and (B)
+	    giving it a responsiveness close to (but slower than) X
+	    keyboard repeat.
+
+2011-02-10 17:25  John Weiss
+
+	* [r2115] ChangeLog, Makefile.am, Makefile.in, Makefile,
+	  debian/rules
+	  - Packaging bugfixes.
+
+2011-02-10 16:00  John Weiss
+
+	* [r2114] ChangeLog, manpage/Makefile.am, manpage/Makefile.in,
+	  manpage/msnek4k_driverd.1, manpage/msnek4k_driverd.lyx,
+	  manpage/msnek4k_driverd.sgml, msnek4k-driverd.spec
+	  - Added a "newbie" subsection to the EXAMPLES section of the
+	    manpage.  Reorganized the EXAMPLES section, as well.
+	  - Enhanced the manpage-Makefile to deal with a misfeature in
+	    docbook2man (it forcibly uppercases the text in subsection
+	    headings, which is not what I want).
+
+2011-02-09 16:20  John Weiss
+
+	* [r2113] ChangeLog, Doxygen, doxygen.tags
+	  - Doxygen now using short-filenames (the long ones caused problems
+	    with 'tar').
+
+2011-02-09 16:15  John Weiss
+
+	* [r2112] ChangeLog, TODO, configure.ac, configure,
+	  debian/changelog, doxygen.tags, msnek4k-driverd.spec,
+	  pkgTemplates/msnek4k-driverd.spec.in, src/Makefile.in
+	  - Updates to this file.
+	  - Preparation for v0.9.0 release.
+	  - Updated:  Autoconf files.
+	  - Fixed Postinstall/Preremove scriptlets in the RPM specfile.
+
+2011-02-04 02:08  John Weiss
+
+	* [r2109] TODO, make.syscfg.mk, src/Any.cc, src/Any.h,
+	  src/Makefile.am, src/Makefile.in, src/msnek4k_driverd.cc:
+	  - Added "Any.*" files, containing tools for printing out a
+	    boost::any without runtime knowledge of the stored type.
+	  - More reorganization & redesign of 'ProgramOptions_Base' and
+	    'ReloadableProgramOptions_Base'.
+	  - Added:  Package Postinstall/Preremove Scripts
+	    + Will start the daemon on package install, restart on upgrade,
+	      and stop on removal.
+	    + Updated manpage accordingly.
+	  - validateParsedOptions() calls print_variables_map() when
+	    verbosity is 3 or larger.
+	  - Removed the inactivity-wait, since the read from the kbd event
+	    device blocks.
+	  - Now correctly reparsing the configfile.
+	    + Had to add the ability to "notify" the
+	      boost::program_options::variables_map in parse_cfgfile().
+	      Otherwise, configfile reparsing doesn't always work.
+	  - Doxygen tweaks:
+	    + Escaped some sensitive characters in the doxycomments (as
+	      per the Doxygen manual).
+	    + Now generating a graphical class heirarchy, collaboration
+	      graph, and call/caller graph.
+
+2011-01-24 01:33  John Weiss
+
+	* [r2104] Doxyfile, TODO, ax_jpwTools.m4, configure, configure.ac,
+	  debian/changelog, debian/docs, debian/postinst, debian/prerm,
+	  debian/rules, doxygen.tags, manpage/Makefile.am,
+	  manpage/Makefile.in, manpage/msnek4k_driverd.1,
+	  manpage/msnek4k_driverd.lyx, manpage/msnek4k_driverd.sgml,
+	  msnek4k-driverd.spec, pkgTemplates/debian.postinst.in,
+	  pkgTemplates/msnek4k-driverd.spec.in, src/msnek4k_driverd.cc:
+	  - ProgramOptions_Base changed and reorganized:
+	    + C'tor is now a protected member.
+	    + Now has a subclass, "ReloadableProgramOptions_Base";
+	      implements configfile reloading on a c'tor-specified
+	      signal.
+	  - Fine-tuning some of the Doxygen settings.
+	  - New Feature:  Configfile Reload on SIGUSR1
+	    + Updated src to use ReloadableProgramOptions_Base
+	    + Updated manpage accordingly.
+	  - Added:  Package Postinstall/Preremove Scripts
+	    + Will start the daemon on package install, restart on upgrade,
+	      and stop on removal.
+	    + Updated manpage accordingly.
+	  - Bugfixes to:
+	    + Manpage Makefile
+	    + Custom Autoconf macro
+	  - Autoconf/Automake updates.
+
+2011-01-13 00:01  John Weiss
+
+	* [r2098] Doxyfile, Makefile.am, Makefile.in, TODO, aclocal.m4,
+	  configure, configure.ac, debian/rules, doxygen.am,
+	  manpage/Makefile.in, src/Makefile.in, src/X11Display.h:
+	  - Adding Doxygen support.
+	  - Improved doxycomments.
+
+2010-12-31 20:18  John Weiss
+
+	* [r2094] ChangeLog:
+	  - Updated the ChangeLog with this message.
+
+2010-12-31 20:18  John Weiss
+
+	* [r2093] Makefile.am, Makefile.in, TODO, configure, configure.ac,
+	  debian/changelog, msnek4k-driverd.spec,
+	  pkgTemplates/msnek4k-driverd.spec.in, src/Makefile.am,
+	  src/Makefile.in, src/msnek4k_driverd.cc:
+	  - Preparation for v0.8.1 release.
+	  - Updated:  Autoconf files.
+	  - New:
+	    + Binary is now installed suid-root.
+	    + Binary drops root privileges when no longer needed.
+	    + Rudimentary tests performed.
+
+2010-12-30 23:18  John Weiss
+
+	* [r2089] configure, src/Makefile.in:
+	  - Updating copyright years.
+
+2010-12-30 23:15  John Weiss
+
+	* [r2088] ax_jpwTools.m4, debian/copyright, make.syscfg.mk,
+	  src/90x11-msnek4k_driverd.in, src/LinuxInputDevice.cc,
+	  src/LinuxInputDevice.h, src/LinuxInputEvent.cc,
+	  src/LinuxInputEvent.h, src/X11Display.h, src/msnek4k_driverd.cc:
+	  - Updating copyright years.
+
+2010-12-15 23:36  John Weiss
+
+	* [r2082] examples/msnek4k_driverd.conf,
+	  src/90x11-msnek4k_driverd.in:
+	  - Minor bugfixes.
+
+2010-12-14 22:25  John Weiss
+
+	* [r2081] ChangeLog, Makefile.am, Makefile.in, configure,
+	  debian/changelog, manpage/Makefile.am, manpage/Makefile.in,
+	  msnek4k-driverd.spec, pkgTemplates/msnek4k-driverd.spec.in:
+	  - Updated the ChangeLog with this message.
+	  - Packaging files updated:
+	    + RPM specfile(s)
+	    + DEB changelog
+	    + The bindist package name now includes the version number.
+	  - Autoconf updates.
+
+2010-12-12 03:00  John Weiss
+
+	* [r2079] TODO, ax_jpwTools.m4, config.h.in, configure,
+	  configure.ac, debian/docs, manpage/Makefile.am,
+	  manpage/Makefile.in, manpage/docbook-refentry.layout,
+	  manpage/msnek4k_driverd.1, manpage/msnek4k_driverd.lyx,
+	  manpage/msnek4k_driverd.sgml, src/msnek4k_driverd.cc:
+	  - BUGFIX:
+	    + X11 kept terminating "msnek4k_driverd" whenever the latter
+	      received an unknown scancode ... unless "msnek4k_driverd" ran
+	      in verbose mode.
+	    + An incorrectly-constructed if-statement was the cause.  It's
+	      now been fixed and the bug has been eliminated.
+	  - Crude sighandling added.
+	  - Checks and Warnings for inconsistent settings added.
+	  - There is now a manpage.
+	    + Much of the extra explanatory material in the "usage" message
+	      moved to the manpage.
+	  - The binary now accepts a "--version" option, printing out the
+	    version as defined in "config.h"
+	  - New Autoconf function to "export" a variable to the "config.h"
+	    file.
+	  - Configuration File Default Location:
+	    + Now exporting the "sysconf" configuration path to "config.h".
+	    + The value of "sysconf" is now used as the base directory for
+	      the config file.
+	  - The "examples/msnek4k_driverd.conf" is being compressed when
+	    packaged into a *.deb.  Modified "debian/docs" in an attempt to
+	    change this.  It may not work.
+
+2010-11-18 16:55  John Weiss
+
+	* [r2075] Makefile.am, Makefile.in, configure, configure.ac,
+	  manpage, manpage/Makefile.am, manpage/Makefile.in,
+	  manpage/msnek4k_driverd.lyx, manpage/msnek4k_driverd.sgml:
+	  - Initial Commit:  Adding manpage and autoconf/automake support
+	    for it.
+
+2010-11-16 17:28  John Weiss
+
+	* [r2073] Makefile.am, Makefile.in, configure, debian/changelog,
+	  msnek4k-driverd.spec, pkgTemplates/msnek4k-driverd.spec.in:
+	  - Changes to get RPM builds working.
+
+2010-11-16 02:16  John Weiss
+
+	* [r2072] ax_jpwTools.m4, configure.ac:
+	  - Changes to AX_JPW_CREATING_DEB_RPM.
+	    + It now takes 3 args, the first being the directory containing
+	      the files listed in the other two.  It's required, anyhow, that
+	      they the *.in files be in a directory different from their
+	      installation targets.
+	    + Removed debugging commands.
+
+2010-11-16 01:54  John Weiss
+
+	* [r2070] AUTHORS, ChangeLog, Makefile.am, Makefile.in, NEWS,
+	  README, ax_jpwTools.m4, config.guess, config.sub, configure,
+	  configure.ac, debian/changelog, debian/control,
+	  debian/control.in[DEL], msnek4k-driverd.spec.in[DEL],
+	  pkgTemplates, pkgTemplates/debian.control.in[CPY],
+	  pkgTemplates/msnek4k-driverd.spec.in[CPY], src/Makefile.in:
+	  - Adding the Automake-required files (they were symlinks before).
+	  - Fixed:  'debian/control' and 'msnek4k-driverd.spec' no longer
+	    erased by the 'distclean' rule
+	    + The debian/control.in and *.spec.in files moved to a new
+	      directory, 'pkgTemplates/'.
+	    + Autoconf changes (see below).
+	  - Autoconf Changes:
+	    + Added some of the files generated by 'dpkg_buildpackage' to
+	      the CLEANFILES macro.
+	    + All indentation 'ax_jpwTools.m4' changed to 2 spaces.
+	    + New macro for specifying packaging-system files (*.in files)
+	      to be created by 'configure'.
+	    + Cleanup of defunct rules and variables.
+	  - Packaging Improvements:
+	    + Added an Autoconf file "debian/control.in" for Debian
+	      packages.  The "debian/control" file is now generated by
+	      Autoconf.
+	    + Added an Autoconf RPM specfile.
+	      · The actual specfile will be generated by Autoconf.
+	      · This is the initial instance of an RPM specfile.
+	    + Added "bindist" rules so that I can generate binaries while
+	      getting the RPM and Debian packages to work correctly.
+	    + Adding the symlinks to config.guess and config.sub, which are
+	      also now part of the source distribution.
+	  - Debian Changelog modified to:
+	    + ...add v0.7.1;
+	    + ...cut the v0.7.2 release.
+
+2010-11-15 18:00  John Weiss
+
+	* [r2067] COPYING, LICENSE, Makefile.am, Makefile.in, TODO,
+	  WARRANTY, configure, configure.ac, debian/control,
+	  debian/control.in, debian/rules, examples/msnek4k_driverd.conf,
+	  msnek4k-driverd.spec, msnek4k-driverd.spec.in, src/Makefile.am,
+	  src/Makefile.in:
+	  - Copyright File Changeover:
+	    - COPYING is now the distributed file; LICENSE is now the
+	      symlink.
+	  - Packaging Improvements:
+	    + Added an Autoconf file "debian/control.in" for Debian
+	      packages. The "debian/control" file is now generated by
+	      Autoconf.
+	    + Added an Autoconf RPM specfile.
+	      · The actual specfile will be generated by Autoconf.
+	      · This is the initial instance of an RPM specfile.
+	    + Added "bindist" rules so that I can generate binaries while
+	      getting the RPM and Debian packages to work correctly.
+	  - Changed my name in the WARRANTY and other std. files.
+	  - Autoconf Changes:
+	    + New Makefile variable, ETC_X11_PATH
+	    + The default for the XSESSIOND_PATH variable now uses
+	      ETC_X11_PATH.
+	    + There's now a separate tarball name, replacing the '_' with a
+	      '-'.
+	    + Cleanup of defunct rules and variables.
+	  - Configfile changes:
+	    + Now has "sane defaults" matching those in the *.xmodmap file.
+	    + The *.xmodmap file is now installed.
+
+2010-11-15 17:57  John Weiss
+
+	* [r2066] COPYING[DEL]:
+	  - Removing the symlink, in preparation for changing it to an
+	    actual file (namely, the one it used to link to).
+
+2010-11-12 01:20  John Weiss
+
+	* [r2063] Makefile.am, Makefile.in, configure, configure.ac,
+	  debian, debian/changelog, debian/compat, debian/control,
+	  debian/copyright, debian/docs, debian/rules, src/Makefile.am,
+	  src/Makefile.in:
+	  - Bugfixes to the Makefile.am
+	  - Changes to how the Xsession.d startup script is built and
+	     installed.
+	  - Initial version of the debian control files.
+
+2010-11-10 18:52  John Weiss
+
+	* [r2062] Makefile.in, TODO, ax_jpwTools.m4, configure,
+	  configure.ac, make.syscfg.mk, src/90x11-msnek4k_driverd.in,
+	  src/Makefile.am, src/Makefile.in:
+	  - New custom autoconf macros:
+	    + Macro that provides a default value for custom 'configure'
+	      variables.
+	    + Syntactic sugar for AC_ARG_VAR that provides a default value
+	      for the newly-defined Makefile.in variable.
+	  - New:  shell script fragment for starting the daemon from the
+	    "/etc/X11/XSession.d" path.
+
+2010-11-09 19:59  John Weiss
+
+	* [r2061] config.h.in, examples/msnek4k_driverd.conf,
+	  make.syscfg.mk[CPY], src/LinuxInputDevice.cc,
+	  src/LinuxInputDevice.h, src/LinuxInputEvent.cc,
+	  src/LinuxInputEvent.h, src/Makefile.am, src/Makefile.in,
+	  src/msnek4k_driverd.cc:
+	  - Updates to autoconf-generated changes in the *.in files.
+	    + New file, "make.syscfg.mk", contains Makefile variables for
+	      easily changing from a debug-build to a regression build to an
+	      optimized build.  It also contains variables for tuning the
+	      build to a specific platform.  This new file is "include"d
+	      into any "Makefile.am" that actually builds code.
+	  - More doxycomments added.
+	  - Replaced "enum event_type" with integer constants.
+	    + The new integer constant variables are defined in a new file,
+	      LinuxInputEvent.cc, using the macros from the "linux/input.h"
+	      header.
+	    + Doing so in a translation unit decouples "linux/input.h" from
+	      the "LinuxInputEvent.h" header.  Which, in turn, decouples it
+	      from all of the other source files.
+	  - New Feature:  kbd-dev = auto
+	    + Searches the "/dev/input" directory for all "event?" files.
+	    + Examines the files for a match to a USB vendor ID and product
+	      ID.
+	    + If the ID match fails, fall back to matching the displayname
+	      to a given string.
+	    + Once found, perform a final match against a list of required
+	      and forbidden features that the device must have in order to
+	      work.
+	    + Can still explicitly specify a device via "kbd-dev", of
+	      course.
+	  - Code Refactored for the recent changes in
+	    "ProgramOptions_Base".
+	  - FIXED:  The "--dbg" option was broken.
+
+2010-11-03 14:11  John Weiss
+
+	* [r2057] Makefile.in, ax_jpwTools.m4, configure, configure.ac,
+	  src/LinuxInputDevice.cc, src/LinuxInputDevice.h[CPY],
+	  src/LinuxInputEvent.h[CPY], src/Makefile.am, src/Makefile.in,
+	  src/X11Display.h[CPY], src/msnek4k_driverd.cc:
+	  - Autoconf:
+	    + Renamedthe AX_JPW_NO_USR_ETC macro to
+	      AX_JPW_USE_FHS_DEFAULTS.
+	    + AX_JPW_USE_FHS_DEFAULTS now implemented in a fashion similar
+	      to a "use the Linux FHS" macro that I found online.
+	  - Several classes split out of msnek4k_driverd.cc into their own
+	    files.
+	  - Renamed Classes:
+	    + UnixInputFd -> LinuxInputDevice
+	    + KbdInputEvent -> LinuxInputEvent
+	  - Removed some unused "#include"s.
+
+2010-10-28 03:15  John Weiss
+
+	* [r2055] TODO, ax_jpwTools.m4[CPY], configure, configure.ac:
+	  - Custom macros split out of 'configure.ac' into new file,
+	    'ax_jpwTools.m4'.
+	  - New feature:  C++ header checks (finally!)
+	  - New feature:  Use "/etc" as the sysconfdir, not "/usr/etc" when
+	    prefix=="/usr".
+
+2010-10-26 23:10  John Weiss
+
+	* [r2054] src/Makefile.am, src/Makefile.in, src/msnek4k_driverd.cc:
+	  - Changed the SVN Keyword, from the old CVS-specific "RCS $Id:"
+	    to "$Id:".
+	  - Commented out "-Winline"; it generated too many warnings.
+	  - Renamed a fn. arg that was shadowing a member.
+
+2010-10-26 21:54  John Weiss
+
+	* [r2035] configure, src/Makefile.in:
+	  - Updated from the build.
+
+2010-10-26 21:53  John Weiss
+
+	* [r2034] Makefile.am, configure.ac, src/Makefile.am:
+	  - Updated the Subversion keyword tags.  Hopefully, 'svn' will
+	    find them this time.
+
+2010-10-26 21:30  John Weiss
+
+	* [r2032] Makefile.in, TODO, aclocal.m4, config.h.in, configure,
+	  configure.ac, src/Makefile.am, src/Makefile.in,
+	  src/msnek4k_driverd.cc:
+	  - Restored "config.h.in"; without it, the cmdline for the
+	    compiler is bloated with cpp-define flags.
+	  - Renamed the package tarname to match what's used in the
+	    Sourceforge project.
+	  - Removed AC_COMPILE_WARNINGS, since it was adding the
+	    "-pendantic" option to the compiler flags vars.  And
+	    "-pedantic" warns about things that are actually valid C++
+	    syntax.
+	  - Added AM_CFLAGS and AM_CXXFLAGS variables to handle my custom
+	    compiler settings.
+	  - Program changes:
+	    + errno.h => cerrno
+	    + Removed defunct class, DisplayMapper.
+	    + Now using Unicode character entities in my strings, rather
+	      than hardcoding in UTF-8 or Latin-1.
+	    + Handled a few compiler warnings.
+
+2010-10-24 19:17  John Weiss
+
+	* [r2031] Makefile.am, Makefile.in, WARRANTY, configure,
+	  configure.ac, src/Makefile.am, src/Makefile.in:
+	  - Had to remove AC_CHECK_HEADERS for C++ header files.  The check
+	    is done with the C compiler, and there's no equivalent macro that
+	    does C++.
+	  - Added lists of install files for the default configfile and the
+	    "*/share/doc/*" files.
+	  - Bugfixes in the autoconf files.
+
+2010-10-24 18:23  John Weiss
+
+	* [r2030] Makefile.in, config.h.in[DEL], configure, configure.ac,
+	  src/Makefile.am, src/Makefile.in:
+	  - Fleshed out "configure.ac" with some custom m4 macros to abort
+	    if a feature is missing.  Also added some "action-if-error"
+	    args to some of the existing checks.
+	  - No longer creating a config.h
+
+2010-10-23 04:28  John Weiss
+
+	* [r2029] COPYING, INSTALL, Makefile.am, Makefile.in, aclocal.m4,
+	  config.h.in, configure, configure.ac, depcomp, install-sh,
+	  missing, src/Makefile.am, src/Makefile.in:
+	  - Now using Autoconf & Automake as the build system.  Adding:
+	    + The necessary startup/setup files (*.am & *.ac);
+	    + The the autogenerated files (configure, *.in);
+	    + The files installed/required by Autoconf/Automake.
+
+2010-10-21 02:34  John Weiss
+
+	* [r2028] Daemonizer.cc[DEL], Daemonizer.h[DEL], LibTrace.h[DEL],
+	  ProgramOptions_Base.cc[DEL], ProgramOptions_Base.h[DEL],
+	  Trace.cc[DEL], Trace.h[DEL], examples,
+	  examples/msnek4k_driverd.conf[CPY],
+	  examples/msnek4k_driverd.xmodmap[CPY], msnek4k_driverd.cc[DEL],
+	  msnek4k_driverd.conf[DEL], msnek4k_driverd.xmodmap[DEL], src,
+	  src/Daemonizer.cc[CPY], src/Daemonizer.h[CPY],
+	  src/LibTrace.h[CPY], src/ProgramOptions_Base.cc[CPY],
+	  src/ProgramOptions_Base.h[CPY], src/Trace.cc[CPY],
+	  src/Trace.h[CPY], src/msnek4k_driverd.cc[CPY]:
+	  - Moved everything into a "src" subdirectory.
+
+2010-10-21 02:28  John Weiss
+
+	* [r2027] Daemonizer.cc, Daemonizer.h, msnek4k_driverd.cc:
+	  - Removed the embedded daemonize() function.  Now using the
+	    Daemonizer.* files from jpwToolkit library.
+
+2010-10-20 14:34  John Weiss
+
+	* [r2022] msnek4k_driverd.cc, msnek4k_driverd.conf:
+	  - Process now daemonizes itself.
+	    + New option to suppress daemonization:  --dbg
+	  - New option/cfgvar: logfile
+
+2010-10-20 01:54  John Weiss
+
+	* [r2019] LibTrace.h, Trace.cc, Trace.h:
+	  - ProgramOptions_Base now uses tracing.
+
+2010-10-20 01:54  John Weiss
+
+	* [r2018] msnek4k_driverd.cc, msnek4k_driverd.conf:
+	  - The config file is now a pure template; all local/testing
+	    settings have been removed.
+	  - Refactored:  ProgramOptions now inherits from the new
+	    ProgramOptions_Base class.
+	  - Mouse Wheel support formally added.
+	  - Flushing after every fake-event attempt, whether it succeeded
+	    or not.
+
+2010-10-19 19:01  John Weiss
+
+	* [r2015] ProgramOptions_Base.cc, ProgramOptions_Base.h:
+	  - Symlinks to the library class.
+
+2010-10-11 00:37  John Weiss
+
+	* [r1989] msnek4k_driverd.cc, msnek4k_driverd.conf:
+	  - Added new config options:
+	    + Behavioral:
+	        ZoomUp.isMouseWheel
+	        ZoomDown.isMouseWheel
+	    + "zoom-is-mouse" option renamed (see below)
+	    + Sets both ZoomUp.* and ZoomDown.* variants at once:
+	        Zoom.isMouseButton
+	        Zoom.isMouseWheel
+	  - ProgramOptions c'tor arg "lineLength" now stored in a member
+	    variable, for later use by ProgramOptions::showConfigHelp(...)
+	  - Modified a few of the option docstrings.
+	  - ProgramOptions::showConfigHelp(...) now generates a sample
+	    configfile when --verbose is set.  'm__cfgfileDocDetails' line
+	    length altered to handle this.
+	  - The "unknown key" message now printed out only when --verbose
+	    is set.
+	  - Descriptive message of each event received now printed only
+	    when --verbose is set to something larger than 1.
+
+2010-10-11 00:27  John Weiss
+
+	* [r1988] LICENSE[CPY], TODO, WARRANTY[CPY]:
+	  - Adding the Artistic License, the no-warranty, and a ToDo list.
+
+2010-10-09 03:52  John Weiss
+
+	* [r1987] msnek4k_driverd.cc, msnek4k_driverd.conf,
+	  msnek4k_driverd.xmodmap:
+	  - Added example config & Xmodmap
+	  - Working version.  Not complete yet, but it does work.
+
+2010-10-06 08:23  John Weiss
+
+	* [r1985] msnek4k_driverd.cc[CPY]:
+	  - Initial commit.  Compiles and reads its configfile, but does
+	    nothing more than print out the key events it reads.
+
+2010-09-27 03:22  John Weiss
+
+	* [r1980] .:
+	  Project created.
+	.
+	.
+	**** This ChangeLog generated using:                ****
+	****     'svn2cl -i -a -r ${last}:${rel_first} \    ****
+	****          -o ChangeLog.updates.txt'             ****
+

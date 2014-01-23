@@ -1,0 +1,8366 @@
+#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass docbook-refentry
+\use_default_options false
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 0
+\use_esint 0
+\cite_engine basic
+\use_bibtopic false
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Reference
+
+\end_layout
+
+\begin_layout Ref Title
+msnek4k_driverd
+\end_layout
+
+\begin_layout Ref ManpageSection
+1
+\end_layout
+
+\begin_layout Ref Name
+\begin_inset Flex RefName:TheName
+status open
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Flex RefName:ShortDescr
+status open
+
+\begin_layout Plain Layout
+Driver for the MS Natural® Ergonomic Keyboard 4000
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Ref Synopsis
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Flex RefCmdSyn:OptArg
+status open
+
+\begin_layout Plain Layout
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--config=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+file
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex RefCmdSyn:OptArg
+status open
+
+\begin_layout Plain Layout
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+\SpecialChar \ldots{}
+Other Options\SpecialChar \ldots{}
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout RefSection
+DESCRIPTION
+\end_layout
+
+\begin_layout Standard
+Currently, the Linux kernel supports all of the keys on the MS Natural®
+ Ergonomic Keyboard 4000 (a.
+\begin_inset space ~
+\end_inset
+
+k.
+\begin_inset space ~
+\end_inset
+
+a.
+\begin_inset space ~
+\end_inset
+
+the "msnek4k") except for 3:
+\end_layout
+
+\begin_layout Itemize
+The "Spell" key.
+\end_layout
+
+\begin_layout Itemize
+Zoom Up
+\end_layout
+
+\begin_layout Itemize
+Zoom Down
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ daemon bridges the gap by converting the raw device scancodes to X11 keycodes
+ and/or mouse button events (via the XTest extension).
+ When installed as packaged, you shouldn't need to do anything to run 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+.
+ X11 should run it as part of its normal session-startup tasks.
+\end_layout
+
+\begin_layout Standard
+Note: the remainder of this manual refers to the \SpecialChar \ldots{}
+ thing \SpecialChar \ldots{}
+ in the middle of
+ the keyboard that generates the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom Up
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ and 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom Down
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ scancodes as 
+\begin_inset Quotes eld
+\end_inset
+
+the 
+\begin_inset Quotes els
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes ers
+\end_inset
+
+-Rocker
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout RefSubsection
+Scancodes? Keycodes? Keysyms? X11?!?
+\end_layout
+
+\begin_layout Standard
+For those who already know what X11 is, how it handles the keyboard, and
+ how it recieves keyboard input from the kernel, skip this section.
+ Everyone else should read on.
+\end_layout
+
+\begin_layout Standard
+Most casual users of Ubuntu, Fedora, SUSE, etc.
+ know what GNOME and KDE are, but may be scratching their heads when they
+ read 
+\begin_inset Quotes eld
+\end_inset
+
+X11
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Simply put, 
+\begin_inset Quotes eld
+\end_inset
+
+X11
+\begin_inset Quotes erd
+\end_inset
+
+ is a low-level, raw graphical user interface platform that GNOME and KDE
+ are built on top of.
+ If we compared Ubuntu/Fedora/SUSE/etc.
+ to an automobile, GNOME and KDE are the plush interior and accessories;
+ X11 is the drive-train.
+\end_layout
+
+\begin_layout Standard
+X11 assigns a number (usually) between 8 and 255 to every 
+\bar under
+key
+\bar default
+ on the keyboard.
+ These are the 
+\begin_inset Quotes eld
+\end_inset
+
+keycodes
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Note the emphasis on key, not letter.
+ The 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+Shift
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ and 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+Alt
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ keys have their own keycodes.
+ The '@' character does not; it and the '2' character are on the same key
+ on US keyboards.
+\end_layout
+
+\begin_layout Standard
+This is where 
+\begin_inset Quotes eld
+\end_inset
+
+keysyms
+\begin_inset Quotes erd
+\end_inset
+
+ come in.
+ X11 contains a user-configurable mapping from combinations of keycodes
+ to keysyms.
+ A unique (set of) keycode(s) translates to one keysym, and vice-versa.
+ For example, X11 traditionally converts the keycode, 
+\begin_inset Quotes eld
+\end_inset
+
+9
+\begin_inset Quotes erd
+\end_inset
+
+, to the keysym 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+Tab
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+XF86AudioPlay
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ is a keysym.
+ So are 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+q
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ and 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:KeyCap
+status collapsed
+
+\begin_layout Plain Layout
+Q
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ (i.
+\begin_inset space ~
+\end_inset
+
+e.
+\begin_inset space ~
+\end_inset
+
+there's a keysym for every letter and number).
+ When you set KDE and GNOME shortcuts, you're actually telling them what
+ to do when they get a 
+\emph on
+keysym
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+A 
+\begin_inset Quotes eld
+\end_inset
+
+scancode
+\begin_inset Quotes erd
+\end_inset
+
+ is an integer number that the 
+\emph on
+keyboard itself
+\emph default
+ sends to the OS.
+ The Linux kernel (not X11) may change these raw codes, but usually it passes
+ them along unchanged.
+ (The Linux kernel, incidentally, converts the scancodes to the keycodes
+ used by X11 and most other programs.) In the case of the Microsoft Natural®
+ Ergonomic Keyboard 4000, Linux 
+\emph on
+has to
+\emph default
+ change the raw scancodes for certain keys from a number above 255 to an
+ unused scancode in the range from 0 to 255.
+ (Linux can't handle raw scancodes above 255.)
+\end_layout
+
+\begin_layout RefSubsection
+Quickstart
+\end_layout
+
+\begin_layout Standard
+If you installed 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ from a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+.deb
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+.rpm
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ package, the package's built-in postinstall script will start it for you.
+ It comes preconfigured with sane defaults.
+ The 
+\series bold
+EXAMPLES
+\series default
+ section below has another fairly common configuration (as well as some
+ uncommon ones).
+\end_layout
+
+\begin_layout Standard
+Merely running 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ will not automagically map the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker and 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Spell
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ key to keysyms.
+ You'll need to do that, yourself, either by using the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ utility or by customizing one of the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ files (see the 
+\series bold
+FILES
+\series default
+ section below).
+ Lastly, you'll obviously need to fire up your KDE/GNOME/whatever settings
+ tool to create those keyboard shortcuts for the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker and the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Spell
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ key.
+\end_layout
+
+\begin_layout RefSection
+OPTIONS
+\end_layout
+
+\begin_layout Standard
+You generally won't need to deal with the commandline options.
+ They're provided to allow you tweak a setting, testing it before modifying
+ the configuration file.
+ For most people, the defaults in the configuration file should work fine.
+\end_layout
+
+\begin_layout Standard
+Many of these options correspond to a configuration file setting which the
+ option overrides.
+ Those options are not fully documented in this section.
+ See the description of the corresponding configuration file settings, instead.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--help
+\end_layout
+
+\end_inset
+
+ Prints the usage message
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-v
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+[
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+level
+\end_layout
+
+\end_inset
+
+]
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--verbose
+\end_layout
+
+\end_inset
+
+[
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+=level
+\end_layout
+
+\end_inset
+
+] Makes 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ generate more output to its log file.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--config=
+\end_layout
+
+\end_inset
+
+[
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+file
+\end_layout
+
+\end_inset
+
+] The configuration file.
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</para>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<para>
+\end_layout
+
+\end_inset
+
+If 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ cannot find its default configuration file (see the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\series bold
+FILES
+\series default
+
+\begin_inset Quotes erd
+\end_inset
+
+ section), this option becomes required.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--help-config
+\end_layout
+
+\end_inset
+
+ Prints a message describing the configuration file settings.
+ Using this option together with 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--verbose
+\end_layout
+
+\end_inset
+
+ outputs a sample configuration file.
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</para>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<para>
+\end_layout
+
+\end_inset
+
+You can generate a configuration file template by running the following:
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+msnek4k_driverd
+\begin_inset space ~
+\end_inset
+
+--help-config
+\begin_inset space ~
+\end_inset
+
+-v
+\begin_inset space ~
+\end_inset
+
+
+\backslash
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+>my-msnek4k-driverd.conf
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--dbg
+\end_layout
+
+\end_inset
+
+ Causes 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ to run in the foreground instead of daemonizing itself.
+ Generally only useful for development or serious debuggins.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-l
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+logfile
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--logfile=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+logfile
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+logfile
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</para>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<para>
+\end_layout
+
+\end_inset
+
+(This option is ignored when the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--dbg
+\end_layout
+
+\end_inset
+
+ option is specified.)
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-d
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+X11-display
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--display=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+X11-display
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+display
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</para>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<para>
+\end_layout
+
+\end_inset
+
+This option is required if neither the 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+ environment variable nor the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+display
+\end_layout
+
+\end_inset
+
+ setting in the configuration file are set.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-k
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+device
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--kbd-dev=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+device
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+kbd-dev
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-S
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--spell=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Spell.x11Keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-U
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--zoom-up=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.x11Keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-D
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--zoom-down=
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+keycode
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.x11Keycode
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-b
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+-w
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+ Same as  the configuration file setting, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout RefSection
+THE CONFIGURATION FILE
+\end_layout
+
+\begin_layout Standard
+As noted in the previous section, there are commandline options corresponding
+ to some of 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+'s configuration file settings.
+ Those options override the the corresponding setting.
+ There are also settings that only appear in the configuration file.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ requires a configuration file (at least at present).
+ If you installed from a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+.deb
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+.rpm
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ package, the default configuration file is (most likely) 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ (See the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\series bold
+FILES
+\series default
+
+\begin_inset Quotes erd
+\end_inset
+
+ section for more details.) Use the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--config
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ commandline option to specify an alternate configuration file.
+\end_layout
+
+\begin_layout Standard
+The configuration file follows a rather standard syntax.
+ Settings have the form: 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+setting
+\end_layout
+
+\end_inset
+
+
+\family typewriter
+
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+value
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Any whitespace surrounding the '
+\family typewriter
+=
+\family default
+' delimiter is ignored.
+ (It isn't required, either).
+ Every 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+value
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ must begin with a non-whitespace character (after that, a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+value
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ can contain as much whitespace as you wish).
+ The 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+value
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ ends at the end of the line or the first '#' character.
+ The '#' character marks the beginning of a comment.
+ Comments end at the end of the line.
+ A comment can start anyplace in the line, not just at the beginning.
+ Unfortunately, this also means that a '#' character can never appear in
+ a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+value
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+After modifying the configuration file, you can use 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to reread it without restarting 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+.
+ This only works with the configuration file that 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ read when it started, however.
+ See the "
+\series bold
+SIGNALS
+\series default
+" section for more details.
+\end_layout
+
+\begin_layout Standard
+The valid configuration file settings are as follows:
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+display = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+X11-display
+\end_layout
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+Send the keyboard events to the X11 display, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+X11-display
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Normally not needed, since 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ tries to use the value of the 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+ environment variable.
+ Use this setting to specify an alternate X11 display, if needed.
+ (It overrides 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+.)
+\begin_inset Newline newline
+\end_inset
+
+This setting is required if the 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+ environment variable is not set.
+ Alterntatively, one could use the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--display
+\end_layout
+
+\end_inset
+
+ commandline option.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+kbd-dev = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+device
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The keyboard device that 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ reads keyboard scancodes from.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+device
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ should be the full pathname of the device, or the special keyword 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+auto
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Specifying 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+auto
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ causes 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ to scan all of the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/event*
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ devices.
+ It stops when it finds the first one matching all of the following criteria:
+\end_layout
+
+\begin_layout Itemize
+The device is manufactured by Microsoft.
+\end_layout
+
+\begin_layout Itemize
+The device ID is the one for the MS Natural® Ergonomic Keyboard 4000.
+\end_layout
+
+\begin_layout Itemize
+The device's features, as specified by the kernel, indicate that it (probably)
+ generates the scancodes for the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker.
+\end_layout
+
+\begin_layout Standard
+For the times when this auto-scanning mechanism fails, use this option (or
+ its related configuration file variable) to manually set the correct device.
+ You should be able to find it by doing the following:
+\end_layout
+
+\begin_layout Enumerate
+Select a promising-looking device in 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/by-id
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Run the following as root in a terminal (
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xterm
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+konsole
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+gnome-terminal
+\end_layout
+
+\end_inset
+
+\SpecialChar \ldots{}
+):
+\family typewriter
+
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+root@myhost:/root# 
+\end_layout
+
+\end_inset
+
+ls
+\begin_inset space ~
+\end_inset
+
+-l
+\begin_inset space ~
+\end_inset
+
+/dev/input/by-id/
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<test-candidate>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+root@myhost:/root# 
+\end_layout
+
+\end_inset
+
+input-events
+\family default
+
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<n>
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\SpecialChar \ldots{}
+replacing 
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<test-candidate>
+\end_layout
+
+\end_inset
+
+ with the promising-looking device you chose, which will be a symlink.
+ Use the output of the first command to find symlinked-to file, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/event
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<n>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ That gives the value of 
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<n>
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Move the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker.
+ If you get a response, you've found the correct device.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+Use the symlink under 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/by-id
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ as the value for this option.
+ (That's preferred to the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/event
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<n>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ device.)
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+If you had no response, kill the running 
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+input-events
+\end_layout
+
+\end_inset
+
+ process and repeat from step-1.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+logfile = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+filename
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The name of the log file.
+ Ignored if 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--dbg
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ is passed on the commandline.
+ 
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+filename
+\end_layout
+
+\end_inset
+
+ is overwritten if it exists.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+filename
+\end_layout
+
+\end_inset
+
+ should contain an absolute path.
+ Relative paths (or no path at all) are valid, but not advisable.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Spell.scancode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ 
+\bar default
+The raw keyboard scancode generated by the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Spell
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ key.
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.scancode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ 
+\bar default
+The raw keyboard scancode generated by moving the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker up.
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.scancode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ 
+\bar default
+The raw keyboard scancode generated by moving the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker down.
+\end_layout
+
+\begin_layout Standard
+For all 3 of these settings, 
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\bar no
+val
+\end_layout
+
+\end_inset
+
+ should be an integer, in base-10.
+ An octal won't be recognized as such, and a hexadecimal value will be treated
+ as a string and cause a parsing error.
+\end_layout
+
+\begin_layout Standard
+Almost everyone can safely
+\emph on
+ 
+\emph default
+ignore these 3 settings.
+ Feel free to skip to the documentation for the next setting.
+\end_layout
+
+\begin_layout Standard
+These settings are configurable solely for user convenience.
+ If some new release of the Linux kernel remapped the raw hardware scancodes
+ to something else, you could continue using 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ without needing to wait for a new binary release.
+ 
+\end_layout
+
+\begin_layout Standard
+To find the new scancodes, or to check if they've changed, run the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+input-events
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ command as described in step-2 of the previous documentation for the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+kbd-dev
+\end_layout
+
+\end_inset
+
+ setting.
+ (Be sure to use the correct 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/dev/input/event
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+<n>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ device when doing so.) Move the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker and hit the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Spell
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-key and look at the output in the terminal.
+ You should see lines containing 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+EV_KEY KEY_
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+<keynm>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+(
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+<hexint>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+)
+\begin_inset space ~
+\end_inset
+
+pressed
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+<keynm>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ will be the name of the key (as 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+input-events
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ knows it), while the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+<hexint>
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ will be its scancode, in hexadecimal.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Spell.x11Keycode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\bar default
+ The 
+\bar under
+X11 
+\bar default
+keycode
+\bar under
+ 
+\bar default
+to map the Spell key to.
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.x11Keycode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ 
+\bar default
+What to generate when the 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker is moved up.
+ Will be either an 
+\bar under
+X11 
+\bar default
+keycode or mouse button number.
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.x11Keycode = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ 
+\bar default
+What to generate when the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker is moved up.
+ Will be either an 
+\bar under
+X11 
+\bar default
+keycode or mouse button number.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+ must be a keycode (between 1 and 255) that isn't already in use by X11.
+ For most users, the defaults are sufficient.
+\end_layout
+
+\begin_layout Standard
+(You 
+\emph on
+could
+\emph default
+ use a keycode that is already in use by another key, causing both keys
+ to identically.
+ But then, why map it at all?)
+\end_layout
+
+\begin_layout Standard
+To find unused keycodes, run the following from a terminal: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+xmodmap -pke | grep ' = *$' | less
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Picking one of the higher unused keycodes should insulate you from future
+ XFree86/Xorg or kernel changes.
+\end_layout
+
+\begin_layout Standard
+Additionally, 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.x11Keycode
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.x11Keycode
+\end_layout
+
+\end_inset
+
+ can also be a mouse button number.
+ See the description for the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+ settings for how to use the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker as mouse buttons.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+Note:
+\series default
+ These 3 settings are for X11 keycodes (
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ has no effect on the (virtual) console(s)).
+ Furthermore, these are not key
+\bar under
+syms
+\bar default
+, but key
+\bar under
+codes
+\bar default
+.
+ (Refer back to the section, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\series bold
+Scancodes? Keycodes? Keysyms? X11?!?
+\series default
+
+\begin_inset Quotes erd
+\end_inset
+
+ if you've forgotten the difference.)
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When 
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+=
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+true
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ maps the 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker to a pair of mouse buttons.
+ The 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.x11Keycode
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.x11Keycode
+\end_layout
+
+\end_inset
+
+ settings will be treated as mouse button numbers.
+ 
+\emph on
+Be sure to change them accordingly.
+
+\emph default
+ Mouse button numbers range from 1 to 10.
+\end_layout
+
+\begin_layout Standard
+Because the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker is really a key, it autorepeats.
+ So, holding it up or down will produce repeated 
+\begin_inset Quotes eld
+\end_inset
+
+mouse-button
+\begin_inset space ~
+\end_inset
+
+pressed
+\begin_inset Quotes erd
+\end_inset
+
+ events.
+ Letting it return to the neutral position produces a single 
+\begin_inset Quotes eld
+\end_inset
+
+mouse-button
+\begin_inset space ~
+\end_inset
+
+released
+\begin_inset Quotes erd
+\end_inset
+
+ event, however.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When 
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+=
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+true
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\emph on
+and
+\emph default
+ 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+
+\family typewriter
+
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+true
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ makes the 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker behave like a mouse-wheel.
+\end_layout
+
+\begin_layout Standard
+X11 typically maps buttons 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+4
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ and 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+5
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ to the mouse-wheel (one button for each wheel direction).
+ So, what's this additional setting for?
+\end_layout
+
+\begin_layout Standard
+Normally, holding down a mouse button generates a single event.
+ Releasing it generates another, separate event.
+ A mouse wheel, in contrast, produces button 
+\emph on
+clicks
+\emph default
+ under X11 (not a separate press and release events).
+ If you want to use the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker as a mouse wheel, this becomes a problem.
+ Holding the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker up or down produces only a 
+\begin_inset Quotes eld
+\end_inset
+
+mouse-
+\bar under
+pressed
+\bar default
+
+\begin_inset Quotes erd
+\end_inset
+
+ event when 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ maps the 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker to a pair of mouse buttons.
+ This might produce the same effect as moving the mouse-wheel 
+\bar under
+once
+\bar default
+ (or it might do nothing at all).
+ The main reason for mapping the 
+\family typewriter
+
+\begin_inset Quotes eld
+\end_inset
+
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker to a mouse-wheel, however, is to use it as an 
+\begin_inset Quotes eld
+\end_inset
+
+auto-rolling
+\begin_inset Quotes erd
+\end_inset
+
+ mouse-wheel.
+\end_layout
+
+\begin_layout Standard
+Setting 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+
+\family typewriter
+
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+true
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ causes 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ to generate a mouse 
+\emph on
+click,
+\emph default
+ rather than a separate 
+\begin_inset Quotes eld
+\end_inset
+
+mouse-button
+\begin_inset space ~
+\end_inset
+
+pressed
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+mouse-button
+\begin_inset space ~
+\end_inset
+
+released
+\begin_inset Quotes erd
+\end_inset
+
+ event.
+ When held in the up (or down) position, the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker will produce repeated clicks, acting as if you're spinning the mouse
+ wheel nonstop.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+Remember:
+\series default
+ 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+ is ignored unless 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+
+\family typewriter
+
+\begin_inset space ~
+\end_inset
+
+=
+\begin_inset space ~
+\end_inset
+
+true
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.isMouseButton = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\bar default
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\bar under
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.isMouseWheel = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+
+\series bold
+val
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Like 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+, respectively, but for the up-direction only.
+ Provides finer-grained control over the behavior of the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker.
+\end_layout
+
+\begin_layout Standard
+You will almost never need to use these two settings.
+ They're only provided for expert users with a unusual system setup.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+
+\bar under
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.isMouseButton = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\bar default
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\bar under
+
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.isMouseWheel = 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex Ref:Value
+status collapsed
+
+\begin_layout Plain Layout
+val
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Like 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseButton
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+, respectively, but for the up-direction only.
+ Provides finer-grained control over the behavior of the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker.
+\end_layout
+
+\begin_layout Standard
+You will almost never need to use these two settings.
+ They're only provided for expert users with a unusual system setup.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout RefSection
+ENVIRONMENT
+\end_layout
+
+\begin_layout Standard
+There is only one environment variable that 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ uses: 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+.
+ The 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+display
+\end_layout
+
+\end_inset
+
+ configuration file setting overrides it, while the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--display
+\end_layout
+
+\end_inset
+
+ commandline option overrides them both.
+\end_layout
+
+\begin_layout Standard
+Feel free to modify 
+\begin_inset Flex Ref:Envar
+status collapsed
+
+\begin_layout Plain Layout
+DISPLAY
+\end_layout
+
+\end_inset
+
+ in lieu of using the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+display
+\end_layout
+
+\end_inset
+
+ configuration file setting or the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+--display
+\end_layout
+
+\end_inset
+
+ commandline option to change which X11 display 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ sends keyboard (and/or mouse) events to.
+\end_layout
+
+\begin_layout RefSection
+SIGNALS
+\end_layout
+
+\begin_layout Standard
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ handles the following signals specially:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+When 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ receives this signal, it rereads the configuration file that it was started
+ with.
+ This allows you to modify your configuration file and have the changes
+ take effect immediately.
+ Simply run the following from a terminal: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+sudo
+\begin_inset space ~
+\end_inset
+
+pkill
+\begin_inset space ~
+\end_inset
+
+-SIGUSR1
+\begin_inset space ~
+\end_inset
+
+msnek4k_driverd
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If you don't have 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+pkill
+\end_layout
+
+\end_inset
+
+ installed on your system, you can send a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ using the following set of commands: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+msnek4k_pid=`ps
+\begin_inset space ~
+\end_inset
+
+-ew
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+-v
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+
+\backslash
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+msnek4k_driverd
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+awk
+\begin_inset space ~
+\end_inset
+
+'{print
+\begin_inset space ~
+\end_inset
+
+$1}'`
+\begin_inset Newline newline
+\end_inset
+
+
+\family typewriter
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+sudo
+\begin_inset space ~
+\end_inset
+
+kill
+\begin_inset space ~
+\end_inset
+
+-SIGUSR1
+\begin_inset space ~
+\end_inset
+
+$msnek4k_pid
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGHUP
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGINT
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR2
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGPIPE
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ ignores these 4 signals.
+\end_layout
+
+\end_deeper
+\begin_layout RefSection
+FILES
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Filename
+status open
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+</term><term>
+\end_layout
+
+\end_inset
+
+
+\bar under
+
+\begin_inset Flex Ref:OptVal
+status open
+
+\begin_layout Plain Layout
+{prefix}
+\end_layout
+
+\end_inset
+
+
+\bar default
+
+\begin_inset Flex Ref:Filename
+status open
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+ The default configuration file.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+
+\bar under
+
+\begin_inset Flex Ref:OptVal
+status open
+
+\begin_layout Plain Layout
+{prefix}
+\end_layout
+
+\end_inset
+
+
+\bar default
+
+\begin_inset Quotes erd
+\end_inset
+
+ represents the base path where the 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ binary was installed.
+ I.
+\begin_inset space ~
+\end_inset
+
+e.
+\begin_inset space ~
+\end_inset
+
+the binary's 
+\emph on
+path
+\emph default
+ will be 
+\begin_inset Quotes eld
+\end_inset
+
+
+\bar under
+
+\begin_inset Flex Ref:OptVal
+status collapsed
+
+\begin_layout Plain Layout
+{prefix}
+\end_layout
+
+\end_inset
+
+
+\bar default
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/bin/msnek4k_driverd
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ The first file is the one used when the base installation path is 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+/usr
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, which is often the case for most software packages.
+\end_layout
+
+\begin_layout Standard
+Unless you created a custom installation (or your Linux distribution is
+ weird), the default configuration file should be 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/X11/Xsession.d/90x11-msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ The startup script.
+\end_layout
+
+\begin_layout Standard
+This is the default name and path of the X11 startup script for 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+.
+ (Note that Linux distributions are free to change the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+90
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to another prefix.)
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/X11/msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+ Systemwide keysym definitions for 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+This file map the X11 key
+\bar under
+codes
+\bar default
+ generated by 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ to X11 key
+\bar under
+syms
+\bar default
+.
+ The 
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/X11/Xsession.d/90x11-msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ script runs the 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xmodmap
+\end_layout
+
+\end_inset
+
+ utility on this file followed by 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ if it exists.
+\end_layout
+
+\begin_layout Standard
+The 
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/X11/msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+ file distributed with 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ defines the following keycode-to-keysym bindings:
+\end_layout
+
+\begin_layout Itemize
+keycode
+\begin_inset space ~
+\end_inset
+
+250
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+XF86Spell
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+"
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
++
+\family default
+ 
+\family typewriter
+Shift
+\family default
+
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+F10
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+keycode
+\begin_inset space ~
+\end_inset
+
+251
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+XF86ZoomIn
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+"
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
++
+\family default
+ 
+\family typewriter
+Shift
+\family default
+
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+XF86RockerUp
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+keycode
+\begin_inset space ~
+\end_inset
+
+252
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+XF86ZoomOut
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+"
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
++
+\family default
+ 
+\family typewriter
+Shift
+\family default
+
+\begin_inset space ~
+\end_inset
+
+→
+\begin_inset space ~
+\end_inset
+
+
+\family typewriter
+XF86RockerDown
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+The keycodes shown are the default values of the 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Spell.x11Keycode
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomUp.x11Keycode
+\end_layout
+
+\end_inset
+
+ and 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+ZoomDown.x11Keycode
+\end_layout
+
+\end_inset
+
+ settings.
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Description
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+ User keysym definitions for 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+This is the user's personal 
+\begin_inset Quotes eld
+\end_inset
+
+override
+\begin_inset Quotes erd
+\end_inset
+
+ file.
+ (You have to create it; it won't automagically poof into existence.)
+\end_layout
+
+\begin_layout Standard
+Non-expert users should refer to the manpage for the 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xmodmap
+\end_layout
+
+\end_inset
+
+ utility and look at the file, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/X11/msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, as an example of how to define their own 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout RefSection
+EXAMPLES
+\end_layout
+
+\begin_layout RefSubsection
+Notes for the Less-Experienced User:
+\end_layout
+
+\begin_layout Standard
+(Power-users, please skip this subsection.)
+\end_layout
+
+\begin_layout Standard
+Customizing 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ requires you to use the terminal.
+ If the word 
+\begin_inset Quotes eld
+\end_inset
+
+terminal
+\begin_inset Quotes erd
+\end_inset
+
+ or the idea of a commandline prompt means nothing to you or is intimidating,
+ you 
+\emph on
+might
+\emph default
+ be able to get away with the following:
+\end_layout
+
+\begin_layout Itemize
+If your desktop menu(s) have an editor that you can, 
+\begin_inset Quotes eld
+\end_inset
+
+run as Administrator
+\begin_inset Quotes erd
+\end_inset
+
+, you can use that to edit the configuration file, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+You can 
+\begin_inset Quotes eld
+\end_inset
+
+restart
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ by logging out and logging back in.
+\end_layout
+
+\begin_layout Standard
+But why go through the hassle of logging out & logging back in?
+\end_layout
+
+\begin_layout Standard
+\begin_inset space ~
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If you're 
+\emph on
+not intimidated
+\emph default
+ by the commandline, open your favorite terminal program (
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+gnome-terminal
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+konsole
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xterm
+\end_layout
+
+\end_inset
+
+, \SpecialChar \ldots{}
+) now.
+ (You'll usually find it in the 
+\begin_inset Quotes eld
+\end_inset
+
+System
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+Settings
+\begin_inset Quotes erd
+\end_inset
+
+ menu of your desktop.)
+\end_layout
+
+\begin_layout Standard
+To edit the configuration file, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ as the system administrator (a.k.a.
+ 
+\begin_inset Quotes eld
+\end_inset
+
+running as root
+\begin_inset Quotes erd
+\end_inset
+
+), use one of the following: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+sudo
+\begin_inset space ~
+\end_inset
+
+
+gnome-text-editor
+\lang english
+
+\begin_inset space ~
+\end_inset
+
+/etc/msnek4k_driverd.conf
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+or: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+su
+
+\begin_inset space ~
+\end_inset
+
+root
+\begin_inset space ~
+\end_inset
+
+gnome-text-editor
+\lang english
+
+\begin_inset space ~
+\end_inset
+
+/etc/msnek4k_driverd.conf
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+On most Linux distributions, including Debian and Ubuntu, you'll use the
+ first one.
+ If, however, your Linux distribution does not have the 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+sudo
+\end_layout
+
+\end_inset
+
+ command installed (or if it's not configured), use the command 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+su
+\begin_inset space ~
+\end_inset
+
+root
+\end_layout
+
+\end_inset
+
+ in its place.
+ (Also, feel free to replace 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+gnome-text-editor
+\end_layout
+
+\end_inset
+
+ with your favorite text editor.
+ If you don't have a favorite and 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+gnome-text-editor
+\end_layout
+
+\end_inset
+
+ isn't installed on your system, try 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+kate
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+nedit
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+xedit
+\end_layout
+
+\end_inset
+
+, or even a non-GUI editor like 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+nano
+\end_layout
+
+\end_inset
+
+ or 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+
+pico
+\end_layout
+
+\end_inset
+
+.
+ 
+\emph on
+Do not use a word processor
+\emph default
+, however.)
+\end_layout
+
+\begin_layout Standard
+To reload the configuration file, you will send 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ signal, by running the following command in the terminal:
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+sudo
+\begin_inset space ~
+\end_inset
+
+pkill
+\begin_inset space ~
+\end_inset
+
+-SIGUSR1
+\begin_inset space ~
+\end_inset
+
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If you don't have 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+pkill
+\end_layout
+
+\end_inset
+
+ installed on your system, you'll have to do a little bit more typing: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+
+\begin_inset Flex Ref:Prompt
+status collapsed
+
+\begin_layout Plain Layout
+
+\family typewriter
+me@myhost:$ 
+\end_layout
+
+\end_inset
+
+sudo
+\begin_inset space ~
+\end_inset
+
+kill
+\begin_inset space ~
+\end_inset
+
+-SIGUSR1
+\begin_inset space ~
+\end_inset
+
+`ps
+\begin_inset space ~
+\end_inset
+
+-ew
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+-v
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+
+\backslash
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+grep
+\begin_inset space ~
+\end_inset
+
+msnek4k_driverd
+\begin_inset space ~
+\end_inset
+
+|
+\begin_inset space ~
+\end_inset
+
+awk
+\begin_inset space ~
+\end_inset
+
+'{print
+\begin_inset space ~
+\end_inset
+
+$1}'`
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout RefSubsection
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker Mouse-Wheel
+\end_layout
+
+\begin_layout Standard
+The first example is how to use the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker as a mouse-wheel, which is, besides the default configuration, another
+ common configuration.
+\end_layout
+
+\begin_layout Standard
+Start by opening the configuration file, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, in your favorite editor, running as 
+\begin_inset Quotes eld
+\end_inset
+
+root
+\begin_inset Quotes erd
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Change or add the settings shown below to the following: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+ZoomUp.x11Keycode = 4
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+ZoomDown.x11Keycode = 5
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+Zoom.isMouseButton = true
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+Zoom.isMouseWheel = true
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Save the file and reload the configuration file by sending 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ signal (as described above).
+ After 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ reloads the configuration file, the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker should now act like the mouse-wheel.
+\end_layout
+
+\begin_layout RefSubsection
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker as Left & Right Mouse Buttons
+\end_layout
+
+\begin_layout Standard
+The next example is a tad contrived, but potentially useful for artists
+ or anyone else who has to hold down a mouse button for extended periods
+ of time.
+ The steps are nearly identical to those in the previous example, with one
+ exception.
+ When you edit 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, make 
+\series bold
+these
+\series default
+ changes: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+
+\family typewriter
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\family default
+ZoomUp.x11Keycode = 1
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+ZoomDown.x11Keycode = 3
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+Zoom.isMouseButton = true
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+Zoom.isMouseWheel = false
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(The last line isn't strictly required.
+ You could also delete or comment out any existing lines containing the
+ 
+\begin_inset Flex Ref:Option
+status collapsed
+
+\begin_layout Plain Layout
+Zoom.isMouseWheel
+\end_layout
+
+\end_inset
+
+ setting.)
+\end_layout
+
+\begin_layout Standard
+Save the modified 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ and send 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ using the steps from the previous example.
+\end_layout
+
+\begin_layout Standard
+Holding 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker up or down will now be the same as pressing and holding the left
+ or right mouse button, respectively.
+ Releasing the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker acts like releasing either button.
+\end_layout
+
+\begin_layout RefSubsection
+Changing the X11 Keysyms
+\end_layout
+
+\begin_layout Standard
+Lastly, here is an example for customizing keysyms.
+\end_layout
+
+\begin_layout Standard
+Suppose the file 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ contains the following settings:
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+Spell.x11Keycode = 154
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+ZoomUp.x11Keycode = 183
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+ZoomDown.x11Keycode = 252
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+One could create a 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ file containing these keycode-to-keysym mappings:
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+keycode 154 = XF86Spell NoSymbol
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+keycode 183 = XF86RockerUp NoSymbol
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+keycode 184 = XF86RockerDown NoSymbol
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Don't forget to run 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+xmodmap
+\begin_inset space ~
+\end_inset
+
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to make these changes take effect.
+ (Notice that you don't need to send 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Element:Literal
+status collapsed
+
+\begin_layout Plain Layout
+SIGUSR1
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ to 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+msnek4k_driverd
+\end_layout
+
+\end_inset
+
+ if you didn't change 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.)
+\end_layout
+
+\begin_layout Standard
+Next, run 
+\begin_inset Flex Ref:Command
+status collapsed
+
+\begin_layout Plain Layout
+xev
+\end_layout
+
+\end_inset
+
+ in a terminal, move the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Zoom
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+-Rocker up, then down, then hit the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\family typewriter
+Spell
+\family default
+
+\begin_inset Quotes erd
+\end_inset
+
+ key.
+ You should see output in the terminal like this: 
+\begin_inset Flex Ref:Literal
+status open
+
+\begin_layout Plain Layout
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyPress event, serial 34, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1402508986, (-354,436),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(484,458),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 251 (keysym 0x1008ff23, XF86RockerUp),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XmbLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyRelease event, serial 35, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1402509114, (-354,436),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(484,458),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 251 (keysym 0x1008ff23, XF86RockerUp),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyPress event, serial 35, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1402510050, (-354,436),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(484,458),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 252 (keysym 0x1008ff24, XF86RockerDown),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XmbLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyRelease event, serial 35, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1402510178, (-354,436),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(484,458),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 252 (keysym 0x1008ff24, XF86RockerDown),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyPress event, serial 46, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1404289170, (67,104),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(905,126),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 250 (keysym 0x1008ff7c, XF86Spell),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XmbLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+KeyRelease event, serial 47, synthetic NO, window 0x6200001,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root 0x15a, subw 0x0, time 1404289274, (67,104),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+root:(905,126),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+state 0x10, keycode 250 (keysym 0x1008ff7c, XF86Spell),
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+same_screen YES,
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XLookupString gives 0 bytes:
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset space ~
+\end_inset
+
+XFilterEvent returns: False 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If any output is missing, check for typos in the 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+/etc/msnek4k_driverd.
+\bar no
+conf
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ or 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Flex Ref:Filename
+status collapsed
+
+\begin_layout Plain Layout
+$HOME/.msnek4k_driverd.xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ file.
+\end_layout
+
+\begin_layout RefSection
+SEE ALSO
+\end_layout
+
+\begin_layout Standard
+\begin_inset Flex Ref:SeeAlso
+status open
+
+\begin_layout Plain Layout
+\begin_inset Flex RefSA:Manpage
+status open
+
+\begin_layout Plain Layout
+xmodmap
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex RefSA:Section
+status open
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset Flex Ref:SeeAlso
+status open
+
+\begin_layout Plain Layout
+\begin_inset Flex RefSA:Manpage
+status open
+
+\begin_layout Plain Layout
+xev
+\end_layout
+
+\end_inset
+
+
+\begin_inset Flex RefSA:Section
+status open
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
