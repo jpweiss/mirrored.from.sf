@@ -1,0 +1,70 @@
+QUICKSTART:
+
+
+The "pkgBackup" suite of scripts is a Perl program for backing up
+files on your system that are part of an installed RPM/DEB package,
+but have since changed.
+
+It's designed to be fully self-contained, no need for its own RPM/DEB
+package.  You only need to do three things:
+  1. Untar the "pkgBackup" tarball whereever you want it to live.
+  2. Decide where you want the backups to live (optionally creating the
+     directory).
+  3. Run the script "install.sh".
+
+That's it.  All you need to do thereafter is periodically burn the
+backups to DVD/CDRW (or copy to a Zip/Jaz disk, a spare harddrive,
+whatever).
+
+
+
+==============================================================================
+
+MORE INFO:
+
+Do:
+
+    man ./pkgBackup.8.gz
+
+...to read the manpage.  It'll tell you how to run "pkgBackup"
+manually.  You can also run "./rpmBackup.pl --help" or
+"./debBackup.pl --help" for a more abbreviated version.
+
+
+See the "TODO" file for late-breaking info about missing features.  ;)
+In particular, the "./debBackup.pl" flavor of "pkgBackup" doesn't work
+yet.
+
+
+The config-file, "pkgBackup.conf", contains documentation-comments
+explaining how to use it.
+
+
+PLEASE DO *NOT* use "pkgBackup" for "/home" or other user files:
+
+- This program is designed for backing up your system customizations, not
+  users' home directories.
+- It's better to backup "/home" separately from the rest of the system, on a
+  different schedule.
+- There may be files in "/home" that don't change much (family photo scans,
+  USENET news articles you like, your MP3 collection, Quicktime movies,
+  porn, custom *.rpm/*.deb packages) but you're leaving on-disk for
+  convenience.  You (should) burn these files to CD-R not long after
+  download, or when you have enough collected.
+  Clearly, you're not interested in backing up these files on a regular
+  basis; there's no need.
+
+For the files in "/home" that *do* change frequently, I suggest using one of
+the standard backup tools (taper, kdat, tar) and archiving to a file.
+
+
+
+==============================================================================
+
+DEVELOPING IT FURTHER:
+
+Anyone willing to develop the *.deb side of the program only needs to
+work on "debUtils.pm".  Look at the comments in "debUtils.pm" and read
+the manpage "man.devel/debUtils.3pm.gz".  (Note: "man" will read an
+file you specify as long as you explicitly add the pathname to the
+filename.)  They'll tell you what you need to know to get started.

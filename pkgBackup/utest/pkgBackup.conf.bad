@@ -1,0 +1,152 @@
+# -*- Default-Generic -*-
+# Copyright (C) 2002-2010 by John P. Weiss
+#
+# This package is free software; you can redistribute it and/or modify
+# it under the terms of the Artistic License, included as the file
+# "LICENSE" in the source code archive.
+#
+# This package is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# You should have received a copy of the file "LICENSE", containing
+# the License John Weiss originally placed this program under.
+#
+###########
+#
+# This is the configuration file for "rpmbackup.pl".  You can omit any of the
+# entries below, as the script contains builtin, sane defaults.  (These sane
+# defaults are what the out-of-the-box version of this file contains.)  So, if
+# you want to trim down this file, you can safely delete parameters that you
+# leave unchanged from their default settings.
+#
+# Parameter names and values are separated by either a '=' or ':'.  You can
+# put any amount of whitespace around these delimiters.
+# 
+# List parameters begin with a lone '(' in place of the value and end with a
+# lone ')' on a separate line.  The list items occupy the lines in-between,
+# one item per line.  You can indent the items by any amount of whitespace.
+#
+# Parameter values *can* contain embedded whitespace.  They can't begin or end
+# in whitespace, however.  (This goes for list items too.)
+#
+############
+# $Id$
+
+
+
+# The name of your backup archive file, without a path or any
+# suffixes.
+#
+# It is STRONGLY recommended that you customize this.
+#
+Archive_Prefix = localhostname-backup
+
+
+# The directory in which to store the backup archive.  Make sure it's on a
+# filesystem with ample space.
+#
+# It is STRONGLY recommended that you customize this.
+#
+Archive_Destination_Dir = /scratch/BACKUP
+
+
+# The working directory used by "rpmbackup.pl".  The Master Lists are stored
+# here.
+# 
+# If unset (i.e. only whitespace follows the '='), the value of
+# "Archive_Destination_Dir" is used in its place.
+# 
+# NOTE:  Deleting this option entirely (or commenting it out) doesn't unset
+#        it.  You'll end up using the default value instead, which is probably
+#        not what you want.
+#
+Working_Dir = 
+
+
+# A package's "install time" may actually be recorded *before* all of the
+# files have been unarchived from the pacakge.  So, you may have package
+# member files whose date is several seconds older than the package's install
+# time.  When this happens, you'll have unchanged files that always show up
+# in the backup archive.
+# 
+# You can "flex" each package's installation time forward by the amount given
+# in this option.  The value is in seconds, and must be in the range [0, 300]
+# inclusive.  Useful values are 0, 10, and 30.  Using a value larger than 60
+# (1 minute) is legal, but not a very good idea.
+#
+Flex_Pkg_InstallTime = 600
+
+
+# Certain files that were installed from an RPM are never modified.  Others,
+# like device files, are always modified.  This parameter is a list of
+# directories to exclude from the search for modified package files.
+#
+# Specifying a list with no elements causes the defaults to be used.
+#
+# NOTE:  These MUST BE directories installed by one or more RPM packages.
+#        They are ONLY used during the scan of modified RPM-member files.
+#        
+#        If you're looking for a place to exclude directories from the
+#        archive, any directory, see "Exclude_Dirs" below.
+#
+ExcludeDirs.ModifiedPkgfiles = (
+    /dev
+    /usr/doc
+    /usr/man
+    /usr/share/doc
+    /usr/share/man
+    /usr/src
+    z
+)
+
+
+# Directories to include in the archive.
+#
+# All of the files in the specified directories are stored in the archive,
+# whether they came from an RPM packages or not, or have been modified since
+# installation from an RPM or not.
+#
+# This parameter can be an empty list.
+#
+# The elements are directory names.  Do not use globbing or regexps; use
+# actual pathnames only.  (You may be able to include files as well as
+# directories in this list; however, that has not been tested.)
+#
+AlwaysIncludeDirs=(
+   /etc
+   /root
+    x
+)
+
+
+##############################################################################
+
+
+# Used only by the "Master List" feature.  You can safely ignore this config
+# option.
+
+# Filesystems to never search when building the Master Lists.
+#
+# Specifying a list with no elements causes the defaults to be used.
+# 
+# The Master Lists are built from a "find /".  Obviously, this would scan
+# several things that have no business being in a backup, such as CDROMs and
+# "/proc".  Hence the need to exclude various filesystems.
+# 
+ExcludeFilesystems.Master = (
+    proc 
+    iso9660 
+    nfs 
+    afs 
+    usbdevfs
+    devpts
+    x
+)
+
+
+
+#######
+#
+# End
+#

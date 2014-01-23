@@ -1,0 +1,12 @@
+- "install.sh" does not handle cron installations without an
+  /etc/cron.{weekly,monthly}.  For these installations, it would be
+  very nice to add two lines to the global 'crontab' file.
+  As a first-draft, I could add a sample 'crontab' file, or sample
+  'crontab' entries/cmds to the documentation.
+
+- Could also change the permission/ownership/symlink restoration
+  scripts so that changes which do nothing don't execute.  Or not...
+
+- Put together some archiver scripts that use GNU-tar's backup
+  facilities, as an example of how to do a trivial backup of user
+  files.
