@@ -1,0 +1,17 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	fetch = +refs/heads/*:refs/remotes/origin/*
+	url = https://github.com/jpweiss/mirrored.from.sf
+[branch "master"]
+	remote = origin
+	merge = refs/heads/master
+[remote "subtree._msnek4kdriverd"]
+	url = /home/candide/src/github/svn.from.sf.staging/msnek4kdriverd
+	fetch = +refs/heads/*:refs/remotes/subtree._msnek4kdriverd/*
+[remote "subtree._pkgBackup"]
+	url = /home/candide/src/github/svn.from.sf.staging/pkgBackup
+	fetch = +refs/heads/*:refs/remotes/subtree._pkgBackup/*
