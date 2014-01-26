@@ -1,0 +1,2 @@
+# Subtree "msnek4kdriverd" added with:
+    git subtree add --prefix=msnek4kdriverd "subtree._msnek4kdriverd" master
