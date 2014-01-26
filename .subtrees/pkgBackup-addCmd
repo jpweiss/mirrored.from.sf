@@ -1,0 +1,2 @@
+# Subtree "pkgBackup" added with:
+    git subtree add --prefix=pkgBackup "subtree._pkgBackup" master
