@@ -6,3 +6,4 @@ git config 'remote.subtree._pkgBackup.fetch' '+refs/heads/*:refs/remotes/subtree
 git config 'remote.subtree._pkgBackup.pushurl' '/-push-not-permitted-'
 git config 'remote.subtree._mrtgAddons4Dsl.url' '/home/candide/src/github/svn.from.sf.staging/mrtgAddons4Dsl'
 git config 'remote.subtree._mrtgAddons4Dsl.fetch' '+refs/heads/*:refs/remotes/subtree._mrtgAddons4Dsl/*'
+git config 'remote.subtree._mrtgAddons4Dsl.pushurl' '/-push-not-permitted-'
