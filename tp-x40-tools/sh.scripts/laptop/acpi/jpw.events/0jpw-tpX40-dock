@@ -1,0 +1,6 @@
+# ThinkPad X40 ACPI Event: Fn+F9 is intercepted by Ubuntu and/or the
+# Linux-v3.* kernels.
+
+event=ibm/hotkey.* 00001009
+action=/etc/acpi/jpw.actions/debug.sh "DBG(0debug):  " "%e"
+#action=/etc/acpi/jpw.actions/doSomething.sh

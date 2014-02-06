@@ -1,0 +1,6 @@
+# ThinkPad X40 ACPI Event: Use Fn+F6 to enable/disable a (any/all)
+# bluetooth adapter(s).
+
+event=ibm/hotkey.* 00001006
+action=/etc/acpi/jpw.actions/bluetooth-ctrl.sh
+

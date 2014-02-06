@@ -1,0 +1,152 @@
+#!/bin/sh
+#
+# Umount all removable devices before suspending or hibernating.
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# [jpw]
+############
+
+
+############
+#
+# Configuration Variables:
+#
+############
+
+
+# List of devices/directories to umount, in the order specified.
+L_REMOVABLE_DEVS='/media/* /mnt/*'
+
+
+############
+#
+# Includes & Other Global Variables
+#
+############
+
+
+# Init:
+if [ -n "${PM_FUNCTIONS}" ]; then
+    if [ -e ${PM_FUNCTIONS} ]; then
+        . ${PM_FUNCTIONS}
+    fi
+fi
+
+UMOUNT=/bin/umount
+
+
+############
+#
+# Functions
+#
+############
+
+
+not_mountable__() {
+    device="$1"
+    shift
+
+    [ -e $device ] \
+        && [ -d $device -o -b $device -o -c $device ] \
+        && return 1
+    # or
+
+    # Return true if this is not a device or directory.
+    return 0
+}
+
+
+umount_device__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi
+    device="$1"
+    shift
+
+    # Validation checks.
+    if [ -z "$device" ]; then
+        return 0
+    fi
+    if not_mountable__ $device; then
+        return 0
+    fi
+
+    if [ -n "$pretend" ]; then
+        echo ">>> umount $device"
+        return 0
+    fi
+    #else
+
+    result=`$UMOUNT $device 2>&1`
+    stat=$?
+    was_mounted='y'
+
+    case "$result" in
+        *busy*)
+            stat=1
+            ;;
+        *not*mounted*)
+            stat=0
+            was_mounted=''
+            ;;
+    esac
+
+    if [ $stat -ne 0 ]; then
+        echo "$result"
+    fi
+    if [ -n "$was_mounted" -a $stat -eq 0 ]; then
+        echo "Umounted device/mountpoint: \"$device\""
+    fi
+
+    return $stat
+}
+
+
+umount_removable_devices__() {
+    if [ "$1" = "-n" ]; then
+        pretend="$1"
+        shift
+    fi 
+
+    retstat=0
+    for f in $L_REMOVABLE_DEVS; do
+	# Handle the case where we have wildcards or a bogus directory.
+        if [ ! -e $f ]; then
+	    continue
+        fi 
+        # Although umount_device__() also performs this check, we do it here
+        # for the sake of cosmetic niceness.  Don't want error messages saying
+        # a nonexistent device failed to umount.
+        if not_mountable__ $f; then
+            echo "INFO: Not a device or mountpoint:  \"$device\""
+            continue
+        fi
+        umount_device__ $pretend $f
+        if [ $? -ne 0 ]; then
+            let ++retstat
+        fi
+    done
+    return $retstat
+}
+
+
+############
+#
+# Main
+#
+############
+
+
+case "$1" in
+        hibernate|suspend)
+		umount_removable_devices__ || inhibit
+		;;
+        thaw|resume)
+		# Nothing to do when starting back up.
+		;;
+	*) exit $NA
+		;;
+esac
+

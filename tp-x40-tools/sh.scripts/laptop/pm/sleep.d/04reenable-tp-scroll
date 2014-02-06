@@ -1,0 +1,69 @@
+#!/bin/sh
+#
+# Re-enable the tp-scroll feature on resume.
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# 
+# For the powersave scripts, use 'true' to handle powersaving-enabled events,
+# and 'false' when powersave is disabled.
+# [jpw]
+
+
+ENABLE_TP_SCROLL=/etc/X11/Xsession.d/90local_enable-tp-scroll
+
+
+get_X_display() {
+    if [ -n "$DISPLAY" ]; then
+        echo "$DISPLAY"
+        return 0
+    fi
+    [ -x /usr/bin/pgrep ] || return 1
+
+    set -- `/usr/bin/pgrep -fl X`
+    while [ -n "$1" ]; do
+        case "$1" in
+            *:[0-9]|*:[0-9].[0-9]|*:[0-9].[0-9][0-9])
+                echo "$1"
+                return 0
+                ;;
+            *:[0-9][0-9]|*:[0-9][0-9].[0-9]|*:[0-9][0-9].[0-9][0-9])
+                echo "$1"
+                return 0
+                ;;
+        esac
+        shift
+    done
+
+    return 1
+}
+
+
+case "$1" in
+	hibernate|suspend)
+                # Nothing to do when stopping.
+                exit 0
+		;;
+	thaw|resume)
+		DISPLAY=`get_X_display`
+		# There's no guarantee that get_X_display will find a running
+		# X server.
+		if [ -n "$DISPLAY" ]; then 
+			export DISPLAY
+			$0 --wait_for_X &
+		else
+			echo "No DISPLAY found.  Cannot reset tp-scroll."
+		fi
+		exit 0
+		;;
+	--wait_for_X)
+		echo "#DBG# Waiting 30 sec for X to resume..."
+		sleep 30;
+		echo "#DBG# sourcing $ENABLE_TP_SCROLL"
+		. $ENABLE_TP_SCROLL
+		;;
+	*) exit $NA
+		;;
+esac
+
+

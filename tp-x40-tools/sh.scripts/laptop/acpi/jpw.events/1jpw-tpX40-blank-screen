@@ -1,0 +1,5 @@
+# ThinkPad X40 ACPI Event: Trap all other Fn+F* combinations and log.
+
+event=ibm/hotkey.* 00001003
+action=/etc/acpi/jpw.actions/screenblanker.sh %e
+

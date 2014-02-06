@@ -1,0 +1,33 @@
+# -*- shell-script -*-
+#
+# List of modules to be removed to save power.
+#
+# Blank lines and lines beginning with a '#' are ignored.  Every other
+# line should be the name of one or more modules, separated by a space.
+#
+# Copyright (C) 2011 by John P. Weiss under the Artistic License
+#
+# RCS $Id$
+############
+
+
+# Turn off wifi to save power
+# [2011/05] Note:  Don't remove 'libipw' or 'lib80211', since doing that 
+#           seems to cause the v2.6.35 kernel headaches.
+ipw2200 libipw lib80211
+
+# [2011/05] Removing these two seems to cause the v2.6.38 kernel to get
+#           confused and think that it no longer has any encryption.
+lib80211_crypt_ccmp lib80211_crypt_tkip lib80211_crypt_wep
+# Old Modules:
+#ieee80211_crypt_ccmp ieee80211_crypt_tkip
+#ieee80211_crypt_wep ieee80211 ieee80211_crypt
+
+# Prune the cryptographic modules used by the wifi.
+aes_i586 aes_generic
+twofish twofish_common twofish_generic twofish_i586
+deflate zlib_deflate
+ctr camellia serpent blowfish cast5 des_generic xcbc rmd160
+sha1_generic sha256_generic sha512_generic
+crypto_null af_key
+

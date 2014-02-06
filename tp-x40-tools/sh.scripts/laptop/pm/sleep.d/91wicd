@@ -1,0 +1,132 @@
+#!/bin/sh
+
+# pm-utils hook to handle suspend/resume properly for wicd
+
+if [ -r "${PM_FUNCTIONS}" ]; then
+	. "${PM_FUNCTIONS}" 
+elif [ -r "${FUNCTIONS}" ]; then
+	. "${FUNCTIONS}"
+else
+	# pm-utils version is too old, or something else is wrong
+	exit $NA
+fi
+
+RETVAL=0 	# Set this to 0 initially
+
+
+# [jpw::2011/08/02 - BEGIN]
+# [jpw] 'wicd_suspend()' hangs if there's no wicd daemon and/or no
+#       wifi.  So why bother calling 'suspend.py'?
+#       These routines perform the necessary checks
+
+has_wifi()
+{
+    for netdev in /sys/class/net/* ; do
+        # Is $netdev a wireless device?
+        [ -d $netdev/wireless ] && return 0
+    done
+    # else:  No wifi device available
+    return 1
+}
+
+wicd_daemon_running()
+{
+    pgrep -c wicd-daemon 1>/dev/null 2>/dev/null && return 0
+    # else:  wicd isn't running
+    return 1
+}
+
+wifi_enabled()
+{
+    set -- `iwconfig`
+    while [ -n "$1" ]; do
+        case $w in
+            [Uu]nassociated|[Nn]ot*[Aa]ssociated)
+                return 1
+                ;;
+            radio)
+                # Don't shift, in case the next word is a match for one of
+                # our sibling cases.
+                case "$2" in
+                    [Oo][Nn])
+                        return 0
+                        ;;
+                    [Oo][Ff][Ff])
+                        return 1
+                        ;;
+                esac
+                ;;
+            [Tt][Xx]*[Pp]ower*[Oo][Ff][Ff])
+                return 1
+                ;;
+        esac
+        shift
+    done
+
+    # else:  Assume it's up
+    return 0
+}
+
+# [jpw::2011/08/02 - END]
+
+
+wicd_suspend()
+{
+	# [jpw::2011/08/02] - Don't do anything if there's no wifi to suspend
+	#                     or no wicd running.
+	wicd_daemon_running || return 0
+	has_wifi || return 0
+	wifi_enabled || return 0
+
+	# Put wifi interface down
+	/usr/share/wicd/daemon/suspend.py 1>/dev/null 2>/dev/null
+	RETVAL=$?
+}
+
+wicd_resume()
+{
+	# Bring wifi interface back up
+	/usr/share/wicd/daemon/autoconnect.py 1>/dev/null 2>/dev/null
+	RETVAL=$?
+}
+
+case "$1" in
+	hibernate|suspend)
+		wicd_suspend
+		;;
+	thaw|resume)
+		wicd_resume
+		;;
+	*) exit $NA
+		;;
+esac
+
+# We can't return a nonzero exit code (aside from $NA, $DX, and $NX) to
+# to pm-utils or the entire sleep operation will be inhibited, so...
+# No matter what we do, the log prefix and message will conflict a bit.
+case "$RETVAL" in
+	0)
+		exit $RETVAL
+		;;
+	1)
+		# Probably the daemon isn't running if this happens
+		echo "Unable to connect to wicd daemon - is it running?"
+		exit $DX
+		;;
+	2)
+		# This will occur if the daemon encounters an error
+		echo "Wicd daemon was unable to suspend the network."
+		exit $DX
+		;;
+	3)
+		# Will only be returned by autoconnect.py
+		# This should never happen, but just in case...
+		echo "Wicd daemon failed to autoconnect on resume."
+		exit $DX
+		;;
+	*)
+		echo "Unknown exit code."
+		exit $NA
+		;;
+esac
+

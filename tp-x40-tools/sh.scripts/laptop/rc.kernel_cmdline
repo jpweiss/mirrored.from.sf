@@ -1,0 +1,178 @@
+#!/bin/sh
+#
+# Copyright (C) 2005-2009 by John P. Weiss
+#
+# This package is free software; you can redistribute it and/or modify
+# it under the terms of the Artistic License, included as the file
+# "LICENSE" in the source code archive.
+#
+# This package is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# You should have received a copy of the file "LICENSE", containing
+# the License John Weiss originally placed this program under.
+#
+# $Id$
+############
+
+
+############
+#
+# Exportable Globals
+#
+############
+
+
+RUNLEVEL="${RUNLEVEL:-2}"
+MUTE=''
+SYNC_MODE=''
+POWER_BUTTON_HALT_TIME=''
+
+
+############
+#
+# Includes & Other Global Variables
+#
+############
+
+
+old_powersave=''
+SYNC_MODE_SCRIPT="/usr/local/bin/sync-mode.sh"
+sysCPUFREQ=/sys/devices/system/cpu/cpu0/cpufreq/
+scaling_governor=$sysCPUFREQ/scaling_governor
+
+############
+#
+# Functions
+#
+############
+
+
+parse_kernel_cmdline() {
+    raw_runlevel=''
+    set -- `cat /proc/cmdline`
+    while [ -n "$1" ]; do
+        case "$1" in
+            init:[2-4])
+                raw_runlevel="$1"
+                ;;
+            nosound|mute)
+                MUTE='y'
+                ;;
+            sync)
+                SYNC_MODE='y'
+                ;;
+            suspend)
+                touch /tmp/.suspend
+                chmod a+w /tmp/.suspend
+                chgrp users /tmp/.suspend
+                ;;
+            halt_time=*)
+                ht="$1"
+                POWER_BUTTON_HALT_TIME=${ht##halt_time\=}
+                ;;
+            -halt_time)
+                shift
+                POWER_BUTTON_HALT_TIME=$1
+                ;;
+            -z)
+                shift
+                echo "\# $1" >> /tmp/.init.env
+                ;;
+        esac
+        shift
+    done
+
+    if [ -n "$raw_runlevel" ]; then 
+        oIFS="$IFS"
+        IFS=":"
+        set -- $raw_runlevel
+        if [ -n "$2" ]; then
+            RUNLEVEL="$2"
+        fi
+        IFS="$oIFS"
+    fi
+}
+
+
+write_init_env_file() {
+    # Save the current environment, including the runlevel
+    echo "RUNLEVEL=${RUNLEVEL:-2}" >> /tmp/.init.env
+    echo "export RUNLEVEL" >> /tmp/.init.env
+    echo "MUTE=${MUTE}" >> /tmp/.init.env
+    echo "export MUTE" >> /tmp/.init.env
+    if [ -n "${old_powersave}" -o "${RUNLEVEL:-2}" = "4" ]; then
+        echo "POWERSAVE='y'" >> /tmp/.init.env
+        echo "export POWERSAVE" >> /tmp/.init.env
+    fi
+    if [ -n "${POWER_BUTTON_HALT_TIME}" ]; then
+        echo "POWER_BUTTON_HALT_TIME=$POWER_BUTTON_HALT_TIME" \
+            >> /tmp/.init.env
+        echo "export POWER_BUTTON_HALT_TIME" >> /tmp/.init.env
+    fi
+    chmod a+r,a-w /tmp/.init.env
+}
+
+
+prep() {
+    if [ -f /tmp/.init.env ]; then
+        . /tmp/.init.env
+        if [ -n "${POWERSAVE}" ]; then
+            old_powersave="${POWERSAVE}"
+        fi
+    fi
+    rm -f /tmp/.suspend /tmp/.init.env 2>/dev/null
+}
+
+
+############
+#
+# Main
+#
+############
+
+
+case "$0" in
+    # Since this script is run under sh and not bash, need to check for
+    # plain-ol-sh as well.
+    *bash|*/sh|sh)
+        file_was_sourced='y'
+        ;;
+    *)
+        if [ ${#BASH_SOURCE[*]} -gt 1 ]; then
+            file_was_sourced='y'
+        fi
+        ;;
+esac
+
+parse_kernel_cmdline
+export MUTE SYNC_MODE POWER_BUTTON_HALT_TIME RUNLEVEL
+write_init_env_file
+
+if [ -n "$file_was_sourced" ]; then
+    # Was sourced.  Remove the temporary variable created during the startup
+    # checks.
+    unset file_was_sourced
+    # No other special tasks needed in this case.
+else
+    # Was run as a script.
+    prep
+
+    # Powersave tasks to perform on boot or on any form of resume.
+    if [ -n "${POWERSAVE}" -a -w $scaling_governor ]; then
+        echo -n ondemand >$scaling_governor
+    fi
+
+    # Another task to do on either boot or resume:  Sync-Mode
+    if [ -n "${SYNC_MODE}" -a -x $SYNC_MODE_SCRIPT ]; then
+        # TODO:  May need to pry out any "--resume" option passed to this
+        # script if this script starts taking other args.
+        $SYNC_MODE_SCRIPT start "$@" &
+    fi
+fi
+
+
+#################
+#
+#  End

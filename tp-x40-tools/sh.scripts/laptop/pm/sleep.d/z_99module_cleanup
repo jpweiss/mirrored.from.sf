@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# Remove wifi-related modules.
+#
+# See '/usr/share/doc/pm-utils/HOWTO.hooks.gz' for details of how to write
+# and name one of these files.
+# [jpw]
+
+
+LAN_MODULE=e1000
+BLUETOOTH_MODULE=bluetooth
+
+
+. /etc/LocalSys/init.d/functions-laptop
+
+isWakeupEvent=''
+toMem=''
+case "$1" in
+	hibernate)
+		;;
+	thaw)
+		isWakeupEvent='y'
+		;;
+	suspend)
+		toMem='y'
+		;;
+	resume)
+		isWakeupEvent='y'
+		toMem='y'
+		;;
+	*)
+		exit $NA
+		;;
+esac
+
+
+SYS_LAN=/sys/module/$LAN_MODULE
+SYS_BLUETOOTH=/sys/module/$BLUETOOTH_MODULE
+
+
+isInPowersaveMode && savePower='y'
+removeWifiModules
+if [ "${toMem},${isWakeupEvent}" != ",y" -a -d $SYS_BLUETOOTH ]; then
+    killBluetooth
+fi
+if [ -n "$savePower" -a -d ${SYS_LAN} ]; then
+    rmmod $LAN_MODULE
+fi
+
+exit 0

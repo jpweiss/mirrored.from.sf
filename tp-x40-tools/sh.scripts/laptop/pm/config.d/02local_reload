@@ -1,0 +1,2 @@
+# Local modules to reload.
+SUSPEND_MODULES="${SUSPEND_MODULES:+$SUSPEND_MODULES }mmc_block"

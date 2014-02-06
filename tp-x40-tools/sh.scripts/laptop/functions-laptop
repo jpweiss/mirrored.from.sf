@@ -1,0 +1,234 @@
+# -*- shell-script -*-
+#
+# Copyright (C) 2005-2013 by John P. Weiss under the Artistic License
+#
+# RCS $Id$
+############
+
+
+. /etc/LocalSys/init.d/functions
+
+
+isInPowersaveMode()
+{
+    # Return the envvar value if it was already set.
+    if [ -n "$POWERSAVE" ]; then
+        pstate=1
+        if [ "$POWERSAVE" = "y" ]; then
+            pstate=0
+        fi
+        return $pstate
+    fi #else:
+
+    # Determine the runlevel (if it hasn't been done yet).
+    if [ -z "$RUNLEVEL" ]; then
+        RUNLEVEL=`getRunlevel`
+        export RUNLEVEL
+    fi
+
+    if [ "${RUNLEVEL:-2}" = "4" ]; then
+        POWERSAVE='y'
+        export POWERSAVE
+        return 0
+    fi #else:
+    return 1
+}
+
+
+# Stolen from 'toggleAllWireless()' in '/usr/share/acpi-support/state-funcs'
+# and modified.
+disableAllWireless()
+{
+    status=0
+
+    for DEVICE in /sys/class/net/* ; do
+        if [ -d $DEVICE/wireless ] ; then
+            # $DEVICE is a wireless device.
+
+            FOUND=
+            # This particular form of the sysfs interface reverses
+            #the truth values.
+            ON=1
+            OFF=0
+            for CONTROL in $DEVICE/device/rfkill/rfkill*/state; do
+                if [ -w "$CONTROL" ]; then
+                    FOUND=1
+
+                    if [ "`cat "$CONTROL"`" = "$ON" ] ; then
+                        # It's powered on. Switch it off.
+                        echo -n "$OFF" > "$CONTROL" || status=1
+                    fi # else
+                       # It's powered off; ignore it.
+                fi
+            done
+            # it might be safe to assume that a device only supports one
+            # interface at a time; but just in case, we short-circuit
+            # here to avoid toggling the power twice
+            if [ -n "$FOUND" ]; then
+                continue
+            fi
+
+            ON=0
+            OFF=1  # 1 for rf_kill, 2 for power/state
+            for CONTROL in $DEVICE/device/rf_kill $DEVICE/device/power/state;
+            do
+                if [ -w $CONTROL ] ; then
+                    # We have a way of controlling the device, lets try
+                    if [ "`cat $CONTROL`" = 0 ] ; then
+                        # It's powered on. Switch it off.
+                        if echo -n $OFF > $CONTROL; then
+                            break
+                        elif [ "$OFF" = 2 ]; then
+                            # Both "echo" commands failed.  Return error
+                            # status.
+                            status=1
+                        else
+                            OFF=2 # for power/state, second time around
+                        fi
+                    fi # else
+                       # It's powered off; ignore it.
+                fi
+            done
+        fi
+    done
+
+    return $status
+}
+
+
+getWifiModuleList()
+{
+    local oIFS
+    oIFS="$IFS"
+    IFS=".-_+$IFS"
+    set -- `uname -r`
+    IFS="$oIFS"
+
+    local kVer
+    kVer="${1}.${2}.${3}"
+
+    local f
+    for f in /etc/LocalSys/init.d/rc.powersave-wifi-modules_$kVer \
+        /etc/LocalSys/init.d/rc.powersave-wifi-modules
+    do
+        if [ -r $f ]; then
+            getModuleList $f
+            return
+        fi
+    done
+}
+
+
+removeWifiModules()
+{
+    local modlist
+    modlist=`getWifiModuleList`
+
+    if [ -n "$modlist" ]; then
+        rmmodsAll $modlist
+    fi
+}
+
+
+loadWifiModules()
+{
+    local modlist
+    modlist=`getWifiModuleList`
+
+    # Need to add these modules 'by hand'; they aren't loaded with the rest of
+    # the modules, but are needed for wifi encryption.  Also, they need to be
+    # loaded *before* the ipw2200 module, hence why they're at the beginning
+    # of the list.
+    modlist="aes_i586 arc4 michael_mic $modlist"
+    modlist="lib80211_crypt_wep $modlist"
+    modlist="lib80211_crypt_ccmp lib80211_crypt_tkip $modlist"
+
+    if [ -n "$modlist" ]; then
+        loadModules $modlist
+    fi
+}
+
+
+killWifi()
+{
+    disableAllWireless
+    removeWifiModules
+}
+
+
+hasBluetoothAdapter()
+{
+    rfkill list | grep -qi 'bluetooth'
+}
+
+
+isBluetoothOff()
+{
+    # The sed below only outputs lines that appear between 2 lines.  The first
+    # line is the one matching the first regexp.  The last line is the one
+    # before the line matching the second regexp (the one after the ",").
+    #
+    # So, the 'sed' is equivalent to calling 'hasBluetoothAdapter' first.
+    rfkill list |\
+        sed -n -e'/\(tpacpi_bluetooth_sw\|: *Bluetooth\)/,/^[0-9]/p' |\
+        grep -q 'Soft blocked: yes'
+}
+
+
+allBluetoothAdaptersOff()
+{
+    rfkill block bluetooth
+}
+
+
+allBluetoothAdaptersOn()
+{
+    rfkill unblock bluetooth
+}
+
+
+toggleAllBluetoothAdapters()
+{
+    local startCtrl stopCtrl
+    startCtrl="$1"
+    if [ -n "$2" ]; then
+        shift
+    fi
+    stopCtrl="$1"
+
+    if isBluetoothOff; then
+        echo "Bluetooth currently turned off; reenabling..."
+        allBluetoothAdaptersOn
+        if [ "$startCtrl" = "restartServer" ]; then
+            service bluetooth restart
+        elif [ "$startCtrl" = "serverHardRestart" ]; then
+            service bluetooth stop
+            service bluetooth start
+        fi
+    else
+        echo "Disabling Bluetooth..."
+        allBluetoothAdaptersOff
+        if [ "$stopCtrl" = "killBluetooth" ]; then
+            killBluetooth
+        fi
+    fi
+}
+
+
+killBluetooth()
+{
+    local p
+
+    for p in bluez kblue blueman bluedevil; do
+        /usr/bin/pkill $p
+    done
+
+    service bluetooth stop
+    rmmodsAll rfcomm sco btusb l2cap bluetooth \
+        bridge stp bnep hidp input_polldev
+}
+
+
+#################
+#
+#  End
