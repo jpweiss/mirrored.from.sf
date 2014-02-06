@@ -1,0 +1,140 @@
+// [jpw]  The keyboard mappings for the ThinkPad X40.
+//	  This file should be named "thinkpadx40"
+
+
+// The ThinkPad has no separate keypad keys.  By default, when NumLock
+// is active, the overlayed keypad keys generate the bona-fide keypad
+// number-keycodes.  Even better, Shift a keypad key generates the
+// actual motion-keypad keycodes!  :)  Therefore, there is no reason
+// to alter the default X behavior.
+
+// Indeed, the only things that need altering for a ThinkPad are:
+//   1. Get rid of Shift+NumLock being bound to ANYTHING.
+//
+//      When you press any "normal" keyboard key, it generates a
+//      scancode (keycode in X-parlance).  That includes the Shift,
+//      Ctrl, and Alt keys.
+//      So, on a ThinkPad, Shift+ScrollLock generates the *hardware*
+//      keycodes of NumLock *and* Shift.  There is NO unshifted
+//      NumLock.
+//
+//   2. Enabling NumLock by default when starting X.
+//
+//      For a desktop keyboard, this is fine.  For a laptop, it's
+//      pointless.  For the ThinkPads, it's both pointless AND
+//      annoying!
+
+
+//=============================================================================
+//  Types
+//=============================================================================
+
+
+// This type defines the behavior of the ThinkPad numpad in
+// combination with modifier keys.
+//
+partial default xkb_types "altgr_UnNumlock" {
+    virtual_modifiers NumLock,Alt,AltGr;
+
+    type "THINKPAD_KEYPAD" {
+        modifiers = Shift+NumLock+AltGr;
+
+        // Note:  It isn't possible to generate the keypad scancodes on a
+        // ThinkPad without NumLock being enabled.  So these next four
+        // types really do nothing.  They're left in for completeness.
+        //
+        map[None] = Level1;
+        map[Shift] = Level2;
+        map[AltGr] = Level3;
+        map[Shift+AltGr] = Level4;
+        // Here are the maps that actually do something:
+        //
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
+        map[NumLock+AltGr] = Level3;
+        map[Shift+NumLock+AltGr] = Level4;
+        level_name[Level1] = "Base";
+        level_name[Level2] = "Number";
+        level_name[Level3] = "Real Key";
+        level_name[Level4] = "Shift+Real Key";
+    };       
+
+    type "THINKPAD_KEYPAD+ALT" {
+        modifiers = Shift+NumLock+AltGr+Control+Alt;
+
+        // Note:  It isn't possible to generate the keypad scancodes on a
+        // ThinkPad without NumLock being enabled.  So these next four
+        // types really do nothing.  They're left in for completeness.
+        //
+        map[None] = Level1;
+        map[Shift] = Level2;
+        map[Control+Alt] = Level3;
+        map[AltGr] = Level4;
+        map[Shift+AltGr] = Level5;
+        // Here are the maps that actually do something:
+        //
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
+        map[NumLock+Control+Alt] = Level3;
+        map[NumLock+AltGr] = Level4;
+        map[Shift+NumLock+AltGr] = Level5;
+        level_name[Level1] = "Base";
+        level_name[Level2] = "Number";
+        level_name[Level3] = "Control+Alt";
+        level_name[Level4] = "Real Key";
+        level_name[Level5] = "Shift+Real Key";
+    };       
+};
+
+partial xkb_types "ctrl_UnNumlock" {
+    virtual_modifiers NumLock,Alt;
+
+    type "THINKPAD_KEYPAD" {
+        modifiers = Shift+NumLock+Control;
+
+        // Note:  It isn't possible to generate the keypad scancodes on a
+        // ThinkPad without NumLock being enabled.  So these next four
+        // types really do nothing.  They're left in for completeness.
+        //
+        map[None] = Level1;
+        map[Shift] = Level2;
+        map[Control] = Level3;
+        map[Shift+Control] = Level4;
+        // Here are the maps that actually do something:
+        //
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
+        map[NumLock+Control] = Level3;
+        map[Shift+NumLock+Control] = Level4;
+        level_name[Level1] = "Base";
+        level_name[Level2] = "Number";
+        level_name[Level3] = "Real Key";
+        level_name[Level4] = "Shift+Real Key";
+    };       
+
+    type "THINKPAD_KEYPAD+ALT" {
+        modifiers = Shift+NumLock+Control+Alt;
+
+        // Note:  It isn't possible to generate the keypad scancodes on a
+        // ThinkPad without NumLock being enabled.  So these next four
+        // types really do nothing.  They're left in for completeness.
+        //
+        map[None] = Level1;
+        map[Shift] = Level2;
+        map[Control+Alt] = Level3;
+        map[Control] = Level4;
+        map[Shift+Control] = Level5;
+        // Here are the maps that actually do something:
+        //
+        map[NumLock] = Level1;
+        map[Shift+NumLock] = Level2;
+        map[NumLock+Control+Alt] = Level3;
+        map[NumLock+Control] = Level4;
+        map[Shift+NumLock+Control] = Level5;
+        level_name[Level1] = "Base";
+        level_name[Level2] = "Number";
+        level_name[Level3] = "Control+Alt";
+        level_name[Level4] = "Real Key";
+        level_name[Level5] = "Shift+Real Key";
+    };       
+};

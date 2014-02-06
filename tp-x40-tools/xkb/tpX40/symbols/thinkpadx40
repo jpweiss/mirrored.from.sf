@@ -1,0 +1,439 @@
+// [jpw]  The keyboard mappings for the ThinkPad X40.
+//	  This file should be named "thinkpadx40"
+
+
+// The ThinkPad has no separate keypad keys.  By default, when NumLock
+// is active, the overlayed keypad keys generate the bona-fide keypad
+// number-keycodes.  Even better, Shift a keypad key generates the
+// actual motion-keypad keycodes!  :)  Therefore, there is no reason
+// to alter the default X behavior.
+
+// Indeed, the only things that need altering for a ThinkPad are:
+//   1. Get rid of Shift+NumLock being bound to ANYTHING.
+//
+//      When you press any "normal" keyboard key, it generates a
+//      scancode (keycode in X-parlance).  That includes the Shift,
+//      Ctrl, and Alt keys.
+//      So, on a ThinkPad, Shift+ScrollLock generates the *hardware*
+//      keycodes of NumLock *and* Shift.  There is NO unshifted
+//      NumLock.
+//
+//   2. Enabling NumLock by default when starting X.
+//
+//      For a desktop keyboard, this is fine.  For a laptop, it's
+//      pointless.  For the ThinkPads, it's both pointless AND
+//      annoying!
+
+
+//=============================================================================
+//  Symbols
+//=============================================================================
+
+
+// The mappings for the special ThinkPad keys:
+//  - The blue "Fn" key;
+//  - The Left/Backward Scroll key;
+//  - The Right/Forward Scroll key;
+//
+// These keys are unlike the other special keys (Mute, AccessIBM,
+// Dock, Sleep ...) and do not generate X symbols by default.
+
+
+partial hidden alphanumeric_keys modifier_keys
+xkb_symbols "specialkeys_base" {
+    // FIXME:  Should I provide an alternative to this?  Something
+    //         that overrides it?  'cuz this block is included in all
+    //         of the <FN>-key definitions?
+    //         Check the svn-log for this file...
+
+    // Assign <SBAK> key.
+    // [keycode: 166]
+    //
+    // Bind the unshifted key to the same button used for the upward
+    // Wheel-Scroll by X.
+    //
+    // Bind the Shifted key to <MENU>.
+    //
+    ////key <SBAK> { // NOTE:  keycodes aliases not working yet!
+    key <I166> {
+        repeat= no,
+        symbols[Group1] = [ XF86ScrollUp, Menu ]
+    };
+
+    // Assign <SFWD> key.
+    // [keycode: 167]
+    //
+    // Bind the unshifted key to the same button used for the upward
+    // Wheel-Scroll by X.
+    //
+    // Bind the Shifted key to <RWIN>.
+    //
+    ////key <SFWD>  { // NOTE:  keycodes aliases not working yet!
+    key <I167>  {
+        repeat= no,
+        symbols[Group1] = [ XF86ScrollDown, Super_R ]
+    };
+};
+
+
+partial alphanumeric_keys modifier_keys
+default
+xkb_symbols "fn_default" {
+    include "thinkpadx40(specialkeys_base)"
+
+    // Assign <FN> key.
+    // [keycode: 151]
+    //
+    // Because of its size and close proximity to Control_L, don't give
+    // it an unshifted mapping.  This will also discourage bad habits
+    // (like gettting used to hitting "Fn" regularly ... a dangerous
+    // prospect if you accidentally hit F1-F12).
+    //
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
+        repeat= no,
+        symbols[Group1] = [ NoSymbol, XF86LaunchF ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_modesw" {
+    include "thinkpadx40(specialkeys_base)"
+
+    // Assign <FN> key.
+    // [keycode: 151]
+    //
+    // Here, we simply redirect the blue "Fn" key, when unshifted, to AltGr.
+    //
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
+        repeat= no,
+        symbols[Group1] = [ Mode_switch, Super_L ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_super" {
+    include "thinkpadx40(specialkeys_base)"
+
+    // Assign <FN> key.
+    // [keycode: 151]
+    //
+    // This is the same as fn_modesw, but swapped; the unshifted "Fn"
+    // key is Super_L, while the shifted version is Mode_switch.
+    //
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
+        repeat= no,
+        symbols[Group1] = [ Super_L, Mode_switch  ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_hyper" {
+    include "thinkpadx40(specialkeys_base)"
+
+    // Assign <FN> key.
+    // [keycode: 151]
+    //
+    // This is the same as fn_modesw, but swapped; the unshifted "Fn"
+    // key is Hyper_L, while the shifted version is Mode_switch.
+    //
+    ////key <FN>  { // NOTE:  keycodes aliases not working yet!
+    key <I151>  {
+        repeat= no,
+        symbols[Group1] = [ Hyper_L, Mode_switch  ]
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_super_win" {
+    include "thinkpadx40(fn_super)"
+
+    // NOTE:  keycodes aliases not working yet!
+    ////modifier_map Mod4   { <FN>, Super_L, Super_R };
+    modifier_map Mod4   { <I151>, Super_L, Super_R };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "fn_hyper_win" {
+    include "thinkpadx40(fn_hyper)"
+
+    // NOTE:  keycodes aliases not working yet!
+    ////modifier_map Mod4   { <FN>, Hyper_L };
+    modifier_map Mod4   { <I151>, Hyper_L };
+};
+
+
+// 
+// Reparing the dain-brammaged way X handles <NumLock> on a ThinkPad.
+//
+// Notation:
+// We'll use "<NumLock>" and "<ScrollLock>" to refer to the *key*
+// *codes*.  We'll refer to the X key *symbols* as "Num_Lock" and
+// "Scroll_Lock" (i.e. with underlines).
+//
+// Recall from the comments up top that a ThinkPad really has no
+// "Shift+<ScrollLock>" ... this combination generates "<NumLock>".
+// Which, really, is quite stupid, when you think of it.  A numeric
+// keypad is nominally useful.  Nobody uses a scroll lock.
+// 
+// However, under X people seem to like remapping the scroll lock key
+// to other modifiers, so we won't just get rid of it.  In Fine Unix
+// Tradition, we'll provide the user with choices.
+// 
+
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "inv_numlock" {
+    // Invert the <ScrollLock>/<NumLock> mapping.
+
+    key <NMLK> {  
+        symbols[Group1]= [ Scroll_Lock, Scroll_Lock ] 
+    };
+    key <SCLK> { 
+        symbols[Group1]= [ Num_Lock ] 
+    };
+};
+
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys" {
+    // Make "Alt+Shift+<NumLock>" enable the mousekeys, which is the Xkb
+    // standard.
+    //
+    // Note that "Alt+<NMLK>" <==> "Alt+Shift+<NMLK>" on a ThinkPad
+    // keyboard.  (The <NMLK> keycode can only be generated in
+    // combination with Shift.)
+    //
+    // Note, too, that the ThinkPad will generate numpad keysyms only
+    // when Num_Lock mode is turned on.  The upshot is that mousekeys
+    // on a ThinkPad will only work when both Mousekeys and Num_Lock
+    // mode are turned on.  Remove Num_Lock mode, and the keyboard
+    // goes back to generating letters.
+    //
+    key <NMLK> { 
+        type="SHIFT+ALT", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_ctrl" {
+    // Make "Control+<ScrollLock>" enable the mousekeys.
+    //
+    // Note that "Control+Shift+<ScrollLock>" doesn't exist on a ThinkPad
+    // keyboard.  (The <SCLK> keycode can never be generated in
+    // combination with Shift.)
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="PC_CONTROL_LEVEL2", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_alt" {
+    // Make "Alt+<ScrollLock>" enable the mousekeys.
+    //
+    // Note that "Alt+Shift+<ScrollLock>" doesn't exist on a ThinkPad
+    // keyboard.  (The <SCLK> keycode can never be generated in
+    // combination with Shift.)
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="PC_ALT_LEVEL2", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+partial alphanumeric_keys modifier_keys
+xkb_symbols "mousekeys_ctrl_alt" {
+    // Make "Control+Alt+<NumLock>" enable the mousekeys.
+    //
+    // As noted in the "mousekeys" variant, mousekeys on a ThinkPad will 
+    // only work when both Mousekeys and Num_Lock mode are turned on.
+    //
+    key <SCLK> { 
+        type="CTRL+ALT", 
+        symbols[Group1]= [ NoSymbol, Pointer_EnableKeys ] 
+    };
+};
+
+
+//
+// Thinkpad Numpad Overlay
+//
+// Sometimes, while you're typing away with NumLock enabled, you need
+// one of the letter keys from your ThinkPad.  Just one.  and it's
+// often a 'p' or an 'i' or one of the other ThinkPad keys that does
+// double-duty as part of the Numpad.  On other laptops, you can use
+// the special "Fn" key to briefly "Un-NumLock" that one key, at the
+// hardware level.  Not so with a ThinkPad.  :(
+//
+// So, we improvise.  We Un-NumLock using another key, like AltGr or
+// Control.  The keysym part of this is defined below.  Which modifier
+// Un-NumLocks is defined in a corresponding "types/thinkpad" file.
+//
+// TODO:  See about creating a virtual modifier that can be coupled to
+// one of the other modifiers.  Would make this easier to customize.
+//
+// NOTE:  The 'actions' command no longer works here (or doesn't
+//        appear to).  So it's been removed.  See earlier versions to
+//        restore.
+//
+
+
+partial alphanumeric_keys keypad_keys
+xkb_symbols "un_numlock" {
+    // Map the ThinkPad "numeric-keypad" so that it generates the symbols
+    // it overlays when used in combination with Control or AltGr.
+    // 
+    // Note:  If the keysyms aren't "flipped" w.r.t. the normal
+    //        Numeric Keypad bindings, then NumLock won't activate
+    //        numeric keypad keys.  It'll activate a "cursor-key
+    //        keypad", which is not how a ThinkPad X40 normally
+    //        behaves.
+
+    virtual_modifiers NumLock,AltGr;
+
+    key <KP7> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_7, KP_Home, 7, ampersand ]
+    };
+    key <KP8> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_8, KP_Up, 8, asterisk ]
+    };
+    key <KP9> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_9, KP_Prior, 9, parenleft ]
+    };
+    key <KPDV> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ slash, KP_Divide, XF86_Ungrab, 0, parenright ]
+    };
+    key <KP4> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_4, KP_Left, u, U ]
+    };
+    key <KP5> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_5, KP_Begin, i, I ]
+    };
+    key <KP6> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_6, KP_Right, o, O ]
+    };
+    key <KPMU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ asterisk, KP_Multiply, XF86_ClearGrab, p, P ]
+    };
+    key <KP1> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_1, KP_End, j, J ]
+    };
+    key <KP2> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_2, KP_Down, k, K ]
+    };
+    key <KP3> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_3, KP_Next, l, L ]
+    };
+    key <KPSU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ minus, KP_Subtract, XF86_Prev_VMode,
+                           colon, semicolon ]
+    };
+    key <KP0> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_0, KP_Insert, m, M ]
+    };
+    key <KPDL> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Decimal, KP_Delete, period, greater ]
+    };
+    key <KPAD> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ plus, KP_Add, XF86_Next_VMode,
+                           slash, question ]
+    };
+};
+
+
+partial alphanumeric_keys keypad_keys
+xkb_symbols "un_numlock_motionPad" {
+    // Like "un_numlock", but makes the motion keys the default.
+
+    virtual_modifiers NumLock,AltGr;
+
+    key <KP7> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Home, KP_7, 7, ampersand ]
+    };
+    key <KP8> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Up, KP_8, 8, asterisk ]
+    };
+    key <KP9> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Prior, KP_9, 9, parenleft ]
+    };
+    key <KPDV> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ KP_Divide, slash, XF86_Ungrab, 0, parenright ]
+    };
+    key <KP4> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Left, KP_4, u, U ]
+    };
+    key <KP5> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Begin, KP_5, i, I ]
+    };
+    key <KP6> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Right, KP_6, o, O ]
+    };
+    key <KPMU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ KP_Multiply, asterisk, XF86_ClearGrab, p, P ]
+    };
+    key <KP1> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_End, KP_1, j, J ]
+    };
+    key <KP2> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Down, KP_2, k, K ]
+    };
+    key <KP3> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Next, KP_3, l, L ]
+    };
+    key <KPSU> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ KP_Subtract, minus, XF86_Prev_VMode,
+                           colon, semicolon ]
+    };
+    key <KP0> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Insert, KP_0, m, M ]
+    };
+    key <KPDL> {
+        type="THINKPAD_KEYPAD",
+        symbols[Group1]= [ KP_Delete, KP_Decimal, period, greater ]
+    };
+    key <KPAD> {
+        type="THINKPAD_KEYPAD+ALT",
+        symbols[Group1]= [ KP_Add, plus, XF86_Next_VMode,
+                           slash, question ]
+    };
+};
+
