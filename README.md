@@ -71,9 +71,9 @@ differs:
     here on GitHub:
     + `tp-x40-tools/sh.scripts/laptop/acpi`
     + `tp-x40-tools/sh.scripts/laptop/powersave-modules-cfgs`
-    + `tp-x40-tools/sh.scripts/laptop/pm`
-
+    + `tp-x40-tools/sh.scripts/laptop/pm`<br/>
       This one might be Ubuntu-centric.
+ 
 
 Now, why all of these differences?
 
