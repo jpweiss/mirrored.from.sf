@@ -73,9 +73,12 @@ differs:
     + `tp-x40-tools/sh.scripts/laptop/powersave-modules-cfgs`
     + `tp-x40-tools/sh.scripts/laptop/pm`<br/>
       This one might be Ubuntu-centric.
+
  
 
 Now, why all of these differences?
+
+ 
 
 Explaining my workflow should help make things clear.  I keep a
 Subversion repository on my Linux machine at home.  This SVN
