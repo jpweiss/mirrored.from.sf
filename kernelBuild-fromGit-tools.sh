@@ -69,10 +69,18 @@ utl_kBfG__getBranchNames() {
     shift
     local how="$1"
     shift
+    local grepExpr="${1:-linux}"
+    shift
+
+    if [ "$brType" = "-r" ]; then
+        grepExpr='origin/linux'
+    fi
 
     local dflOpts="--no-color -q"
+
     if [ "$how" = "--raw" ]; then
-        git branch $brType $dflOpts | grep 'origin/linux' | sort -V
+        git branch $brType $dflOpts | grep "$grepExpr" | \
+            sed -e 's/^  *//' -e 's/  *$//' | sort -V
         return $?
     fi
     # else:
@@ -83,8 +91,8 @@ utl_kBfG__getBranchNames() {
     fi
     # else:
 
-    git branch $brType $dflOpts | grep 'origin/linux' | \
-        sed -e 's|^.*origin/||' | sort -V
+    git branch $brType $dflOpts | grep "$grepExpr" | \
+        sed -e 's|^.*origin/||' -e 's/^  *//' -e 's/  *$//' | sort -V
 }
 
 
@@ -424,6 +432,45 @@ update_kernelFromGit() {
 }
 
 
+kernel_updateTrackingBranches() {
+    if [ $# -eq 0 ]; then
+        set -- $(utl_kBfG__getBranchNames)
+    fi
+
+    local trackingBranch retStat
+
+    for trackingBranch in "$@"; do
+        if utl_kBfG__getBranchNames -r | grep -q "^$trackingBranch\$"; then
+            echo ">>"
+            echo -n ">> Dropping and recreating tracking branch:  "
+            echo "\"$trackingBranch\""
+
+            git branch -D $trackingBranch && \
+                git branch --track $trackingBranch origin/$trackingBranch
+
+            if [ $? -eq 0 ]; then
+                echo ">> Done."
+            else
+                echo ">> Error removing/recreating \"$trackingBranch\"."
+                echo ">> You'll need to fix this manually."
+                echo ">>"
+                echo ">> If the branch had already been deleted, use this to"
+                echo ">> recreate it:"
+                echo -n ">>    git branch --track "
+                echo "$trackingBranch origin/$trackingBranch"
+                echo ">>"
+                retStat=1
+            fi
+        else
+            echo ">> Does not match a remote branch:  \"$trackingBranch\"."
+            echo ">> Skipping."
+        fi
+    done
+
+    return $retStat
+}
+
+
 kernel_prep_buildBranch() {
     local trackingBranch="${1#origin/}"
     shift
@@ -477,7 +524,7 @@ kernel_prep_buildBranch() {
 
         if [ "$currentBranch" != "$buildBranch" ]; then
             local bbCheckoutOpt='-b'
-            if git branch --no-color -q | grep -q "$buildBranch\$"; then
+            if utl_kBfG__getBranchNames | grep -q "^$buildBranch\$"; then
                 bbCheckoutOpt=''
             fi
 
@@ -622,6 +669,22 @@ kernel_tools_help() {
             DON'T perform a 'git pull' directly on the repository cloned by
             'get_kernelFromGit_startingFromBranch'.  You'll end up grabbing
             all of the pruned branches again.
+
+    kernel_updateTrackingBranches [<branchName> [<branchName> ...]]
+            "Resets" any tracking branches to point to the head of the
+            corresponding remote branches.  If no '<branchName>' is specified,
+            all local branches starting with 'linux-' and matching a remote
+            branch will be used.
+
+            This function exists because:  (A) We only keep the latest
+            revision of each branch;  (B) We don't use the tracking branches
+            for anything other than controlling 'git pull';  (C) If a remote
+            branch has changed, when you check out its tracking branch, 'git'
+            will complain about its state;  (D) If you try to fix "(C)" by
+            running 'git pull', you'll fetch *everything* in the corresponding
+            remote branch, wasting space.
+
+            You'll typically use this after doing a 'update_kernelFromGit'.
 
     kernel_prep_buildBranch
             Run w/o args for usage.
