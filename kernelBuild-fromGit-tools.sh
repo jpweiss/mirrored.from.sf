@@ -39,6 +39,9 @@ kernelGitUrl="$kernelGitUrl/stable/linux-stable.git"
 export kernelGitUrl
 
 
+buildBranchBase="build-v"
+
+
 ############
 #
 # Functions
@@ -73,8 +76,32 @@ utl_kBfG__getBranchNames() {
     fi
     # else:
 
+    if [ "$how" = "--current" ]; then
+        git branch $dflOpts | grep '^\*' | awk '{ print $2 }'
+        return $?
+    fi
+    # else:
+
     git branch $brType $dflOpts | grep 'origin/linux' | \
         sed -e 's|^.*origin/||' | sort -V
+}
+
+
+utl_kBfG__notaBuildBranch() {
+    local currentBranch="$1"
+
+    if [ -z "$currentBranch" ]; then
+        currentBranch=$(utl_kBfG__getBranchNames '' --current)
+    fi
+
+    if echo $currentBranch | grep -q $buildBranchBase; then
+        return 1
+    fi
+    #else
+
+    echo ">>"
+    echo ">> Not on a build branch!"
+    return 0
 }
 
 
@@ -201,8 +228,7 @@ update_kernelFromGit() {
     local logFile=${KBUILD_BASEDIR}/update-kernel.log
 
     {
-        local curBranch="$(git branch --no-color -q | grep '^\*' | \
-                           awk '{ print $2 }')"
+        local curBranch="$(utl_kBfG__getBranchNames '' --current)"
         if [ "$curBranch" != "master" ]; then
             echo ">> Hard-resetting the current branch, \"$curBranch\","
             echo ">> and changing to 'master'..."
@@ -227,16 +253,164 @@ update_kernelFromGit() {
 }
 
 
+kernel_prep_buildBranch() {
+    local trackingBranch="${1#origin/}"
+    shift
+    local initialKCfg="${1}"
+    shift
+
+    # Verify Args
+    if [ -z "$trackingBranch" -o -z "$initialKCfg" ] \
+        || [[ ! -r $initialKCfg ]]
+    then
+        if [ -n "$initialKCfg" ] && [[ ! -r $initialKCfg ]]; then
+            echo "No such kernel config file:  \"$initialKCfg\""
+        else
+            echo "Missing arg(s)."
+        fi
+        echo ""
+
+        echo -n "usage:  kernel_prep_buildBranch <remoteBranchName> "
+        echo "<kernelCfgFile>"
+        return 1
+    fi
+
+    local buildBranch=${buildBranchBase}${trackingBranch#linux-}
+    local logFile=${KBUILD_BASEDIR}/${buildBranch}.log
+
+    {
+        local hasTrackingBranch
+        if utl_kBfG__getBranchNames -r | grep -q "^$trackingBranch\$"; then
+            hasTrackingBranch=y
+        fi
+
+        local currentBranch=$(utl_kBfG__getBranchNames '' --current)
+
+        # Make sure it exists, or abort.
+        if [ -n "$hasTrackingBranch" ]; then
+            if [ "$currentBranch" = "$trackingBranch" ]; then
+                echo ">>"
+                echo -n ">> Already checked out in branch:  "
+                echo "\"$trackingBranch\".  Good."
+                echo ">>"
+            elif [ "$currentBranch" != "$buildBranch" ]; then
+                git checkout $trackingBranch || return $?
+            fi
+        else
+            echo ">>"
+            echo ">> No such remote branch:  \"$trackingBranch\"."
+            echo ">>"
+            echo ">> Cowardly refusing to continue."
+            return 1
+        fi
+
+        if [ "$currentBranch" != "$buildBranch" ]; then
+            local bbCheckoutOpt='-b'
+            if git branch --no-color -q | grep -q "$buildBranch\$"; then
+                bbCheckoutOpt=''
+            fi
+
+            git checkout $bbCheckoutOpt $buildBranch || return $?
+        fi
+        echo ">>"
+        echo ">> Build Branch [\"$buildBranch\"] checked out."
+        echo ">>"
+
+        cp -vi --backup=t $initialKCfg .config || return $?
+        echo ">>"
+        echo ">> Copied config file.  Listing new config options:"
+        echo ">>"
+
+        make listnewconfig
+        echo ">>"
+        echo ">> Run 'make xconfig' and use this list to tweak appropriately."
+        echo ">>"
+    } |& tee -a $logFile
+
+    echo ">> Output appended to log file:  \"$logFile\"."
+}
+
+
 kernel_make_xconfig_qt4() {
     local runsudo=''
     if [ "$1" = "--sudo" ]; then
         runsudo=sudo
+        shift
     fi
 
     QTDIR=/usr/share/qt4
     export QTDIR
-    $runsudo make V=1 xconfig
+    $runsudo make "$@" xconfig
     unset QTDIR
+}
+
+
+kernel_stash_config() {
+    local kver=$(make kernelversion)
+    cp -vi --backup=t .config $KBUILD_BASEDIR/tpx40-${kver}.config
+}
+
+
+kernel_do_build() {
+    local currentBranch=$(utl_kBfG__getBranchNames '' --current)
+    local logFile=${KBUILD_BASEDIR}/${currentBranch}.log
+
+    if utl_kBfG__notaBuildBranch $currentBranch; then
+        echo ">> Refusing to proceed."
+        echo ">>"
+        return 10
+    fi
+
+    local retStat
+    {
+        echo ">>"
+        echo ">> Starting Build of \"currentBranch\""
+        echo ">>"
+        echo ">>"
+
+        mv .git Tmp-Disabled-dot.git || return $?
+        make "$@" deb-pkg
+        retStat=$?
+
+        mv Tmp-Disabled-dot.git .git
+        let retStat+=$?
+    } |& tee -a $logFile
+
+    echo ">> Output appended to log file:  \"$logFile\"."
+    return $retStat
+}
+
+
+kernel_nuke_buildBranch() {
+    local buildBranch=$(utl_kBfG__getBranchNames '' --current)
+    if utl_kBfG__notaBuildBranch $buildBranch; then
+        echo ">> Can't do anything here."
+        echo ">>"
+        return 1
+    fi
+
+    local logFile=${KBUILD_BASEDIR}/cleanup-${buildBranch}.log
+    local retStat
+    {
+        echo ">> Cleaning build..."
+        echo ">> "
+        make mrproper || return $?
+
+        echo ">> Hard-resetting build branch..."
+        echo ">>"
+        utl_kBfG__nukeCurrentBranch || return $?
+
+        echo ">> Returning to \"master\" branch..."
+        echo ">> "
+        git checkout master || return $?
+
+        echo ">> Deleting the build branch..."
+        echo ">> "
+        git branch -D $buildBranch
+        retStat=$?
+    } |& tee -a $logFile
+
+    return $retStat
 }
 
 
@@ -258,7 +432,6 @@ kernel_tools_help() {
             [or your current \$EDITOR] with instructions for how to tweak the
             list of branches to remove.
 
-
     update_kernelFromGit
             Resets everything in the current working directory and performs a
             series of 'git pull's on all of the remote branches.
@@ -266,6 +439,30 @@ kernel_tools_help() {
             DON'T perform a 'git pull' directly on the repository cloned by
             'get_kernelFromGit_startingFromBranch'.  You'll end up grabbing
             all of the pruned branches again.
+
+    kernel_prep_buildBranch
+            Run w/o args for usage.
+            Sets up the current directory for building the kernel.  Creates &
+            checks out branches as needed.
+
+            The next step after this might be a 'make xconfig' of some form
+            followed by a 'kernel_stash_config'.
+
+    kernel_make_xconfig_qt4 [--sudo] [V={0|1|2}]
+            Do a 'make xconfig', but forcing use of Qt4.  Versions of the
+            kernel past 3.12.* seem to have problems with Qt3.
+
+    kernel_stash_config
+            Save a copy of the current '.config' file to the \$KBUILD_BASEDIR,
+            using a filename containing the Makefile's version.
+
+    kernel_do_build [V={0|1|2}]
+            Builds the kernel "deb-pkg".  You must be in the working dir and
+            on a "build-branch" or this won't work.
+
+    kernel_nuke_buildBranch
+            Does the final step:  cleans up everything, return to the 'master'
+            branch, and delete the "build-branch".
 
 
     Aliases:
