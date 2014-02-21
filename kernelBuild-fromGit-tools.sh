@@ -25,6 +25,7 @@
 
 
 KBUILD_BASEDIR=${KBUILD_BASEDIR:-~/src/tpX40.kernelBuilds}
+export KBUILD_BASEDIR
 
 
 ############
@@ -108,6 +109,176 @@ utl_kBfG__notaBuildBranch() {
 utl_kBfG__nukeCurrentBranch() {
     git reset --hard HEAD || return $?
     git clean -f -d || return $?
+}
+
+
+utl_kBfG__createFaux32Bit_gcc() {
+    # N.B. - The name of this funciton is the longest you can make a sh-script
+    # function.  [At least, that's what Emacs thinks.]
+
+    if [[ ! -d $kbuildBin32 ]]; then
+        echo ">>!! "
+        echo ">>!! Missing 32-bit 'toolchain'.  Your kernel pkgs. will end up"
+        echo ">>!! mixed 64-bit/32-bit. "
+        echo ">>!! "
+        echo ">>!! Creating a pure-32-bit 'toolchain'..."
+        mkdir -p $kbuildBin32 || return $?
+        echo ">>!! 32-bit 'toolchain' path created."
+        echo ">>!! "
+    fi
+
+
+    local script32gcc="i686-pc-linux-gnu-gcc"
+    local bin32gcc="$kbuildBin32/$script32gcc"
+    local reSymLink
+
+    local errMsg_coward=">>!!\n>>!!\n>>!! Cowardly refusing to continue."
+
+    local errMsg_rmFail_pre=">>!! \n>>!! FATAL ERROR!!!\n"
+    errMsg_rmFail_pre="${errMsg_rmFail_pre}>>!! Could not delete:"
+
+    local errMsg_rmFail_post=">>!! There is no way to recover from "
+    errMsg_rmFail_post="${errMsg_rmFail_post}this.  You must\n"
+    errMsg_rmFail_post="${errMsg_rmFail_post}>>!! manually remove it."
+    errMsg_rmFail_post="${errMsg_rmFail_post}\n${errMsg_coward}"
+
+
+    if [[ ! -x $bin32gcc || ! -r $bin32gcc || ! -f $bin32gcc ]]; then
+        reSymLink=y
+
+        echo ">>!! "
+        echo ">>!! Removing lingering junk in the way of"
+        echo ">>!!     \"$bin32gcc\""
+        rm -rfv $bin32gcc
+        retStat=$?
+
+        if [ $retStat -ne 0 ]; then
+            echo -e "$errMsg_rmFail_pre"
+            echo ">>!!     \"$bin32gcc\"."
+            echo -e "$errMsg_rmFail_post"
+            return  $retStat
+        fi
+        # else
+
+        echo ">>!! "
+    fi
+
+
+    if [[ ! -e $bin32gcc ]]; then
+        reSymLink=y
+
+        echo ">>!! "
+        echo ">>!! Creating 32-bit compiler-script:"
+        echo ">>!!     \"$bin32gcc\""
+        echo ">>!! "
+
+        (   echo '#!/bin/sh'
+            echo ''
+            echo 'exec /usr/bin/gcc -m32 "$@"'
+            echo '' ) >$bin32gcc
+        retStat=$?
+
+        if [ $retStat -eq 0 ]; then
+            chmod a+x $bin32gcc
+            retStat=$?
+        fi
+
+        if [ $retStat -ne 0 ]; then
+            echo ">>!! "
+            echo ">>!! Failed!  Is \"$kbuildBin32\" writable?"
+            echo -e "$errMsg_coward"
+            return $retStat
+        fi
+        # else
+
+        echo ">>!! Compiler-script created."
+        echo ">>!! "
+    fi
+
+
+    local gccSymlink="$kbuildBin32/gcc"
+    if [ -n "$reSymLink" ]; then
+        echo ">>!! "
+        echo ">>!! Removing old symlink:"
+        echo ">>!!     \"$gccSymlink\""
+        echo ">>!! [in case it's cruft]."
+        rm -rfv $gccSymlink
+        retStat=$?
+
+        if [ $retStat -ne 0 ]; then
+            echo -e "$errMsg_rmFail_pre"
+            echo ">>!!     \"$gccSymlink\"."
+            echo -e "$errMsg_rmFail_post"
+            return  $retStat
+        fi
+        # else
+
+        echo ">>!! "
+    fi
+
+
+    if [[ ! -L $gccSymlink ]]; then
+        echo ">>!! "
+        echo ">>!! Creating gcc override-symlink."
+
+        pushd $kbuildBin32
+        ln -s $script32gcc gcc
+        retStat=$?
+        popd
+        [ $retStat -ne 0 ] && return $return
+        # else
+
+        echo ">>!! Symlink created."
+        echo ">>!! "
+    fi
+}
+
+
+make_kernel_x86() {
+    local runsudo=''
+    if [ "$1" = "--qt4" ]; then
+        runsudo=sudo
+        shift
+    fi
+
+    local retStat
+    local kbuildBin32="$KBUILD_BASEDIR/bin"
+    local oPATH="$PATH"
+    local archOpts='ARCH=i386'
+
+    if [ "$(uname -m)" = "x86_64" ]; then
+        # [2014-02-21]
+        #
+        # The Standard Way of building 32-bit kernel binaries on a 64-bit
+        # machine is to pass 'ARCH=i386' to 'make'.
+        #
+        # This ... sorta works.  Most things are built 32-bit.  *Most* of
+        # them.  If you never intend to use DKMS to build 3rd-party modules,
+        # you're fine.  If you intend on using VirtualBox, however, you *will*
+        # be building 3rd-party modules.  And it'll *fail* ... because the
+        # tools are ELF-64bit, not 32-bit.
+        #
+        # I've tried passing 'KCFLAGS=-m32 ARCH=i386' to 'make'.  I've tried
+        # passing 'CROSS_COMPILE=i686-pc-linux-gnu- ARCH=i386' [after creating
+        # the script below].  Again, I got a header-package with 64-bit tools.
+        #
+        # Soooo... I'm going to completely short-circuit things and point
+        # 'gcc' to my cross-compile script.  There's no other way.  :(
+        #
+        # We start by checking for the required locations.
+        utl_kBfG__createFaux32Bit_gcc
+
+        PATH="$kbuildBin32:$PATH"
+        # And just in for completion...
+        archOpts='CROSS_COMPILE=i686-pc-linux-gnu- ARCH=i386'
+    fi
+
+    # Ok, now we're ready to do the build.
+    #
+    $runsudo make $archOpts "$@"
+    retStat=$?
+
+    PATH="$oPATH"
 }
 
 
@@ -321,9 +492,10 @@ kernel_prep_buildBranch() {
         echo ">> Copied config file.  Listing new config options:"
         echo ">>"
 
-        make listnewconfig
+        make_kernel_x86 listnewconfig
         echo ">>"
-        echo ">> Run 'make xconfig' and use this list to tweak appropriately."
+        echo ">> Run 'kernel_make_xconfig' and use this list"
+        echo ">> to tweak appropriately."
         echo ">>"
     } |& tee -a $logFile
 
@@ -331,22 +503,28 @@ kernel_prep_buildBranch() {
 }
 
 
-kernel_make_xconfig_qt4() {
-    local runsudo=''
-    if [ "$1" = "--sudo" ]; then
-        runsudo=sudo
+kernel_make_xconfig() {
+    local  oldQTDIR
+    if [ "$1" = "--qt4" ]; then
         shift
+
+        oldQTDIR="$QTDIR"
+        export QTDIR=/usr/share/qt4
     fi
 
-    QTDIR=/usr/share/qt4
-    export QTDIR
-    $runsudo make "$@" xconfig
-    unset QTDIR
+    make_kernel_x86 "$@" xconfig
+
+    if [ -z "$oldQTDIR" ]; then
+        unset QTDIR
+    else
+        export QTDIR="$oldQTDIR"
+    fi
 }
+alias kernel_make_xconfig_qt4='kernel_make_xconfig --qt4'
 
 
 kernel_stash_config() {
-    local kver=$(make kernelversion)
+    local kver=$(make_kernel_x86 kernelversion)
     cp -vi --backup=t .config $KBUILD_BASEDIR/tpx40-${kver}.config
 }
 
@@ -369,7 +547,8 @@ kernel_do_build() {
         echo ">>"
 
         mv .git Tmp-Disabled-dot.git || return $?
-        make "$@" deb-pkg
+
+        make_kernel_x86 "$@" deb-pkg
         retStat=$?
 
         mv Tmp-Disabled-dot.git .git
@@ -394,7 +573,7 @@ kernel_nuke_buildBranch() {
     {
         echo ">> Cleaning build..."
         echo ">> "
-        make mrproper || return $?
+        make_kernel_x86 mrproper || return $?
 
         echo ">> Hard-resetting build branch..."
         echo ">>"
@@ -418,6 +597,10 @@ kernel_tools_help() {
     cat <<EOF | less
     Functions:
     ----------
+
+    Note:  Unless noted otherwise, all of these functions 'tee' their output
+           to a log-file.  So, you don't have to.
+
 
     get_kernelFromGit_startingFromBranch [<theMinBranch>]
             Clone the entire stable kernel's repository from \$kernelGitUrl
@@ -445,10 +628,10 @@ kernel_tools_help() {
             Sets up the current directory for building the kernel.  Creates &
             checks out branches as needed.
 
-            The next step after this might be a 'make xconfig' of some form
-            followed by a 'kernel_stash_config'.
+            The next step after this might be a 'kernel_make_xconfig' of some
+            form followed by a 'kernel_stash_config'.
 
-    kernel_make_xconfig_qt4 [--sudo] [V={0|1|2}]
+    kernel_make_xconfig [--sudo] [V={0|1|2}]
             Do a 'make xconfig', but forcing use of Qt4.  Versions of the
             kernel past 3.12.* seem to have problems with Qt3.
 
@@ -464,11 +647,19 @@ kernel_tools_help() {
             Does the final step:  cleans up everything, return to the 'master'
             branch, and delete the "build-branch".
 
+    make_kernel_x86
+            Runs 'make' using the 32-bit compilation toolchain.
+
+            You MUST use this for all make-tasks.
+
+            [All of the functions above are for building a 32-bit/ThinkPad-X40
+             kernel.]
+
 
     Aliases:
     --------
 
-    None at present.
+    kernel_make_xconfig_qt4 - Like 'kernel_make_xconfig', but uses QT4.
 
 
     Envvars:
