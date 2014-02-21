@@ -244,7 +244,6 @@ make_kernel_x86() {
     local retStat
     local kbuildBin32="$KBUILD_BASEDIR/bin"
     local oPATH="$PATH"
-    local archOpts='ARCH=i386'
 
     if [ "$(uname -m)" = "x86_64" ]; then
         # [2014-02-21]
@@ -260,7 +259,9 @@ make_kernel_x86() {
         #
         # I've tried passing 'KCFLAGS=-m32 ARCH=i386' to 'make'.  I've tried
         # passing 'CROSS_COMPILE=i686-pc-linux-gnu- ARCH=i386' [after creating
-        # the script below].  Again, I got a header-package with 64-bit tools.
+        # the script below].  This fails unless you create a bunch of symlinks
+        # for 'ln', 'objdump' and others containing the prefix
+        # 'i686-pc-linux-gnu-'.  [That's a pain and redundant besides.]
         #
         # Soooo... I'm going to completely short-circuit things and point
         # 'gcc' to my cross-compile script.  There's no other way.  :(
@@ -270,12 +271,11 @@ make_kernel_x86() {
 
         PATH="$kbuildBin32:$PATH"
         # And just in for completion...
-        archOpts='CROSS_COMPILE=i686-pc-linux-gnu- ARCH=i386'
     fi
 
     # Ok, now we're ready to do the build.
     #
-    $runsudo make $archOpts "$@"
+    $runsudo make ARCH=i386 "$@"
     retStat=$?
 
     PATH="$oPATH"
