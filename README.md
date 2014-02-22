@@ -67,6 +67,7 @@ differs:
   - `perl/trunk` on SourceForge is `tp-x40-tools/perl` here.
   - `xkb/trunk` on SourceForge is `tp-x40-tools/xkb` here.
   - `sh.scripts/trunk` on SourceForge is `tp-x40-tools/sh.scripts` here.
+  - `kernels/trunk` on SourceForge is `tp-x40-tools/kernels` here.
   - Bonus!  The following subdirectores (and their contents) are only
     here on GitHub:
     + `tp-x40-tools/sh.scripts/laptop/acpi`
