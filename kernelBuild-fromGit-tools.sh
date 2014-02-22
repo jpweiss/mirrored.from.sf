@@ -671,6 +671,8 @@ kernel_tools_help() {
             all of the pruned branches again.
 
     kernel_updateTrackingBranches [<branchName> [<branchName> ...]]
+            Note that this function does not log its output to a file.
+
             "Resets" any tracking branches to point to the head of the
             corresponding remote branches.  If no '<branchName>' is specified,
             all local branches starting with 'linux-' and matching a remote
