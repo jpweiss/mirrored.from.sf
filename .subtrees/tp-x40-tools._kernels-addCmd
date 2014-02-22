@@ -1,0 +1,2 @@
+# Subtree "tp-x40-tools/kernels" added with:
+    git subtree add --prefix=tp-x40-tools/kernels -- "subtree._tp-x40-tools._kernels" master
