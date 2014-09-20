@@ -432,6 +432,52 @@ update_kernelFromGit() {
 }
 
 
+kernel_recreateTrackingBranch() {
+    local verify_remote=y
+    if [ "$1" = "--nochecks" ]; then
+        shift
+        verify_remote=''
+    fi
+    local trackingBranch="$1"
+    shift
+
+    if [ -n "$verify_remote" ]; then
+        if [ -z "$trackingBranch" ]; then
+            # Skip the verification check, but don't print a usage yet.
+            :
+        elif utl_kBfG__getBranchNames -r | grep -q "^$trackingBranch\$"; then
+            # A-OK
+            :
+        else
+            echo "Does not match a remote branch:  \"$trackingBranch\""
+            echo ""
+            trackingBranch=""
+        fi
+
+        # Usage:
+        if [ -z "$trackingBranch" ]; then
+            echo -n "usage:  kernel_recreateTrackingBranch"
+            echo " <missingTrackingBranch>"
+            echo ""
+            echo -n "'<missingTrackingBranch>' must match an existing"
+            echo " remote branch.  If you"
+            echo "list all of the remote branches like so:"
+            echo ""
+            echo "    pushd \$KBUILD_BASEDIR"
+            echo "    git branch -r | grep 'origin/linux'"
+            echo ""
+            echo "...then trim off the 'origin/' part to get a valid"
+            echo "'<missingTrackingBranch>'."
+            return 0
+        fi
+    fi
+
+    # Silently do nothing if passed "--nochecks" but no branch name.
+    [ -n "$trackingBranch" ] && \
+        git branch --track $trackingBranch origin/$trackingBranch
+}
+
+
 kernel_updateTrackingBranches() {
     if [ $# -eq 0 ]; then
         set -- $(utl_kBfG__getBranchNames)
@@ -446,7 +492,7 @@ kernel_updateTrackingBranches() {
             echo "\"$trackingBranch\""
 
             git branch -D $trackingBranch && \
-                git branch --track $trackingBranch origin/$trackingBranch
+                kernel_recreateTrackingBranch --nochecks $trackingBranch
 
             if [ $? -eq 0 ]; then
                 echo ">> Done."
@@ -688,6 +734,11 @@ kernel_tools_help() {
 
             You'll typically use this after doing a 'update_kernelFromGit'.
 
+    kernel_recreateTrackingBranch <branchName>
+            Use to restore a tracking branch that's gone missing.  You'll
+            rarely need this function.
+            Run w/o args for usage.
+
     kernel_prep_buildBranch
             Run w/o args for usage.
             Sets up the current directory for building the kernel.  Creates &
@@ -696,9 +747,11 @@ kernel_tools_help() {
             The next step after this might be a 'kernel_make_xconfig' of some
             form followed by a 'kernel_stash_config'.
 
-    kernel_make_xconfig [--sudo] [V={0|1|2}]
-            Do a 'make xconfig', but forcing use of Qt4.  Versions of the
-            kernel past 3.12.* seem to have problems with Qt3.
+    kernel_make_xconfig [--qt4] [--sudo] [V={0|1|2}]
+            Do a 'make xconfig', using 'make_kernel_x86'.  You can also force
+            the use of Qt4.
+            Versions of the kernel past 3.12.* seem to have problems with
+            Qt3.
 
     kernel_stash_config
             Save a copy of the current '.config' file to the \$KBUILD_BASEDIR,
@@ -718,7 +771,8 @@ kernel_tools_help() {
             You MUST use this for all make-tasks.
 
             [All of the functions above are for building a 32-bit/ThinkPad-X40
-             kernel.]
+             kernel.  Any of them that need to run 'make' use this function,
+             instead.]
 
 
     Aliases:
