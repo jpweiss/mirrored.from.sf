@@ -149,7 +149,7 @@ translateKeycode()
         Fn+F12|hibernate)
             echo "$KEY_SUSPEND (SUSPEND)"
             ;;
-        Fn+prog1)
+        prog1)
             echo "$KEY_PROG1 (PROG1)"
             ;;
         *)
@@ -167,33 +167,37 @@ translateKeycode()
 ############
 
 
-set -- $*
-
-
-eventType="$1"
+#echo "DBG:  Run as:  $0 $@" >>$LOGFILE
+if [ -n "$5" ]; then
+    keyName="$1"
+    shift
+fi
+origEvent="$@"
 keycode="$4"
-key_name="$5"
+now=`date +"%F %T"`
+
 
 stat=0
 if [ -z "$key_name" ]; then
-    xlatedKey=`translateKeycode $key_name`
+    xlatedKey=`translateKeycode $keyName`
     stat=$?
 fi
 
 # If the new-style fails, try falling back on the old "ibm/hotkey" type.
-if [ $stat -eq 0 ]; then
+if [ $stat -ne 0 ]; then
     xlatedKey=`translateKeycode_old_ibm $keycode`
     stat=$?
-    key_name="$*"
+    keyName="$*"
 fi
 
 if [ $stat -eq 0 ]; then
-    echo "fakekey:  Translated \"$key_name\" to \"$xlatedKey\"" >>$LOGFILE
+    echo "fakekey[$now]:  Translated \"$keyName\" to \"$xlatedKey\"" \
+        >>$LOGFILE
     acpi_fakekey $xlatedKey
 else
-    echo "fakekey:  Cannot forward:  $key_name" >>$LOGFILE
+    echo "fakekey[$now]:  Cannot forward:  \"$keyName\"" >>$LOGFILE
 fi
-echo "fakekey:      orig_event=='$@'" >>$LOGFILE
+echo "fakekey[$now]:      orig_event=='$origEvent'" >>$LOGFILE
 
 
 #################

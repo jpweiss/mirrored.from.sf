@@ -32,6 +32,7 @@
 
 
 myPath=`dirname $0`
+DBGLOG="/tmp/logs/acpi-debug-event.log"
 
 
 ############
@@ -141,7 +142,7 @@ parse_button_eventcode()
             echo "hibernate"
             ;;
         PROG1)
-            echo "Fn+prog1"
+            echo "prog1"
             ;;
         *)
             echo "$keyName"
@@ -248,14 +249,19 @@ exec_acpi_action()
 
 
 orig_eventcode="$@"
-xlatedKey=`$(parse_eventcodes $orig_eventcode`
+xlatedKey=`parse_eventcodes $orig_eventcode`
+##set -x
+##parse_eventcodes $orig_eventcode >>$DBGLOG 2>&1
+##set +x
+##echo "DBG:  \"$xlatedKey\"" >>$DBGLOG
+
 
 # [jpw; 201410]  Currently unused; anything not handled by an event rule
 #                was intentionally left unbound.
 #exec_acpi_action "$xlatedKey" $orig_eventcode
 
 # Fallback:  Any unhandled keys get passed to the "fakekey.sh" handler.
-exec $myPath/fakekey.sh $orig_eventcode $xlatedKey
+exec $myPath/fakekey.sh $xlatedKey $orig_eventcode
 
 
 #################
