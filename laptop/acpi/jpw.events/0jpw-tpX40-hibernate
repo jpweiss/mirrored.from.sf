@@ -1,4 +1,4 @@
-# ThinkPad X40 ACPI Event: Use Fn+F12 to hibernate the system.
+# ThinkPad X40 ACPI Event:  Fn+F12 performs "hibernate the system".
 
-event=ibm/hotkey.* 0000100c
+event=button[ /]suspend SUSP.*
 action=/etc/acpi/jpw.actions/hibernate.sh
