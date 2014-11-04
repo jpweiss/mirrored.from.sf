@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2011 by John P. Weiss
+# Copyright (C) 2011, 2014 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -28,11 +28,11 @@
 # file, but are not standard settings.  These are their default values.
 #
 
-my $_DaemonLog = "/var/log/mrtg-dslmodem.log";
-my $_DataFile = "/tmp/mrtg-dslmodem.dat";
+my $_DaemonLog = "/var/log/mrtg-routergui.log";
+my $_DataFile = "/tmp/mrtg-routergui.dat";
 my $_MaxSize_DataFile = 8*1024*1024;
 my $_MaxSize_Log = 64*1024*1024;
-my $_DaemonPIDFile = "/var/run/mrtg-dslmodem.pid";
+my $_DaemonPIDFile = "/var/run/mrtg-routergui.pid";
 my $_GetURLVia = 'curl';
 my $_DebugLoggingIsActive = 0;
 my $_MRTG_CollisionInterval = 15;
@@ -196,11 +196,11 @@ my $c_Ignored_Tags_re
     = '(?:/?(?:'.$c_IgnoredPlain_re.')|'.$c_IgnoredStandalone_re.')';
 
 # Used to warn the user when they need to rerun this script in '-p'-mode.
-my $c_VerifyVal='3d1d4be73511759d7a93e0357c0daa7ec88c3299bdb9bc1f7b4c89c8a91'.
-    'f27c1df7a56afb15db1603479410f0849363038b93d15024bd67dcfb153bd3f8a26ba59'.
-    '203a9ec625243aafc0a478';
+my $c_VerifyVal='3a2963fdf229cbc4b6695ead5d44fab745346605b82b58ac680f01375db'.
+    'aa7adeffbf65c141e0b90ca3ee2dcdf97901629591f5e9cd988246e5149e14a6b27ef6f'.
+    '148425daa7c8b60b517af7';
 my $c_ExpectedVal='sub shhhhh($$){ my $c_ExpectedVal="@th350und0fth3t0n3"; ';
-my $c_VersionVal="# 3.0 #";
+my $c_VersionVal="# 4.0 #";
 
 my $c_EvT_startupDflt = 1;
 my $c_EvT_placeholder = 2;
@@ -234,7 +234,7 @@ my @c_ScalarOptions = ('UpdateInterval',
                        'ModemAdjustsForDST',
                        'ExtraTimeOffset',
                        'MRTG.LogDir',
-                       'MRTG.Our_DataFile',
+                       'MRTG.DataLog4Sync',
                        'Syslog.Url',
                        'Syslog.DslDown_expr',
                        'Syslog.DslUp_expr',
@@ -426,28 +426,29 @@ sub printDbg(@) {
 
 sub convert2secs($) {
     my $timeStr = shift();
-    my $secs = undef;
 
-    # Check that the time-string is valid.
-    return undef unless ($timeStr =~ m/^(\d+(?:\.\d+)?)(?:\s*[smh])?$/);
+    # Check that the time-string is valid.  Also capture the relevant parts of
+    # the time-string.
+    #
+    # Note that the default units are minutes.
+    return undef unless ($timeStr =~ m/^(\d+(?:\.\d+)?)\s*([smh]?)$/);
+
+    my $secs = $1;
+    my $units = $2;
 
     # Process any units-suffix:
-    if ($timeStr =~ m/^(.*)\s*s$/) {
-        # Units of seconds.  Nothing to do to the number.
-        $secs = $1;
-    }
-    elsif ($timeStr =~ m/^(.*)\s*([mh])$/) {
-        $secs = $1;
-        if ($2 eq "h") {
-            $secs *= 60;
-        }
-    } else {
-        # Don't modify $$ref_var.
-        return undef;
+    if ($units eq "h") {
+        # Convert to minutes.
+        $secs *= 60;
     }
 
-    # Convert min. to sec.
-    $secs *= 60;
+    # In units of seconds?
+    if ($units ne "s") {
+        # Nope.   Convert minutes to seconds.
+        $secs *= 60;
+    }
+
+    # Done.
     return $secs;
 }
 
@@ -522,7 +523,9 @@ sub init_DST_vars(\$\$) {
 #----------
 
 
-sub build_cfgfile_name() {
+sub build_cfgfile_name(;$) {
+    my $cfgfileInfix = (scalar(@_) ? shift() : "");
+
     if (defined($_ConfigFile) && ($_ConfigFile ne "")) {
         return;
     }
@@ -537,8 +540,15 @@ sub build_cfgfile_name() {
     if (! -d $_ConfigFile) {
         $_ConfigFile = "/etc/mrtg/";
     }
+
     $_ConfigFile .= $_MyName;
-    $_ConfigFile =~ s/.pl$/.cfg/;
+    if ($cfgfileInfix eq "") {
+        $_ConfigFile =~ s/.pl$/.cfg/;
+    } else {
+        $_ConfigFile =~ s/.pl$/-/;
+        $_ConfigFile .= $cfgfileInfix;
+        $_ConfigFile .= ".cfg";
+    }
 }
 
 
@@ -775,7 +785,7 @@ sub set_or_warn(\$$$$@) {
         return;
     } # else:  Error
 
-    print STDERR("Error:  ", $why, " in setting:  \"", $what, "\"\n", @_);
+    print STDERR ("Error:  ", $why, " in setting:  \"", $what, "\"\n", @_);
 }
 
 
@@ -874,6 +884,11 @@ sub validate_syslogOpts(\%) {
 
     return unless (exists($ref_options->{'Syslog'}));
     return unless (exists($ref_options->{'Syslog'}{'Url'}));
+}
+
+
+sub validate_mrtgSyncOpts(\%) {
+    my $ref_options = shift();
 
     my $ref_MRTGOpts = $ref_options->{'MRTG'};
     if (exists($ref_MRTGOpts->{'LogDir'})) {
@@ -882,23 +897,32 @@ sub validate_syslogOpts(\%) {
         {
             die_CfgErr(2, "Parameter 'MRTG.LogDir' set to bad value.\n",
                        "Not a directory or not writeable:  \"",
-                       $ref_options->{"MRTG.LogDir"}, "\"\n");
+                       $ref_MRTGOpts->{"LogDir"}, "\"\n");
         }
     } else {
         die_CfgErr(2,
                    "Configuration file parameter 'MRTG.LogDir' not set.\n");
     }
 
-    if (exists($ref_MRTGOpts->{'Our_DataFile'})) {
+    if (exists($ref_MRTGOpts->{'DataLog4Sync'})) {
         my $mrtg_log_file = $ref_MRTGOpts->{'LogDir'};
         unless ($mrtg_log_file =~ m|/$|) {
             $mrtg_log_file .= '/';
         }
-        $mrtg_log_file .= $ref_MRTGOpts->{'Our_DataFile'};
-        unless ((-e $mrtg_log_file) && (-w $mrtg_log_file)) {
-            die_CfgErr(2, "Parameter 'MRTG.Our_DataFile' set to bad value.\n",
+        $mrtg_log_file .= $ref_MRTGOpts->{'DataLog4Sync'};
+
+        unless ( (-e $mrtg_log_file) && (-w $mrtg_log_file) ) {
+            die_CfgErr(2, "Parameter 'MRTG.DataLog4Sync' set to bad value.\n",
                        "File doesn't exist or isn't writeable:  \"",
-                       $mrtg_log_file, "\"\n");
+                       $mrtg_log_file, "\"\n\n",
+                       "You must set 'MRTG.DataLog4Sync' to a particular ",
+                       "file in 'MRTG.LogDir'.\n",
+                       "Specifically, it must be one of the files that MRTG ",
+                       "uses to store the\n",
+                       "information provided by this daemon.\n\n",
+                       "If you've made MRTG changes, or it's the first time ",
+                       "running this daemon,\n",
+                       "start MRTG *first*, then restart this program.\n");
         }
 
         # Constructed Options:
@@ -909,7 +933,7 @@ sub validate_syslogOpts(\%) {
         $ref_MRTGOpts->{'_Updated_Data_'} .= '-new';
         $ref_MRTGOpts->{'_Interval_dt_'} = 0;
     } else {
-        die_CfgErr(2, "Configuration file parameter 'MRTG.Our_DataFile' ",
+        die_CfgErr(2, "Configuration file parameter 'MRTG.DataLog4Sync' ",
                    "not set.\n");
     }
 }
@@ -992,6 +1016,7 @@ sub validate_options(\%\%) {
     my $ref_auth = shift();
 
     validate_auth_only(%$ref_options, %$ref_auth);
+    validate_mrtgSyncOpts(%$ref_options);
     validate_syslogOpts(%$ref_options);
     validate_statsOpts(%$ref_options);
 }
@@ -1764,6 +1789,20 @@ sub setRowHeadersInOrder(\%\@\%) {
 }
 
 
+sub cleanTableRow(\@) {
+    my $ref_row = shift();
+
+    # Clean off any crap-whitespace surrounding the values:
+    map({ chomp;
+          s/^\s+//;
+          s/\s+$//; } @$ref_row);
+
+    if ($_DebugLoggingIsActive & 8) {
+        printDbg(">>> Table Row: '", Dumper($ref_row), "'\n");
+    }
+}
+
+
 sub parseTables_grid($\%\%) {
     my $parser = shift();
     my $ref_opts = shift();
@@ -1793,10 +1832,8 @@ sub parseTables_grid($\%\%) {
             printDbg(">>> TableColumnSlice: (", join(", ", @slice), ")\n");
         }
         foreach my $ref_row ($table->rows()) {
+            cleanTableRow(@$ref_row);
             study $ref_row->[0];
-            if ($_DebugLoggingIsActive & 8) {
-                printDbg(">>> Table Row: '", $table, "'\n");
-            }
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
             my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
@@ -1838,10 +1875,8 @@ sub parseTables_rowMajor($\%\%) {
         }
 
         foreach my $ref_row ($table->rows()) {
+            cleanTableRow(@$ref_row);
             study $ref_row->[0];
-            if ($_DebugLoggingIsActive & 8) {
-                printDbg(">>> Table Row: '", $table, "'\n");
-            }
             next unless ($ref_row->[0] =~ m/$ref_opts->{'_Row_re_'}/o);
 
             my $hdr = ensureDefinedHeaders($ref_row->[0], $colCount);
@@ -3292,17 +3327,33 @@ sub checkNow_and_exit(\%\%) {
 
 
 sub usage() {
-    print STDERR ("usage: ", $_MyName, " -n\n");
-    print STDERR (" "x7, $_MyName, " -d\n");
+    print STDERR ("usage: ", $_MyName, " [-c <cfi>] {-n|-d|-p}\n");
     print STDERR (" "x7, $_MyName,
-                  " [-r] <measure#> [<measure#>]\n\n");
+                  " [-c <cfi>] [-r] <measure#> [<measure#>]\n\n");
+    print STDERR ("The options & arguments must be in the order shown.\n");
     print STDERR ("<measure#> is 0-offset.\n\n");
+
+    my $cfgNameStart=$_MyName;
+    $cfgNameStart =~ s/.pl$//;
+    print STDERR ($_MyName, "always constructs its configuration file name ",
+                  "and path.  You\n",
+                  " don't have any control over that.  However, you can use ",
+                  "the '-c' option to\n",
+                  "alter how the file name is constructed.  The string <cfi> ",
+                  "will be inserted\n",
+                  "into the constructed file name like so:\n",
+                  " "x4, "'", $cfgNameStart, "' + '-' + <cfi> + '.cfg'\n"
+                 );
     print STDERR ("In the configfile, \"UpdateInterval\" is normally in ",
                   "seconds.  You can\n",
                   "change these units by using the suffixes \"h\", \"m\", ",
                   "or \"s\" on the\n",
                   "number that you specify.\n");
     print STDERR ("\nRun Modes:\n\n");
+    print STDERR ("'-p':  This sets the 'passwd' option in the ",
+                  "configuration file.\n",
+                  " "x7, "[You can't set it manually, as it needs to be ",
+                  "encrypted.]\n");
     print STDERR ("'-n':  Run now, printing every DSL up/down event ",
                   "and statistic\n",
                   " "x7, "currently available from the modem.\n");
@@ -3358,6 +3409,29 @@ sub usage() {
 
 # This is a really crude script.  Since it only exists to be run by MRTG, I
 # don't want too much overhead in it.
+
+
+# Grab the '-c' option, if specified.
+#
+if ($ARGV[0] eq "-c") {
+    shift(@ARGV);
+
+    if ($ARGV[0] =~ m/^-/) {
+        print STDERR ("'-c' requires an argument [and cannot start ",
+                      "with a '-'.\n");
+        usage();
+    }
+
+    build_cfgfile_name($ARGV[0]);
+    shift(@ARGV);
+
+    if (exists($ENV{'VERBOSE'}) && $ENV{'VERBOSE'}) {
+        print STDERR ("Using alternate configuration file:\n",
+                      ' 'x4, $_ConfigFile, "\n");
+    }
+}
+
+# Now process the rest of the cmdline
 #
 my $daemonize=0;
 my $checkNow=0;
