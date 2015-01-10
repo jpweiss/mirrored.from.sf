@@ -210,7 +210,7 @@ turnWifiOn()
 
 toggleWifi()
 {
-set -x
+#set -x
     # FIXME::[jpw;2010-11-13]
     # Something else is running when Fn-F5 is hit, in addition to this script.
     # Soooo... we'll let it run, then we'll ... um ... Wait.  If we then run
@@ -219,6 +219,11 @@ set -x
     #
     # The upshot is:  we have a race-condition between this script and whatever
     # else is running.
+    #
+    # [jpw;2014-10-09]  And just to add to things...
+    #                   The ACPI daemon treats the actions in '/etc/apci' as
+    #                   just another client.  It sends an event to *all*
+    #                   clients.  Which may be the source of the problem.
 
     local succeeded wifiStatus
 
@@ -235,7 +240,7 @@ set -x
         echo "Still no success!  Trying to just toggle the antenna state..."
         toggleAllWirelessStates
     fi
-set +x
+#set +x
 }
 
 
