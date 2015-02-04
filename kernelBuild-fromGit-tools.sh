@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2014 by John P. Weiss
+# Copyright (C) 2014-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -268,7 +268,7 @@ make_kernel_x86() {
         # I've tried passing 'KCFLAGS=-m32 ARCH=i386' to 'make'.  I've tried
         # passing 'CROSS_COMPILE=i686-pc-linux-gnu- ARCH=i386' [after creating
         # the script below].  This fails unless you create a bunch of symlinks
-        # for 'ln', 'objdump' and others containing the prefix
+        # for 'ld', 'objdump' and others containing the prefix
         # 'i686-pc-linux-gnu-'.  [That's a pain and redundant besides.]
         #
         # Soooo... I'm going to completely short-circuit things and point
@@ -319,7 +319,7 @@ get_kernelFromGit_startingFromBranch() {
     pd $wrkDir
 
     local rmBrFile=${KBUILD_BASEDIR}/tmp.branches.list
-    {
+    (
         echo "#"
         echo "# Uncomment any branches you want to remove."
         echo "#"
@@ -334,7 +334,7 @@ get_kernelFromGit_startingFromBranch() {
 
         utl_kBfG__getBranchNames -r --raw | \
             sed -e "/${theMinBranch//./\\.}/,\$s/^/\#/"
-    } >$rmBrFile
+    ) >$rmBrFile
     ${EDITOR:-vim} $rmBrFile
 
     local finalRetStat=0
@@ -597,23 +597,33 @@ kernel_prep_buildBranch() {
 
 
 kernel_make_xconfig() {
+    export QTDIR=/usr/share/qt4
     local  oldQTDIR
-    if [ "$1" = "--qt4" ]; then
+    if [ "$1" = "--qt3" ]; then
         shift
 
         oldQTDIR="$QTDIR"
-        export QTDIR=/usr/share/qt4
+        export QTDIR=/usr/share/qt3
     fi
 
-    make_kernel_x86 "$@" xconfig
+    # Because of the architecture of the QT libs (64-bit), we *have* to build
+    # xconfig under the local architecture.
+    # Also, let's clean up the 'scripts/kconfig' path.
+    if [[ ! -e qconf ]]; then
+        rm -v scripts/kconfig/*.o
+    fi
+    make "$@" xconfig
 
     if [ -z "$oldQTDIR" ]; then
         unset QTDIR
     else
         export QTDIR="$oldQTDIR"
     fi
+
+    # Now clean up the "*.o" files that are needed during cross-compile:
+    rm -v scripts/kconfig/{conf,zconf.tab}.o
 }
-alias kernel_make_xconfig_qt4='kernel_make_xconfig --qt4'
+alias kernel_make_xconfig_qt3='kernel_make_xconfig --qt3'
 
 
 kernel_stash_config() {
@@ -739,19 +749,34 @@ kernel_tools_help() {
             rarely need this function.
             Run w/o args for usage.
 
+    make_kernel_x86
+            Utility function:
+            Runs 'make' using the 32-bit compilation toolchain.
+
+            [All of the functions below are for building a 32-bit/ThinkPad-X40
+             kernel.  Any of them that need to run 'make' use this function,
+             instead.]
+
+            You MUST use this for all make-tasks that you run by-hand.
+
     kernel_prep_buildBranch
             Run w/o args for usage.
             Sets up the current directory for building the kernel.  Creates &
             checks out branches as needed.
+            [Uses 'make_kernel_x86'.]
 
             The next step after this might be a 'kernel_make_xconfig' of some
-            form followed by a 'kernel_stash_config'.
+            form followed by a 'kernel_stash_config'.  If there are no new
+            config-options, skipping to 'kernel_do_build' might make more
+            sense.
 
-    kernel_make_xconfig [--qt4] [--sudo] [V={0|1|2}]
+    kernel_make_xconfig [--qt3] [--sudo] [V={0|1|2}]
             Do a 'make xconfig', using 'make_kernel_x86'.  You can also force
-            the use of Qt4.
+            the use of Qt3.
             Versions of the kernel past 3.12.* seem to have problems with
-            Qt3.
+            Qt3.  So the default is to use Qt4.
+
+            You'll probably want to run 'kernel_stash_config' next.
 
     kernel_stash_config
             Save a copy of the current '.config' file to the \$KBUILD_BASEDIR,
@@ -760,19 +785,11 @@ kernel_tools_help() {
     kernel_do_build [V={0|1|2}]
             Builds the kernel "deb-pkg".  You must be in the working dir and
             on a "build-branch" or this won't work.
+            [Uses 'make_kernel_x86'.]
 
     kernel_nuke_buildBranch
             Does the final step:  cleans up everything, return to the 'master'
             branch, and delete the "build-branch".
-
-    make_kernel_x86
-            Runs 'make' using the 32-bit compilation toolchain.
-
-            You MUST use this for all make-tasks.
-
-            [All of the functions above are for building a 32-bit/ThinkPad-X40
-             kernel.  Any of them that need to run 'make' use this function,
-             instead.]
 
 
     Aliases:
