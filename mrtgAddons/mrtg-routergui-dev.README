@@ -1,4 +1,4 @@
-Special 'mrtg-dslmodem.pl' Options:
+Special 'mrtg-routergui.pl' Options:
 -----------------------------------
 
 --keep-in-foreground
@@ -24,7 +24,7 @@ Envvar:  $VERBOSE
 
 ==============================================================================
 
-To Modify 'mrtg-dslmodem.pl':
+To Modify 'mrtg-routergui.pl':
 -----------------------------
 
 1. Update the value of '$c_VersionVal', if you haven't done so
@@ -33,13 +33,13 @@ To Modify 'mrtg-dslmodem.pl':
 2. Search for the variable, '$c_ExpectedVal'.
    - Copy its value to the clipboard ... including the trailing space.
 
-3. Run the new, modified version of 'mrtg-dslmodem.pl' as follows:
-       $PWD/mrtg-dslmodem.pl -c nuVer -p
+3. Run the new, modified version of 'mrtg-routergui.pl' as follows:
+       $PWD/mrtg-routergui.pl -c nuVer -p
    - You need to run it with an absolute-path.
    - You don't need to worry whether or not it has a configuration
      file.
    - You do, however, need to have a writable 'etc' subdirectory
-     in whatever directory 'mrtg-dslmodem.pl' resides.
+     in whatever directory 'mrtg-routergui.pl' resides.
 
 4. Paste the previously-copied value of '$c_ExpectedVal' onto the
    commandline and hit return.
@@ -55,4 +55,3 @@ To Modify 'mrtg-dslmodem.pl':
      end of the line will be in columns 76 & 77].
 
 8. Rerun this new script to update all of your passwords.
-
