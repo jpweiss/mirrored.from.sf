@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2006-2013 by John P. Weiss
+# Copyright (C) 2006-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -852,13 +852,23 @@ sub usage() {
                   "while\n\"ConfigUpdateInterval\" is in days.\n");
     print STDERR ("\nRun Modes:\n\n");
     print STDERR ("'-c':  (Re)creates the configfile.  <host> is the ",
-                  "traceroute target,\n");
-    print STDERR ("       monitor.  The <host> is always monitored.\n");
+                  "traceroute target\n");
+    print STDERR ("       to monitor.  The <host> is always monitored.\n");
+    print STDERR ("       Using this option completely overwrites any ",
+                  "existing\n");
+    print STDERR ("       configuration file.  So save a copy of your ",
+                  "current settings\n");
+    print STDERR ("       first, then and merge in the new 'remote_host', ",
+                  "'hop_numbers',\n");
+    print STDERR ("       and 'measurement_targets' (and possibly ",
+                  "'show_latency', if you\n");
+    print STDERR ("        never customized it).\n");
     print STDERR ("'-d':  Run in daemon mode.  Refreshes the configfile on ",
                   "init if you\n");
-    print STDERR ("       specify the other commandline args (which look ",
-                  "quite a lot\n");
-    print STDERR ("       like the ones for '-c' mode).\n");
+    print STDERR ("       specify the other commandline args (which behave ",
+                  "just like\n");
+    print STDERR ("       the ones for '-c' mode and will overwrite any ",
+                  "existing configfile).\n");
     print STDERR ("'-b':  Run in one-shot ping mode.  Checks one or two ",
                   "destination hosts,\n");
     print STDERR ("       as required by MRTG.\n");
@@ -885,7 +895,8 @@ sub usage() {
     print STDERR ("       isn't already running.\n");
 
     print STDERR ("\nTo kill a daemonized instance, use:\n\t",
-                  "kill \$(\< ", $_DaemonPIDFile, ")\n");
+                  "kill \$(\< ", $_DaemonPIDFile, ")\n\n",
+                  "Use a '-USR1' signal to reread the configuration file.\n");
     print STDERR ("\nTo list the througput of all targets, in order, ",
                   "use:\n\t",
                   "cat ", $_DataFile,

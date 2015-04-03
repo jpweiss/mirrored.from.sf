@@ -1,0 +1,57 @@
+Special 'mrtg-routergui.pl' Options:
+-----------------------------------
+
+--keep-in-foreground
+
+    Unlike the '-n' option, '--keep-in-foreground' behaves exactly the
+    same as '-d', but without daemonizing the process.
+
+--l2t
+
+    def
+    def
+
+--recover2mrtg
+
+    def
+    def
+
+Envvar:  $VERBOSE
+
+    Does just one thing:  If set, prints out the name of the configuration
+    file created using the '-c' option.
+
+
+==============================================================================
+
+To Modify 'mrtg-routergui.pl':
+-----------------------------
+
+1. Update the value of '$c_VersionVal', if you haven't done so
+   already.
+
+2. Search for the variable, '$c_ExpectedVal'.
+   - Copy its value to the clipboard ... including the trailing space.
+
+3. Run the new, modified version of 'mrtg-routergui.pl' as follows:
+       $PWD/mrtg-routergui.pl -c nuVer -p
+   - You need to run it with an absolute-path.
+   - You don't need to worry whether or not it has a configuration
+     file.
+   - You do, however, need to have a writable 'etc' subdirectory
+     in whatever directory 'mrtg-routergui.pl' resides.
+
+4. Paste the previously-copied value of '$c_ExpectedVal' onto the
+   commandline and hit return.
+
+5. Repeat #4.
+
+6. Retrieve the value of the 'passwd' variable that was appended to
+   the configuration file.
+
+7. Replace the value of '$c_VerifyVal' with the string you got in step
+   #6.
+   - Split and line-wrap the string at column-76 [i.e. the "'." at the
+     end of the line will be in columns 76 & 77].
+
+8. Rerun this new script to update all of your passwords.
