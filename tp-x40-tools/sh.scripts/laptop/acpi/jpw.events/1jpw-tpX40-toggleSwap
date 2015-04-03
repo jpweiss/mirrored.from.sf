@@ -1,8 +1,6 @@
-# ThinkPad X40 ACPI Event: Use Fn+Insert or Fn+Delete to turn the
-# swap-space off & on
+# ThinkPad X40 ACPI Event:  Use Fn+10 to toggle the swap-space
+#                           off & on
 
-# 0000100e == Fn+Insert
-# 0000100f == Fn+Delte
-event=ibm/hotkey.* 0000100[ef]
+event=button/fnf10 FF10
 action=/etc/acpi/jpw.actions/swapOnOff.sh %e
 

@@ -1,6 +1,6 @@
-# ThinkPad X40 ACPI Event: Use Fn+F1 to forcibly switch to the first
-# virtual console.
+# ThinkPad X40 ACPI Event:  Use Fn+F1 to forcibly switch to the first
+#                           virtual console.
 
-event=ibm/hotkey.* 00001001
+event=button[ /]fnf1 FNF1.*
 action=/etc/acpi/jpw.actions/switchToVT1.sh %e
 

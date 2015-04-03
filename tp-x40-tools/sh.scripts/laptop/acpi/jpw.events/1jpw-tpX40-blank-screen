@@ -1,5 +1,6 @@
-# ThinkPad X40 ACPI Event: Trap all other Fn+F* combinations and log.
+# ThinkPad X40 ACPI Event:  Fn+F3 traditionally performs
+#                           "lock the screen" or "start screensaver".
 
-event=ibm/hotkey.* 00001003
+event=button[ /]screenlock SCRNLCK.*
 action=/etc/acpi/jpw.actions/screenblanker.sh %e
 

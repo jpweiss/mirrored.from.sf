@@ -1,8 +1,4 @@
-# ThinkPad X40 ACPI Event: Trap all other Fn+F* combinations and log.
+# ThinkPad X40 ACPI Event:  Trap all other Fn+F* combinations and log.
 
-# [jpw] For some reason, including a '[^1]...' alternative captures
-#       everything.
-#event=ibm/hotkey.* 0000(100[^134568acef]|101[^01567]|10[^01].|1[^0]..|[^1]...)
-event=ibm/hotkey.* 0000(100[^134568acef]|101[^01567]|10[^01].|1[^0]..)
-action=/etc/acpi/jpw.actions/fakekey.sh %e
-
+event=(ibm/hotkey.* 000010[01]|button[ /]|video[ /]).*
+action=/etc/acpi/jpw.actions/jpw-tpX40-fnkeys.sh %e

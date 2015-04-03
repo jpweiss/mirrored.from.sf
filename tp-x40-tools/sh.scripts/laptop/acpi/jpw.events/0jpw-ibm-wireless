@@ -1,13 +1,9 @@
-# /etc/acpi/events/ibmwireless
-# This is called when the user presses the wireless button and calls
-# /etc/acpi/wireless.sh for further processing.
-
 # [jpw] This file, which should be named, '0-jpw-ibm-wireless', will
 #       override the default 'ibm-wireless' file (due to lexical
 #       ordering).
 #
-#       ThinkPad X40 ACPI Event: Use Fn+F5 to toggle WiFi (only).
+#       ThinkPad X40 ACPI Event: Fn+F5 performs "toggle WiFi" (only).
 
-event=ibm/hotkey.* 00001005
+event=button[ /]wlan WLAN.*
 action=/etc/acpi/jpw.actions/ibm-wireless.sh
 

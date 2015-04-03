@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2013 by John P. Weiss
+# Copyright (C) 2013-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -26,20 +26,12 @@
 
 myPath=`dirname $0`
 
-
-BRIGHTNESS_CTRL=/proc/acpi/ibm/brightness
+PROC_LID=/proc/acpi/button/lid
+SYSFS_LID=/sys/\?\?\?
 SYS_CPUFREQ=/sys/devices/system/cpu/cpu0/cpufreq/
 
 
 . $myPath/screenblanker.sh
-. /usr/share/acpi-support/policy-funcs
-. /etc/default/acpi-support
-
-if type -t getState >/dev/null; then
-    :
-else
-    . /usr/share/acpi-support/power-funcs
-fi
 
 
 ############
@@ -47,6 +39,18 @@ fi
 # Functions
 #
 ############
+
+
+lid_is_closed()
+{
+    if [[ -d $PROC_LID ]]; then
+        grep -q closed $PROC_LID/*/state
+        return $?
+    fi
+    # else:
+
+    # TODO:  Find where the lid info lives in /sys
+}
 
 
 cpufreq_set_powersave()
@@ -99,25 +103,29 @@ toggle_low_power()
 ############
 
 
-test -f /usr/share/acpi-support/state-funcs || exit 0
-
-
+# If we have one, execute the initial-tasks script.
 [ -x /etc/acpi/local/lid.sh.pre ] && /etc/acpi/local/lid.sh.pre
+
 
 # DBG:  Comment out when not in use.
 ##echo "Running $0" >>/tmp/logs/acpi-debug-event.log
-grep -q closed /proc/acpi/button/lid/*/state
-if [ $? = 0 ]; then
+if lid_is_closed; then
+    # N.B.:  We don't really need to blank the screen, but it's not hurting
+    # anything to do so.
     ctrl_screenblank "closed"
     toggle_low_power "closed"
 else
     toggle_low_power
     sleep 1
+    # N.B.:  We don't really need to unblank the screen, but it's not hurting
+    # anything to do so.
     ctrl_screenblank
     sleep 1
     reset_brightness
 fi
 
+
+# If we have one, execute the final-tasks script.
 [ -x /etc/acpi/local/lid.sh.post ] && /etc/acpi/local/lid.sh.post
 
 

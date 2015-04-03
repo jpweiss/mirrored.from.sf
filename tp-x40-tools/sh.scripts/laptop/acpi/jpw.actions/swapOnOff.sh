@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2013 by John P. Weiss
+# Copyright (C) 2013-2014 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -93,6 +93,8 @@ toggle_swap()
         [oO][fF][fF])
             force="off"
             ;;
+
+        # Default:  Any other key combination performs a toggle.
     esac
 
     local nSwaps=$(get_n_swaps)

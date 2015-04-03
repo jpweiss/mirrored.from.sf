@@ -1,5 +1,9 @@
-# ThinkPad X40 ACPI Event: Use Fn+F10 to perform various powersaving tasks.
+# ThinkPad X40 ACPI Event:  Use Fn+F2 to perform various powersaving
+#                           tasks.
+#                           Note that Fn+F2 is now producing this odd
+#                           code [probably because modern ThinkPads
+#                           have some sort of battery function on it].
 
-event=ibm/hotkey.* 0000100a
+event=button[ /]battery BAT.*
 action=/etc/acpi/jpw.actions/enablePowersaving.sh %e
 
