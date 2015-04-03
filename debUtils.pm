@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2003-2012 by John P. Weiss
+# Copyright (C) 2003-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -27,13 +27,13 @@
 
 
 # Deduced empirically from the size and install time of the "kubuntu-docs"
-# package and the mtime of the file "/usr/share/doc-base/kubuntu-systemdocs".
-# (The actual est. install rate was 62516/31, from a KUbuntu installation on a
-# virtual machine.)
+# package [using the command 'time dpkg --install'].  The resulting
+# est. install rate [using the "real" time] was 16300 KiB/12 sec =
+# 1358 KiB/sec.
 #
 # A faster or slower hard drive may need a different value here.  Ditto for
 # slower CPUs.
-my $_PkgInstall_BytesPerSec = 2000;
+my $_PkgInstall_KBperSec = 1350;
 
 
 ############
@@ -74,6 +74,7 @@ our @EXPORT_OK;
 
 # Other Imported Packages/requirements.
 use jpwTools;
+use Cwd qw(chdir cwd);
 
 
 ############
@@ -96,6 +97,8 @@ our $_UnitTest; $_UnitTest = 0;
 
 # Set using 'dpkg --print-architecture'.
 my $_dpkg_arch=undef;
+
+my $_md5_cmd="md5sum -c";
 
 my $_deb_bin="/usr/bin/dpkg-query";
 my $_deb_db_path="/var/lib/dpkg";
@@ -170,8 +173,9 @@ INIT {
 }
 
 
-sub get_infoDirBasename($) {
+sub get_infoDirBasename($$) {
     my $origPkgName = shift;
+    my $origPkgArch = shift;
 
     # The name of the path under the dpkg 'DB' might have a "':'.$arch"
     # suffix.  Using '${PackageSpec}' instead of '${Package}' handles this
@@ -182,7 +186,14 @@ sub get_infoDirBasename($) {
     # for the native architecture DO contain the "':'.$arch" suffix on the
     # name.
     #
-    # We need to handle this situation.
+    # [jpw; 201504]  In v1.17.5 and later, 'PackageSpec' no longer exists.
+    #                So, now, we get the '${Architecture}' and incorporate
+    #                that into the package-name __only__ if we can't find it
+    #                under the plain-name.
+    #
+    unless ( defined($origPkgArch) && ($origPkgArch ne "all") ) {
+        $origPkgArch = "";
+    }
 
     my $pkgInfoFileBase = $_deb_db_info_path;
     $pkgInfoFileBase .= "/";
@@ -191,30 +202,36 @@ sub get_infoDirBasename($) {
     # Just to make life interesting, there are still some packages that don't
     # correctly suffix their names (usually 3rd-party pkgs).  Sooo... we need
     # to check for these, too.  Oh Joy.
-    my $altInfoFileBase = $pkgInfoFileBase;
+    my $altInfoFileBase = $_deb_db_info_path;
+    $altInfoFileBase .= "/";
+    my $altPkgName = $origPkgName;
     if ($origPkgName =~ m/:/) {
-        $altInfoFileBase =~ s/:.*$//;
+        $altPkgName =~ s/:.*$//;
+    } elsif ($origPkgArch ne "") {
+        $altPkgName .= ':';
+        $altPkgName .= $origPkgArch;
     } else {
-        $altInfoFileBase .= ':';
+        $altPkgName .= ':';
         $altInfoFileBase .= $_dpkg_arch;
     }
+    $altInfoFileBase .= $altPkgName;
 
     foreach my $suf (@_deb_info_filesuffixes) {
         my $pkgInfoFile = $pkgInfoFileBase;
         $pkgInfoFile .= $suf;
 
         # If it's there using the default, great!  Stop now.
-        return $pkgInfoFileBase if (-e $pkgInfoFile);
+        return ($pkgInfoFileBase, $origPkgName) if (-e $pkgInfoFile);
 
         # else:
         # Build the alternate info-file name and repeat the check.
         $pkgInfoFile = $altInfoFileBase;
         $pkgInfoFile .= $suf;
-        return $altInfoFileBase if (-e $pkgInfoFile);
+        return ($altInfoFileBase, $altPkgName) if (-e $pkgInfoFile);
     }
 
     # Default:
-    return $pkgInfoFileBase;
+    return ($pkgInfoFileBase, $origPkgName);
 }
 
 
@@ -226,6 +243,14 @@ sub process_pkgspec(\%$;$$) {
 
     # Split apart the data from the lines retrieved by get_pkglist().
     # '${PackageSpec}\t${Version}\t${Revision}\t${Installed-Size}\t${Status}\n'
+    #
+    # [jpw; 201504] In v1.17.5 and later, 'PackageSpec' no longer exists, and
+    #                'Revision' is obsolete [i.e. returned blank].  We also
+    #                need to add the 'Architecture' to handle dual-arch
+    #                packages on 64-bit PC systems.
+    #
+    # '${Package}\t${Version}\t\t${Installed-Size}\t${Architecture}'
+    #     .'\t${Status}\n'
     #
     chomp $spec_txt;
     my @dpkg_parts = split("\t", $spec_txt);
@@ -244,6 +269,7 @@ sub process_pkgspec(\%$;$$) {
     # [5]: size
     # "dpkg" only provides us with some of these.  We need to fill in the
     # rest.
+    my $pkgArch = pop(@dpkg_parts);
     my $pkgName = $dpkg_parts[0];
     # Note the forced-conversion of "size" to a number.
     my @pkgspecs = ($pkgName, $dpkg_parts[1], "",
@@ -269,7 +295,8 @@ sub process_pkgspec(\%$;$$) {
     # We also need to get the installation time from ... someplace.  "dpkg"
     # doesn't store that information in its "database" (which is just a
     # directory full of information files.)
-    my $pkgInfoFileBase = get_infoDirBasename($pkgName);
+    my ($pkgInfoFileBase, $pkgNameInfoDB) = get_infoDirBasename($pkgName,
+                                                                $pkgArch);
     foreach my $suf (@_deb_info_filesuffixes) {
         my $pkgInfoFile = $pkgInfoFileBase;
         $pkgInfoFile .= $suf;
@@ -277,7 +304,7 @@ sub process_pkgspec(\%$;$$) {
 
         # Get the "mtime" for this info-file from the DEB package "database".
         # Don't use "ctime", since it won't (might not) be preserved when
-        # restoring these filesfrom a backup.
+        # restoring these files from a backup.
         my @pkgFileStats = stat($pkgInfoFile);
         my $mtime = $pkgFileStats[9];
         # Keep the "mtime" from the info-file that was modified last out of
@@ -288,21 +315,27 @@ sub process_pkgspec(\%$;$$) {
     }
 
     unless ($pkgspecs[4]) {
-        print ("\n\t- Package \"", $pkgName, "\" has no known\n\t",
+        print ("\n\t- Package \"", $pkgNameInfoDB, "\" has no known\n\t",
                "  info files in ", $_deb_db_info_path, ".  Ignoring...");
         return 0;
+    }
+
+    # Update the specs with the arch-annotated name.
+    unless ($pkgName eq $pkgNameInfoDB) {
+        $pkgName = $pkgNameInfoDB;
+        $pkgspecs[0] = $pkgName;
     }
 
     # Add an approximated "install duration", based on the package size, to
     # the installation time.  This will (hopefully) move the install time
     # closer to the time that the installation completed.
-    if (exists($dpkg_parts[5])) {
-        my $pkgSize = $dpkg_parts[5];
-        $pkgspecs[4] += int($pkgSize / $_PkgInstall_BytesPerSec);
+    if ($pkgspecs[5]) {
+        my $pkgInstDur = int($pkgspecs[5] / $_PkgInstall_KBperSec);
+        ++$pkgInstDur unless ($pkgInstDur);
+        $pkgspecs[4] += $pkgInstDur;
         if ($_UnitTest && $_Verbose) {
             print ($pkgspecs[0], ":\tEstimated Install Duration: ",
-                   int($pkgSize / $_PkgInstall_BytesPerSec),
-                   "\n");
+                   $pkgInstDur, " sec.\n");
         }
     }
 
@@ -319,27 +352,77 @@ sub process_pkgspec(\%$;$$) {
 }
 
 
-sub set_if_older(\%$$$) {
+sub validate_deb_contents($\%) {
+    my $pkgname = shift;
+    my $ref_md5sumChanges = shift;
+
+    my $pkg_md5file = $_deb_db_info_path;
+    $pkg_md5file .= "/";
+    $pkg_md5file .= $pkgname;
+    $pkg_md5file .= ".md5sums";
+
+    return unless (-r $pkg_md5file);
+
+    my $md5DebChkCmd = $_md5_cmd;
+    $md5DebChkCmd .= ' ';
+    $md5DebChkCmd .= $pkg_md5file;
+
+    # Save the cwd and change to root:
+    my $oPwd =cwd();
+    chdir("/");
+    open(MD5_IN, "$md5DebChkCmd 2>/dev/null |")
+        or openPipeDie("$md5DebChkCmd |");
+
+    while (<MD5_IN>) {
+        study;
+        next unless (m/^(.+): (.*)$/);
+
+        my $fname = '/'; $fname .= $1;
+        my $md5stat = $2;
+        $ref_md5sumChanges->{$fname} = ( ($md5stat =~ m/OK/) ? 0 : 1);
+    }
+
+    # Change back to the original cwd.
+    chdir($oPwd);
+    # WARNING:  Don't use "or closePipeDie($md5DebChkCmd)" to check the status
+    #           of "close", since "md5sum" will exit nonzero unless all of the
+    #           files return OK.
+    close MD5_IN;
+
+    if ($_UnitTest && $_Verbose) {
+        print_hash($pkgname."_md5sumsChanged", %$ref_md5sumChanges,
+                   '^', "\t");
+    }
+}
+
+
+sub set_if_older(\%$$$$) {
     my $ref_fileset = shift;
     my $filename = shift;
     my $t_state = shift;
     my $pkgInstallTime = shift;
+    my $actionText = shift;
 
     if ($_UnitTest && $_Verbose) {
-        print ("'$filename'; $t_state; $pkgInstallTime; delta=",
-               $t_state-$pkgInstallTime,"\n");
+        print ($actionText, ":  '", $filename, "'; ", $t_state, "; ",
+               $pkgInstallTime, "; delta=", $t_state-$pkgInstallTime, "\n");
     }
 
     # If this was already set with a time, we'll override it.
     my $has_priorTime = defined($ref_fileset->{$filename});
 
+    # The file's/dir's ctime or mtime is later -- it's been modified in some
+    # way.
     if ($t_state > $pkgInstallTime) {
+        # Did we check this file before?  If so, use whichever
+        # package-install-time is the most-recent.
         unless ( $has_priorTime &&
                  ($pkgInstallTime < $ref_fileset->{$filename}) )
-        { # I.e. unless(curInstallTime < previousInstallTime)
+        {
             $ref_fileset->{$filename} = $pkgInstallTime;
         }
-        return 1; #Something's been set.
+        # Since '$ref_fileset->{$filename}' has been set, we return 'true'.
+        return 1;
     } # else
 
     # When ($t_state <= $pkgInstallTime), we want to leave
@@ -359,6 +442,47 @@ sub set_if_older(\%$$$) {
     }
 
     return 0; # Nothing set.
+}
+
+
+sub contents_modified(\%$$$$\%) {
+    my $ref_fileset = shift;
+    my $filename = shift;
+    my $mtime = shift;
+    my $pkgname = shift;
+    my $pkgInstallTime = shift;
+    my $ref_md5sumChanged = shift;
+
+    my $md5_checked_for_pkg = scalar(keys(%$ref_md5sumChanged));
+
+    # If we already checked the MD5 sums for '$pkgname', see if '$filename'
+    # has changed.
+    if ( $md5_checked_for_pkg && $ref_md5sumChanged->{$filename} ) {
+        $ref_fileset->{$filename} = $pkgInstallTime;
+        # As for 'set_if_older', return "true" since we've modified
+        # "$ref_fileset".
+        return 1;
+    }
+    # else:
+
+    return 0 unless (set_if_older(%$ref_fileset, $filename, $mtime,
+                                  $pkgInstallTime, "File mtime"));
+
+    # We only reach here if the $mtime is older than the $pkgInstallTime.
+    # Examine md5sums to be certain.
+    unless ($md5_checked_for_pkg) {
+        validate_deb_contents($pkgname, %$ref_md5sumChanged);
+        unless ($ref_md5sumChanged->{$filename}) {
+            # Nope.  Contents haven't really changed.  Undo what
+            # 'set_if_older' did.
+            delete($ref_fileset->{$filename});
+            return 0;
+        }
+    }
+
+    # If we reach here, then 'set_if_older' changed '%$ref_fileset' and we
+    # didn't un-change it.
+    return 1;
 }
 
 
@@ -398,8 +522,14 @@ sub get_pkglist(;$) {
     #   package's target as part of the package name.  (This is how the same
     #   package from different architectures are told apart.)
     #
-    my $fmt='${PackageSpec}\t${Version}\t${Revision}\t${Installed-Size}'.
-        '\t${Status}\n';
+    #my $fmt='${PackageSpec}\t${Version}\t${Revision}\t${Installed-Size}'.
+    #    '\t${Status}\n';
+    # [jpw; 201504]  In v1.17.5 and later, 'PackageSpec' no longer exists, and
+    #                'Revision' is obsolete.  We also need to add the
+    #                'Architecture' to handle dual-arch packages on 64-bit PC
+    #                systems.
+    my $fmt='${Package}\t${Version}\t\t${Installed-Size}'.
+        '\t${Architecture}\t${Status}\n';
     if($_UnitTest || $_Verbose) {
         print "Retrieving DEB package list...";
     }
@@ -466,6 +596,7 @@ sub get_changed_since_install(\%\%\%$$$) {
 
     my @pkgset = sort(keys(%$ref_pkgset));
     my %modified_files = ();
+    my %modified_pkgs = ();
     # The -L option lists the contents of the package.  It should be cleaner
     # and more standard than directly examining the "*.list" files from the
     # DEB admin directory.
@@ -527,6 +658,8 @@ sub get_changed_since_install(\%\%\%$$$) {
         if ($_UnitTest || $_Verbose) {
             print "\tchecking package: $pkg\n";
         }
+        my %pkg_md5sumChecks = ();
+
         open(PKGL_IN, "$deb_cmd $pkg |");
         while (<PKGL_IN>) {
             my $fn = $_;
@@ -563,8 +696,14 @@ sub get_changed_since_install(\%\%\%$$$) {
             # later, do the next iter.
             next if ($isSkippable || $isIncludedLater);
 
-            # Missing files: check for those first.
-            if (! -e $fn) {
+            # Note that the file-check operations will flag a broken-symlink
+            # as a missing file.  So we need to check if the file is a symlink
+            # first, before checking for its existence.
+            my $isSymLink = (-l $fn);
+
+            # Handle missing files first:
+            #
+            if (!$isSymLink && (! -e $fn)) {
                 if ($_UnitTest && $_Verbose) {
                     print "\t\tFile no longer exists: '$fn'\n";
                 }
@@ -576,7 +715,6 @@ sub get_changed_since_install(\%\%\%$$$) {
             my $isFile = (-f $fn);
             # Dir flag is masked out by the "isFile" one.
             my $isDir = (-d $fn) && !$isFile;
-            my $isSymLink = (-l $fn);
             # Symlink flag masks out the other two:
             $isDir = $isDir && !$isSymLink;
             $isFile = $isFile && !$isSymLink;
@@ -597,8 +735,8 @@ sub get_changed_since_install(\%\%\%$$$) {
             #
             # The field st_atime (==fstats[8]) is changed by file accesses,
             # e.g. by execve, mknod, pipe, utime and read (of more than zero
-            # bytes).  Guaranteed to change, it's not very useful for making a
-            # decision about backing up.
+            # bytes).  Guaranteed to change, including due to this program,
+            # it's not very useful for making a decision about backing up.
             #
             # The field st_mtime (==fstats[9]) is changed by file
             # modifications, e.g. by mknod, truncate, utime and write (of more
@@ -611,6 +749,11 @@ sub get_changed_since_install(\%\%\%$$$) {
             # setting inode information (i.e., owner, group, link count, mode,
             # etc.).  Additionally, the st_ctime of a directory also changes
             # when a file is created or deleted in that directory.
+            #
+            # Unfortunately, st_mtime can change for reasons other than
+            # modification.  And st_ctime can change for reasons other than
+            # ownership or permission changes.
+            my $changeFound;
 
             # Handle dirs first:
             if ($isDir) {
@@ -620,59 +763,54 @@ sub get_changed_since_install(\%\%\%$$$) {
                 next if ($fstats[9] == $fstats[10]);
                 # Only modifications we track for directories are permission
                 # changes.
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tDir ctime: ";
-                }
-                set_if_older(%mf_Permissions, $fn,
-                             $fstats[10], $pkgInstallTime);
+                $changeFound = set_if_older(%mf_Permissions, $fn, $fstats[10],
+                                            $pkgInstallTime, "Dir ctime");
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Contents modification trumps all others.
             if ($isFile) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tFile mtime: ";
+                $changeFound = contents_modified(%mf_Contents,
+                                                 $fn, $fstats[9],
+                                                 $pkg, $pkgInstallTime,
+                                                 %pkg_md5sumChecks);
+                unless ($changeFound) {
+                    $changeFound = set_if_older(%mf_Permissions,
+                                                $fn, $fstats[10],
+                                                $pkgInstallTime,
+                                                "File ctime");
                 }
-                unless (set_if_older(%mf_Contents, $fn,
-                                     $fstats[9], $pkgInstallTime)) {
-                    if ($_UnitTest && $_Verbose) {
-                        print "\t\tFile ctime: ";
-                    }
-                    set_if_older(%mf_Permissions, $fn,
-                                 $fstats[10], $pkgInstallTime);
-                }
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Is this a symlink older than the install date?
             if ($isSymLink) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tSymLink mtime: ";
+                $changeFound = set_if_older(%mf_Symlink, $fn, $fstats[9],
+                                            $pkgInstallTime, "SymLink mtime");
+                unless ($changeFound) {
+                    $changeFound = set_if_older(%mf_Symlink,
+                                                $fn, $fstats[10],
+                                                $pkgInstallTime,
+                                                "SymLink ctime");
                 }
-                unless (set_if_older(%mf_Symlink, $fn,
-                                     $fstats[9], $pkgInstallTime)) {
-                    if ($_UnitTest && $_Verbose) {
-                        print "\t\tSymLink ctime: ";
-                    }
-                    set_if_older(%mf_Symlink, $fn,
-                                 $fstats[10], $pkgInstallTime);
-                }
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Are we some other type of file that's changed since the install
             # date?
-            if ($_UnitTest && $_Verbose) {
-                print "\t\tOther mtime: ";
+            $changeFound = set_if_older(%mf_Other, $fn, $fstats[9],
+                                        $pkgInstallTime, "Other mtime");
+            unless ($changeFound) {
+                $changeFound = set_if_older(%mf_Other, $fn, $fstats[10],
+                                            $pkgInstallTime, "Other ctime");
             }
-            unless (set_if_older(%mf_Other, $fn,
-                                 $fstats[9], $pkgInstallTime)) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tOther ctime: ";
-                }
-                set_if_older(%mf_Other, $fn,
-                             $fstats[10], $pkgInstallTime);
-            }
+            ++$modified_pkgs{$pkg} if ($changeFound);
         } #end PKGL_IN
         close PKGL_IN;
         my $exitStat = check_syscmd_status({'ignore' => [1],
@@ -711,6 +849,7 @@ sub get_changed_since_install(\%\%\%$$$) {
     }
 
     # Sort before bundling up for return.
+    $modified_files{"__modified_packages__"} = [ sort(keys(%modified_pkgs)) ];
     $modified_files{"Permissions"} = [ sort(keys(%mf_Permissions)) ];
     $modified_files{"Contents"} = [ sort(keys(%mf_Contents)) ];
     $modified_files{"Unknown"} = [ ]; # Unused.
@@ -986,7 +1125,7 @@ I<or> C<ctime> later than the parent package's installation time.
 
 =back
 
-The documentation for both versions of C<stat> (C<perdoc -f stat>; C<man 2
+The documentation for both versions of C<stat> (C<perldoc -f stat>; C<man 2
 stat>) describe what C<ctime> means.
 
 The parameter I<$installTime_delta> is an upper limit on how long it takes a
