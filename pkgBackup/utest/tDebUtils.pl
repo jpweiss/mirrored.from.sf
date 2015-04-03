@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2004-2010 by John P. Weiss
+# Copyright (C) 2004-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -91,12 +91,13 @@ sub usage {
 sub main {
     my $argc = scalar(@ARGV);
     my $help = 0;
+    my $quiet = 0;
 
     my %optmap=('help' => \$help,
-                'h' => \$help);
+                'h' => \$help,
+                'quiet' => \$quiet,
+                'q' => \$quiet);
     my @valid_opts=('get_pkglist',
-                    'get_modified_pkgfiles',
-                    'scan_modified_pkgfiles',
                     'get_changed_since_install',
                     'read_pkgset',
                     'write_pkgset');
@@ -112,33 +113,13 @@ sub main {
     }
 
     # Set the package-global vars
-    $debUtils::_UnitTest = 1;
-    $debUtils::_Verbose = 1;
+    $debUtils::_Verbose = !$quiet;
+    $debUtils::_UnitTest = !$quiet;
 
     if (exists $optmap{'get_pkglist'}) {
         my %pkgs=();
         %pkgs = get_pkglist;
         print_hash("Packages", %pkgs);
-        exit 0;
-    }
-
-    if (exists $optmap{'get_modified_pkgfiles'}) {
-        my @diffpkg = ();
-        my %pkgs=();
-        my %dirs=( 'none' => 0 );
-        %pkgs = get_pkglist;
-        #@diffpkg = get_modified_pkgfiles(%pkgs, %dirs,
-        #                                 $_SkipModifiedPkgfiles_re);
-        print "( @diffpkg )\n";
-        exit 0;
-    }
-
-    if (exists $optmap{'scan_modified_pkgfiles'}) {
-        my %diffpkg = ();
-        my %pkgs=();
-        %pkgs = get_pkglist;
-        #%diffpkg = scan_modified_pkgfiles(%pkgs, $_SkipModifiedPkgfiles_re);
-        print_hash("ModifiedPackages", %diffpkg);
         exit 0;
     }
 

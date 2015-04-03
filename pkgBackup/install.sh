@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2003-2011 by John P. Weiss
+# Copyright (C) 2003-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -24,7 +24,7 @@
 ############
 
 
-MYVERSION='2_0_1'
+MYVERSION='2_0_2'
 
 BIN_DIR=${PWD}
 

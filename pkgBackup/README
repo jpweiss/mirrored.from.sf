@@ -27,14 +27,11 @@ Do:
     man ./pkgBackup.8.gz
 
 ...to read the manpage.  It'll tell you how to run "pkgBackup"
-manually.  You can also run "./rpmBackup.pl --help" or
-"./debBackup.pl --help" for a more abbreviated version.
+manually.  You can also run "./rpmBackup.plÂ --help" or
+"./debBackup.plÂ --help" for a more abbreviated version.
 
 
 See the "TODO" file for late-breaking info about missing features.  ;)
-In particular, the "./debBackup.pl" flavor of "pkgBackup" doesn't work
-yet.
-
 
 The config-file, "pkgBackup.conf", contains documentation-comments
 explaining how to use it.
@@ -63,8 +60,7 @@ the standard backup tools (taper, kdat, tar) and archiving to a file.
 
 DEVELOPING IT FURTHER:
 
-Anyone willing to develop the *.deb side of the program only needs to
-work on "debUtils.pm".  Look at the comments in "debUtils.pm" and read
-the manpage "man.devel/debUtils.3pm.gz".  (Note: "man" will read an
-file you specify as long as you explicitly add the pathname to the
-filename.)  They'll tell you what you need to know to get started.
+I haven't tested "rpmBackup.pl" against new versions of "rpm" since
+2008.  If you use a RedHat- or Fedora-based system and want to perform
+any needed updates, have a look at "rpmUtils.pm" [which is where any
+calls to the "rpm" binary take place].

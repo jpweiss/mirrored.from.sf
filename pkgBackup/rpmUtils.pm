@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2003-2012 by John P. Weiss
+# Copyright (C) 2003-2015 by John P. Weiss
 #
 # This package is free software; you can redistribute it and/or modify
 # it under the terms of the Artistic License, included as the file
@@ -119,11 +119,12 @@ sub process_pkgspec(\%$;$$) {
     # closer to the time that the installation completed.
     if ($hasSize && exists($pkgspecs[5])) {
         my $pkgSize = pop(@pkgspecs);
-        $pkgspecs[4] += int($pkgSize / $_PkgInstall_BytesPerSec);
+        my $pkgInstDur = int($pkgSize / $_PkgInstall_BytesPerSec);
+        ++$pkgInstDur unless ($pkgInstDur);
+        $pkgspecs[4] += $pkgInstDur;
         if ($_UnitTest && $_Verbose) {
             print ($pkgspecs[0], ":\tEstimated Install Duration: ",
-                   int($pkgSize / $_PkgInstall_BytesPerSec),
-                   "\n");
+                   $pkgInstDur, " sec.\n");
         }
     }
 
@@ -135,27 +136,33 @@ sub process_pkgspec(\%$;$$) {
 }
 
 
-sub set_if_older(\%$$$) {
+sub set_if_older(\%$$$$) {
     my $ref_fileset = shift;
     my $filename = shift;
     my $t_state = shift;
     my $pkgInstallTime = shift;
+    my $actionText = shift;
 
     if ($_UnitTest && $_Verbose) {
-        print ("'$filename'; $t_state; $pkgInstallTime; delta=",
-               $t_state-$pkgInstallTime,"\n");
+        print ($actionText, ":  '", $filename, "'; ", $t_state, "; ",
+               $pkgInstallTime, "; delta=", $t_state-$pkgInstallTime, "\n");
     }
 
     # If this was already set with a time, we'll override it.
     my $has_priorTime = defined($ref_fileset->{$filename});
 
+    # The file's/dir's ctime or mtime is later -- it's been modified in some
+    # way.
     if ($t_state > $pkgInstallTime) {
+        # Did we check this file before?  If so, use whichever
+        # package-install-time is the most-recent.
         unless ( $has_priorTime &&
                  ($pkgInstallTime < $ref_fileset->{$filename}) )
-        { # I.e. unless(curInstallTime < previousInstallTime)
+        {
             $ref_fileset->{$filename} = $pkgInstallTime;
         }
-        return 1; #Something's been set.
+        # Since '$ref_fileset->{$filename}' has been set, we return 'true'.
+        return 1;
     } # else
 
     # When ($t_state <= $pkgInstallTime), we want to leave
@@ -259,8 +266,6 @@ sub setChangeTypeAliases(\%) {
 # Finally ... and worst of all ... the "installation time" recorded by rpm is
 # the time that the install *began*.  So, for large packages, most of the
 # member files will *always* be marked as modified, even though they're not.
-
-
 sub get_changed_since_install(\%\%\%$$$) {
     my $ref_pkgset = shift;
     my $ref_fileset = shift;
@@ -271,6 +276,7 @@ sub get_changed_since_install(\%\%\%$$$) {
 
     my @pkgset = sort(keys(%$ref_pkgset));
     my %modified_files = ();
+    my %modified_pkgs = ();
     my $rpm_cmd = "$_rpm_bin -ql";
 
     my ($n_dirs, $n_files);
@@ -357,8 +363,14 @@ sub get_changed_since_install(\%\%\%$$$) {
             # later, do the next iter.
             next if ($isSkippable || $isIncludedLater);
 
-            # Missing files: check for those first.
-            if (! -e $fn) {
+            # Note that the file-check operations will flag a broken-symlink
+            # as a missing file.  So we need to check if the file is a symlink
+            # first, before checking for its existence.
+            my $isSymLink = (-l $fn);
+
+            # Handle missing files first:
+            #
+            if (!$isSymLink && (! -e $fn)) {
                 if ($_UnitTest && $_Verbose) {
                     print "\t\tFile no longer exists: '$fn'\n";
                 }
@@ -370,7 +382,6 @@ sub get_changed_since_install(\%\%\%$$$) {
             my $isFile = (-f $fn);
             # Dir flag is masked out by the "isFile" one.
             my $isDir = (-d $fn) && !$isFile;
-            my $isSymLink = (-l $fn);
             # Symlink flag masks out the other two:
             $isDir = $isDir && !$isSymLink;
             $isFile = $isFile && !$isSymLink;
@@ -406,6 +417,7 @@ sub get_changed_since_install(\%\%\%$$$) {
             # setting inode information (i.e., owner, group, link count, mode,
             # etc.).  Additionally, the st_ctime of a directory also changes
             # when a file is created or deleted in that directory.
+            my $changeFound;
 
             # Handle dirs first:
             if ($isDir) {
@@ -415,59 +427,54 @@ sub get_changed_since_install(\%\%\%$$$) {
                 next if ($fstats[9] == $fstats[10]);
                 # Only modifications we track for directories are permission
                 # changes.
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tDir ctime: ";
-                }
-                set_if_older(%mf_Permissions, $fn,
-                             $fstats[10], $pkgInstallTime);
+                $changeFound = set_if_older(%mf_Permissions, $fn, $fstats[10],
+                                            $pkgInstallTime, "Dir ctime");
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Contents modification trumps all others.
             if ($isFile) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tFile mtime: ";
+                $changeFound = contents_modified(%mf_Contents,
+                                                 $fn, $fstats[9],
+                                                 $pkg, $pkgInstallTime,
+                                                 %pkg_md5sumChecks);
+                unless ($changeFound) {
+                    $changeFound = set_if_older(%mf_Permissions,
+                                                $fn, $fstats[10],
+                                                $pkgInstallTime,
+                                                "File ctime");
                 }
-                unless (set_if_older(%mf_Contents, $fn,
-                                     $fstats[9], $pkgInstallTime)) {
-                    if ($_UnitTest && $_Verbose) {
-                        print "\t\tFile ctime: ";
-                    }
-                    set_if_older(%mf_Permissions, $fn,
-                                 $fstats[10], $pkgInstallTime);
-                }
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Is this a symlink older than the install date?
             if ($isSymLink) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tSymLink mtime: ";
+                $changeFound = set_if_older(%mf_Symlink, $fn, $fstats[9],
+                                            $pkgInstallTime, "SymLink mtime");
+                unless ($changeFound) {
+                    $changeFound = set_if_older(%mf_Symlink,
+                                                $fn, $fstats[10],
+                                                $pkgInstallTime,
+                                                "SymLink ctime");
                 }
-                unless (set_if_older(%mf_Symlink, $fn,
-                                     $fstats[9], $pkgInstallTime)) {
-                    if ($_UnitTest && $_Verbose) {
-                        print "\t\tSymLink ctime: ";
-                    }
-                    set_if_older(%mf_Symlink, $fn,
-                                 $fstats[10], $pkgInstallTime);
-                }
+
+                ++$modified_pkgs{$pkg} if ($changeFound);
                 next;
             }
 
             # Are we some other type of file that's changed since the install
             # date?
-            if ($_UnitTest && $_Verbose) {
-                print "\t\tOther mtime: ";
+            $changeFound = set_if_older(%mf_Other, $fn, $fstats[9],
+                                        $pkgInstallTime, "Other mtime");
+            unless ($changeFound) {
+                $changeFound = set_if_older(%mf_Other, $fn, $fstats[10],
+                                            $pkgInstallTime, "Other ctime");
             }
-            unless (set_if_older(%mf_Other, $fn,
-                                 $fstats[9], $pkgInstallTime)) {
-                if ($_UnitTest && $_Verbose) {
-                    print "\t\tOther ctime: ";
-                }
-                set_if_older(%mf_Other, $fn,
-                             $fstats[10], $pkgInstallTime);
-            }
+            ++$modified_pkgs{$pkg} if ($changeFound);
         } #end PKGL_IN
         close PKGL_IN;
         my $exitStat = check_syscmd_status({'ignore' => [1],
@@ -506,6 +513,7 @@ sub get_changed_since_install(\%\%\%$$$) {
     }
 
     # Sort before bundling up for return.
+    $modified_files{"__modified_packages__"} = [ sort(keys(%modified_pkgs)) ];
     $modified_files{"Permissions"} = [ sort(keys(%mf_Permissions)) ];
     $modified_files{"Contents"} = [ sort(keys(%mf_Contents)) ];
     $modified_files{"Unknown"} = [ ]; # Unused.
@@ -772,7 +780,7 @@ I<or> C<ctime> later than the parent package's installation time.
 
 =back
 
-The documentation for both versions of C<stat> (C<perdoc -f stat>; C<man 2
+The documentation for both versions of C<stat> (C<perldoc -f stat>; C<man 2
 stat>) describe what C<ctime> means.
 
 The parameter I<$installTime_delta> is a fixed adjustment, in seconds, to the
